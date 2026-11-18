@@ -270,7 +270,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
 			p["salary"] = int(300 + (ovr(p) - 30) * 32)
 			players.append(p)
-	if roster.is_empty() and not bool(team.get("empty_roster", false)):
+	if roster.is_empty() and not bool(team.get("empty_roster", false)) and not bool(team.get("custom", false)):
 		players.append(gen_player(base - 4.0))
 	_start_league()
 	_refresh_market(12)
