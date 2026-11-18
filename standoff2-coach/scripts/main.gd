@@ -1695,68 +1695,227 @@ func build_settings(v: VBoxContainer, refresh: Callable) -> void:
 
 # ------------------------------------------------------------ каркас игры
 
+var hist: Array = []
+var hist_pos: int = -1
+var title_label: Label
+var date_label: Label
+var cont_btn: Button
+var nav_btns: Dictionary = {}
+
+const NAV := [
+	["dashboard", "Главная", "home"], ["mail", "Почта", "mail"], [],
+	["squad", "Состав", "squad"], ["staff", "Штат", "staff"], ["training", "Тренировка", "training"],
+	[], ["transfers", "Трансферы", "transfers"], ["league", "Турниры", "tournaments"], ["stats", "Статистика", "stats"],
+	[], ["finance", "Финансы", "finance"], ["coach", "Профиль", "profile"], [], ["system", "Настройки", "settings"],
+]
+const SCREEN_TITLES := {"dashboard": "Главная", "mail": "Почта", "squad": "Состав", "staff": "Штат", "training": "Тренировка",
+	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч"}
+const WEEKDAYS := ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]
+const MONTHS_SHORT := ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля", "авг.", "сент.", "окт.", "нояб.", "дек."]
+
+## Игровая дата: сезон 1 начинается 1 января 2026, ход = неделя.
+func game_date() -> Dictionary:
+	var start := Time.get_unix_time_from_datetime_dict({"year": 2026, "month": 1, "day": 1, "hour": 12, "minute": 0, "second": 0})
+	var days: int = ((gs.season - 1) * 52 + (gs.week - 1)) * 7
+	return Time.get_datetime_dict_from_unix_time(start + days * 86400)
+
+## Внешний вид любой команды лиги: логотип, цвет, тег.
+func team_visual(name: String) -> Dictionary:
+	if name == gs.team_name:
+		return {"logo": gs.team_logo, "color": gs.team_color, "tag": gs.team_tag}
+	for t in Teams.START_TEAMS:
+		if t["name"] == name:
+			return {"logo": str(t.get("logo", "")), "color": t["color"], "tag": t["tag"]}
+	var logos: Array = _logo_list()
+	var h: int = abs(hash(name))
+	var words: PackedStringArray = name.split(" ")
+	var tag := ""
+	for w in words:
+		if w != "": tag += w.substr(0, 1).to_upper()
+	return {"logo": logos[h % logos.size()] if not logos.is_empty() else "", "color": TEAM_COLORS[h % TEAM_COLORS.size()][0], "tag": tag}
+
+func team_icon(name: String, sz: int) -> Control:
+	var v: Dictionary = team_visual(name)
+	if tex(v["logo"]) != null:
+		var r := pic(v["logo"], sz)
+		r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		return r
+	return _save_icon({"team_tag": v["tag"], "team_color": v["color"]}, sz)
+
+func _nav_btn(key: String, text: String, icon: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(196, 36)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.text = "          " + text
+	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_color_override("font_color", Color("d6dbe3"))
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	for st in [["normal", Color(0, 0, 0, 0)], ["hover", Color(1, 1, 1, 0.06)], ["pressed", Color(0.2, 0.5, 0.9, 0.35)], ["focus", Color(0, 0, 0, 0)]]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = st[1]
+		sb.set_corner_radius_all(6)
+		b.add_theme_stylebox_override(st[0], sb)
+	var ic := preload("res://scripts/icons.gd").new().setup(icon, 20)
+	ic.position = Vector2(10, 8)
+	b.add_child(ic)
+	b.pressed.connect(func(): show_screen(key))
+	return b
+
 func build_game() -> void:
 	_clear_root()
-	var root := vbox(8)
+	hist = []
+	hist_pos = -1
+	var bg := ColorRect.new()
+	bg.color = Color("151b26")
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var glow := preload("res://scripts/menu_bg.gd").new()
+	glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glow.show_cup = false
+	glow.modulate = Color(0.55, 0.65, 0.9, 0.12)
+	add_child(glow)
+	var root := HBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 12; root.offset_top = 12; root.offset_right = -12; root.offset_bottom = -12
+	root.add_theme_constant_override("separation", 0)
 	add_child(root)
-	var top := panel(C_PANEL, 8)
-	var th := hbox(12)
-	top.add_child(th)
+	# --- боковое меню
+	var side := PanelContainer.new()
+	var ssb := StyleBoxFlat.new()
+	ssb.bg_color = Color(0.06, 0.08, 0.11, 0.92)
+	ssb.set_content_margin_all(10)
+	side.add_theme_stylebox_override("panel", ssb)
+	root.add_child(side)
+	var sv := vbox(2)
+	side.add_child(sv)
+	var who := hbox(10)
 	photo_tex = gs.load_photo()
-	th.add_child(make_avatar(gs.avatar, 38, photo_tex))
+	var av := _circle(gs.photo_path, 44, Color(gs.team_color))
+	who.add_child(av)
+	var wv := VBoxContainer.new()
+	wv.add_theme_constant_override("separation", -4)
+	wv.add_child(label(gs.coach_nick if gs.coach_nick != "" else gs.coach_name, 12, C_DIM))
+	wv.add_child(label(gs.team_tag, 18, Color.WHITE))
+	who.add_child(wv)
 	if tex(gs.team_logo) != null:
-		th.add_child(pic(gs.team_logo, 38))
-	var badge := label(gs.team_tag, 16, Color(gs.team_color))
-	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	th.add_child(badge)
-	top_label = label("", 17, Color.WHITE)
-	top_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	top_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		who.add_child(pic(gs.team_logo, 34))
+	sv.add_child(who)
+	var g := Control.new()
+	g.custom_minimum_size = Vector2(0, 10)
+	sv.add_child(g)
+	nav_btns = {}
+	for e in NAV:
+		if e.is_empty():
+			var sp := Control.new()
+			sp.custom_minimum_size = Vector2(0, 10)
+			sv.add_child(sp)
+			continue
+		var b := _nav_btn(e[0], tr(e[1]), e[2])
+		nav_btns[e[0]] = b
+		sv.add_child(b)
+	var f := Control.new()
+	f.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sv.add_child(f)
+	sv.add_child(_nav_btn_exit())
+	# --- правая часть
+	var right := vbox(0)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_child(right)
+	var top := PanelContainer.new()
+	var tsb := StyleBoxFlat.new()
+	tsb.bg_color = Color(0.05, 0.07, 0.1, 0.75)
+	tsb.content_margin_left = 16; tsb.content_margin_right = 12; tsb.content_margin_top = 8; tsb.content_margin_bottom = 8
+	top.add_theme_stylebox_override("panel", tsb)
+	right.add_child(top)
+	var th := hbox(10)
+	top.add_child(th)
+	th.add_child(text_btn("<", func(): _hist_move(-1), 24))
+	th.add_child(text_btn(">", func(): _hist_move(1), 24))
+	title_label = label("", 24, Color.WHITE)
+	th.add_child(title_label)
+	th.add_child(spacer())
+	top_label = label("", 13, C_DIM)
+	top_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	top_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	th.add_child(top_label)
-	root.add_child(top)
-	var body := hbox(10)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(body)
-	var navp := panel(C_PANEL, 10)
-	nav_box = vbox(6)
-	nav_box.custom_minimum_size = Vector2(190, 0)
-	navp.add_child(nav_box)
-	body.add_child(navp)
+	date_label = label("", 13, Color.WHITE)
+	date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	date_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	th.add_child(date_label)
+	cont_btn = _outline_btn(tr("ПРОДОЛЖИТЬ") + "  >", func(): on_continue(), C_GOOD, 16)
+	th.add_child(cont_btn)
 	var sc := ScrollContainer.new()
-	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	body.add_child(sc)
-	content = vbox(10)
+	right.add_child(sc)
+	var pad := MarginContainer.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side_m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(side_m, 16)
+	sc.add_child(pad)
+	content = vbox(12)
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(content)
-	var lp := panel(C_PANEL, 8)
-	log_label = RichTextLabel.new()
-	log_label.bbcode_enabled = true
-	log_label.custom_minimum_size = Vector2(0, 74)
-	log_label.scroll_following = true
-	lp.add_child(log_label)
-	root.add_child(lp)
-	for e in [["dashboard", tr("Главная")], ["squad", tr("Состав")], ["training", tr("Тренировки и тактика")], ["transfers", tr("Трансферы")], ["league", tr("Лига")], ["coach", tr("Тренер")], ["system", tr("Меню / сохранение")]]:
-		var key: String = e[0]
-		nav_box.add_child(btn(e[1], func(): show_screen(key)))
+	pad.add_child(content)
+	log_label = null
 	show_screen("dashboard")
+
+func _nav_btn_exit() -> Button:
+	var b := _nav_btn("system", tr("Выйти в меню"), "exit")
+	for c in b.pressed.get_connections():
+		b.pressed.disconnect(c["callable"])
+	b.pressed.connect(func(): gs.save(); show_menu())
+	return b
+
+func _hist_move(d: int) -> void:
+	var np: int = hist_pos + d
+	if np < 0 or np >= hist.size():
+		return
+	hist_pos = np
+	show_screen(hist[hist_pos], false)
+
+func on_continue() -> void:
+	if busy or in_match:
+		return
+	var pm: Dictionary = gs.player_match()
+	if gs.game_over != "":
+		return
+	if not pm.is_empty() and not gs.match_done and gs.has_enough_players():
+		on_play_match()
+	else:
+		on_finish_week()
 
 func refresh_top() -> void:
 	if top_label == null:
 		return
-	top_label.text = tr("%s  |  Сезон %d · Неделя %d/10 · %s  |  %s  |  Деньги: %s  |  Репутация: %d") % [gs.team_name, gs.season, gs.week, tr(gs.TIERS[gs.tier]), gs.phase_name(), money_fmt(gs.money), int(gs.rep)]
-	var t := ""
-	for i in min(4, gs.news.size()):
-		t += "[color=#9aa3b2]%s[/color]\n" % gs.news[i]
-	log_label.text = t.strip_edges()
+	top_label.text = "%s  ·  %s   " % [money_fmt(gs.money), tr(gs.TIERS[gs.tier])]
+	var d := game_date()
+	date_label.text = "%s,\n%02d %s %d" % [tr(WEEKDAYS[int(d["weekday"])]), int(d["day"]), tr(MONTHS_SHORT[int(d["month"]) - 1]), int(d["year"])]
+	if title_label != null:
+		title_label.text = tr(SCREEN_TITLES.get(current, "Главная"))
+	if cont_btn != null:
+		var pm: Dictionary = gs.player_match()
+		var label_t := tr("ПРОДОЛЖИТЬ")
+		if not pm.is_empty() and not gs.match_done and gs.has_enough_players():
+			label_t = tr("К МАТЧУ")
+		cont_btn.text = label_t + "  >"
+		cont_btn.disabled = in_match or gs.game_over != ""
+	for k in nav_btns:
+		var b: Button = nav_btns[k]
+		b.add_theme_color_override("font_color", Color.WHITE if k == current else Color("aab2c0"))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.2, 0.45, 0.85, 0.35) if k == current else Color(0, 0, 0, 0)
+		sb.set_corner_radius_all(6)
+		b.add_theme_stylebox_override("normal", sb)
 
-func show_screen(name: String) -> void:
+func show_screen(name: String, push: bool = true) -> void:
 	if busy:
 		return
 	current = name
 	in_match = false
+	if push:
+		hist = hist.slice(0, hist_pos + 1)
+		if hist.is_empty() or hist[hist.size() - 1] != name:
+			hist.append(name)
+		hist_pos = hist.size() - 1
 	clear(content)
 	refresh_top()
 	if gs.game_over != "":
@@ -1764,10 +1923,14 @@ func show_screen(name: String) -> void:
 		return
 	match name:
 		"dashboard": screen_dashboard()
+		"mail": screen_mail()
 		"squad": screen_squad()
+		"staff": screen_staff()
 		"training": screen_training()
 		"transfers": screen_transfers()
 		"league": screen_league()
+		"stats": screen_stats()
+		"finance": screen_finance()
 		"coach": screen_coach()
 		"system": screen_system()
 		_: screen_dashboard()
@@ -1783,70 +1946,301 @@ func show_game_over() -> void:
 	content.add_child(p)
 
 func title(t: String) -> Label:
-	return label(t, 24, C_ACC)
+	return label(t, 22, Color.WHITE)
 
 # ------------------------------------------------------------ главная
 
-func screen_dashboard() -> void:
-	content.add_child(title(tr("Главная")))
-	var pm: Dictionary = gs.player_match()
-	var p := panel()
-	var v := vbox(8)
-	p.add_child(v)
-	v.add_child(label(gs.phase_name(), 18, C_ACC))
-	var main_btn: Button
-	if gs.week > 9:
-		v.add_child(label(tr("Межсезонье: подпишите игроков, потратьте очки тренера и подготовьтесь к новому сезону."), 14, C_DIM))
-		main_btn = btn(tr("Начать новый сезон"), on_finish_week, C_GOOD)
-	elif pm.is_empty():
-		v.add_child(label(tr("На этой неделе у вас нет матча."), 15, C_DIM))
-		main_btn = btn(tr("Завершить неделю"), on_finish_week, C_GOOD)
-	elif gs.match_done:
-		v.add_child(label(tr("Матч против %s сыгран.") % pm["opp"], 15, C_GOOD))
-		main_btn = btn(tr("Завершить неделю"), on_finish_week, C_GOOD)
-	else:
-		var kinds := {"league": tr("Матч лиги (BO1)"), "semi": tr("Полуфинал плей-офф (BO3)"), "final": tr("ФИНАЛ плей-офф (BO3)")}
-		v.add_child(label(tr("%s: %s против %s") % [kinds[pm["kind"]], gs.team_name, pm["opp"]], 17))
-		var s: float = gs.opp_strength(pm["opp"])
-		var mine: float = gs.team_power(gs.style, gs.train_map)["base"]
-		var d: float = s - mine
-		var verdict := tr("примерно равны")
-		var col := Color.WHITE
-		if d > 6: verdict = tr("соперник заметно сильнее"); col = C_BAD
-		elif d > 2: verdict = tr("соперник немного сильнее"); col = C_ACC
-		elif d < -6: verdict = tr("вы заметно сильнее"); col = C_GOOD
-		elif d < -2: verdict = tr("вы немного сильнее"); col = C_GOOD
-		var scout_txt := verdict
-		if int(gs.coach_skill["scout"]) >= 3:
-			scout_txt += tr(" (рейтинг %d против ваших %d)") % [int(s), int(mine)]
-		v.add_child(label(tr("Оценка скаутов: ") + scout_txt, 14, col))
-		if not gs.has_enough_players():
-			v.add_child(label(tr("Недостаточно здоровых игроков (нужно 5)! Подпишите кого-нибудь."), 14, C_BAD))
-			main_btn = btn(tr("Играть матч"), func(): pass, C_DIM)
-			main_btn.disabled = true
-		else:
-			main_btn = btn(tr("К матчу"), on_play_match, C_GOOD)
-	v.add_child(main_btn)
-	content.add_child(p)
+func _block(t: String) -> VBoxContainer:
+	var v := vbox(6)
+	var h := hbox(6)
+	h.add_child(label("»", 15, Color("ffb23e")))
+	h.add_child(label(t, 15, Color.WHITE))
+	v.add_child(h)
+	return v
 
-	# турнирная таблица
-	var tp := panel()
-	var tv := vbox(4)
-	tp.add_child(tv)
-	tv.add_child(label(tr("Таблица лиги"), 17, C_ACC))
-	tv.add_child(table_header())
+func _card() -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.09, 0.12, 0.17, 0.85)
+	sb.border_color = Color(1, 1, 1, 0.08)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(6)
+	sb.set_content_margin_all(12)
+	p.add_theme_stylebox_override("panel", sb)
+	return p
+
+func _alert(t: String, good: bool) -> Control:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.15, 0.35, 0.15, 0.55) if good else Color(0.45, 0.12, 0.12, 0.55)
+	sb.border_width_left = 4
+	sb.border_color = C_GOOD if good else C_BAD
+	sb.set_content_margin_all(8)
+	p.add_theme_stylebox_override("panel", sb)
+	p.add_child(label(t, 14, Color.WHITE))
+	return p
+
+func screen_dashboard() -> void:
+	var pm: Dictionary = gs.player_match()
+	# --- верхняя полоса: статус + лиги
+	var topc := _card()
+	content.add_child(topc)
+	var th := hbox(16)
+	topc.add_child(th)
+	var status_t := ""
+	var status_d := ""
+	if gs.week > 9:
+		status_t = tr("Межсезонье")
+		status_d = tr("Подпишите игроков и подготовьтесь к новому сезону. Нажмите «Продолжить».")
+	elif not pm.is_empty() and not gs.match_done:
+		status_t = tr("Матч на этой неделе")
+		status_d = tr("%s против %s. Нажмите «К матчу».") % [gs.team_name, pm["opp"]]
+	else:
+		status_t = tr("Готовы к следующей неделе")
+		status_d = tr("Работа здесь завершена. Нажмите «Продолжить», чтобы перейти дальше.")
+	th.add_child(preload("res://scripts/icons.gd").new().setup("thumb", 34, Color("d6dbe3")))
+	var sv := vbox(0)
+	sv.add_child(label(status_t, 15, Color.WHITE))
+	sv.add_child(label(status_d, 12, C_DIM))
+	th.add_child(sv)
+	th.add_child(spacer())
+	for i in 3:
+		var tv := vbox(0)
+		var cup := pic("res://assets/ui/trophy.png", 46)
+		cup.modulate = Color.WHITE if i == gs.tier else Color(1, 1, 1, 0.3)
+		tv.add_child(cup)
+		var tl := label(tr(gs.TIERS[i]), 10, Color.WHITE if i == gs.tier else C_DIM)
+		tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tv.add_child(tl)
+		th.add_child(tv)
+	var po := vbox(0)
+	po.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	po.add_child(label(tr("ПЛЕЙ-ОФФ"), 15, Color.WHITE))
+	var left: int = 8 - gs.week
+	po.add_child(label(tr("Через %d нед.") % left if left > 0 else gs.phase_name(), 12, C_DIM))
+	th.add_child(po)
+
+	var cols := hbox(14)
+	content.add_child(cols)
+	# --- колонка 1: организация
+	var c1 := vbox(12)
+	c1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(c1)
+	var ob := _block(tr("Организация"))
+	c1.add_child(ob)
+	var oc := _card()
+	ob.add_child(oc)
+	var ov := vbox(8)
+	oc.add_child(ov)
+	if gs.train_focus == "rest":
+		ov.add_child(_alert(tr("Неделя отдыха: игроки восстанавливают форму."), true))
+	else:
+		ov.add_child(_alert(tr("Тренировка недели: %s") % tr(gs.TRAIN[gs.train_focus]), true))
+	ov.add_child(label(tr("СОСТАВ"), 13, C_DIM))
+	var rr := hbox(8)
+	for p in gs.lineup():
+		var pv := vbox(2)
+		pv.add_child(_circle(str(p.get("photo", "")), 54))
+		var nl := label(p["nick"], 11, Color.WHITE)
+		nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		nl.custom_minimum_size = Vector2(54, 0)
+		nl.clip_text = true
+		pv.add_child(nl)
+		rr.add_child(pv)
+	for i in range(gs.lineup().size(), 5):
+		rr.add_child(_circle("", 54, Color(1, 1, 1, 0.2)))
+	ov.add_child(rr)
+	var tired: int = 0
+	for p in gs.players:
+		if int(p["form"]) < 50: tired += 1
+	if not gs.has_enough_players():
+		ov.add_child(_alert(tr("Недостаточно здоровых игроков (нужно 5)! Подпишите кого-нибудь."), false))
+	elif tired > 0:
+		ov.add_child(_alert(tr("Уставших игроков: %d. Подумайте об отдыхе.") % tired, false))
+	else:
+		ov.add_child(_alert(tr("Все игроки в хорошей форме!"), true))
+	var eb := _block(tr("Ключевые события"))
+	c1.add_child(eb)
+	var ec := _card()
+	eb.add_child(ec)
+	var ev := vbox(6)
+	ec.add_child(ev)
+	for i in min(4, gs.news.size()):
+		ev.add_child(wrap_label(str(gs.news[i]), 12, Color("c9ced8"), 330))
+	# --- колонка 2: матчи
+	var c2 := vbox(12)
+	c2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(c2)
+	var ub := _block(tr("Предстоящие матчи"))
+	c2.add_child(ub)
+	var uc := _card()
+	ub.add_child(uc)
+	var uv := vbox(8)
+	uc.add_child(uv)
+	var shown: int = 0
+	for w in range(gs.week, 8):
+		if shown >= 3:
+			break
+		var opp := ""
+		for pair in gs.schedule[w - 1]:
+			if pair.has(gs.team_name):
+				opp = pair[1] if pair[0] == gs.team_name else pair[0]
+		if opp == "" or (w == gs.week and gs.match_done):
+			continue
+		var r := hbox(10)
+		r.add_child(team_icon(opp, 44))
+		var rv := vbox(0)
+		rv.add_child(label(opp.to_upper(), 15, Color.WHITE))
+		rv.add_child(label(tr("Тур %d · %s") % [w, tr("на этой неделе") if w == gs.week else tr("через %d нед.") % (w - gs.week)], 12, C_DIM))
+		r.add_child(rv)
+		uv.add_child(r)
+		shown += 1
+	if shown == 0:
+		if not pm.is_empty() and not gs.match_done:
+			var r2 := hbox(10)
+			r2.add_child(team_icon(pm["opp"], 44))
+			r2.add_child(label(str(pm["opp"]).to_upper() + "  (BO%d)" % pm["bo"], 15, Color.WHITE))
+			uv.add_child(r2)
+		else:
+			uv.add_child(label(tr("НЕТ ЗАПЛАНИРОВАННЫХ МАТЧЕЙ"), 14, C_DIM))
+	var lb := _block(tr("Последние результаты"))
+	c2.add_child(lb)
+	var lc := _card()
+	lb.add_child(lc)
+	var lv := vbox(4)
+	lc.add_child(lv)
+	var res: Array = []
+	for n in gs.news:
+		var s: String = str(n)
+		if s.find(tr("Победа")) >= 0 or s.find(tr("Поражение")) >= 0:
+			res.append(s)
+		if res.size() >= 4:
+			break
+	if res.is_empty():
+		var nl2 := label(tr("НЕТ НЕДАВНИХ ИГР"), 14, Color.WHITE)
+		nl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lv.add_child(nl2)
+	for s in res:
+		lv.add_child(label(s, 12, C_GOOD if s.find(tr("Победа")) >= 0 else C_BAD))
+	# --- колонка 3: рейтинг
+	var c3 := vbox(12)
+	c3.custom_minimum_size = Vector2(300, 0)
+	cols.add_child(c3)
+	var rb := _block(tr("Рейтинг лиги"))
+	c3.add_child(rb)
+	var rc := _card()
+	rb.add_child(rc)
+	var rv2 := vbox(4)
+	rc.add_child(rv2)
+	rv2.add_child(label(tr(gs.TIERS[gs.tier]).to_upper(), 13, C_DIM))
 	var rl: Array = gs.rank_list()
 	for i in rl.size():
-		tv.add_child(table_row(i + 1, rl[i]))
-	content.add_child(tp)
+		var tname: String = rl[i]
+		var row := hbox(8)
+		var mine: bool = tname == gs.team_name
+		row.add_child(cell("#%d" % (i + 1), 30, C_ACC if mine else Color("d6dbe3"), 13))
+		row.add_child(team_icon(tname, 24))
+		var st: Dictionary = gs.standings[tname]
+		row.add_child(cell(tname, 150, C_ACC if mine else Color.WHITE, 13))
+		row.add_child(cell("%d-%d" % [int(st["w"]), int(st["l"])], 40, C_DIM, 12))
+		rv2.add_child(row)
+		if i == 3:
+			var sep := ColorRect.new()
+			sep.color = Color(1, 1, 1, 0.1)
+			sep.custom_minimum_size = Vector2(0, 1)
+			rv2.add_child(sep)
 
-	var np := panel()
-	var nv := vbox(3)
-	np.add_child(nv)
-	nv.add_child(label(tr("Новости"), 17, C_ACC))
-	for i in min(8, gs.news.size()):
-		nv.add_child(label(gs.news[i], 13, C_DIM))
-	content.add_child(np)
+# ------------------------------------------------------------ почта / штат / статистика / финансы
+
+func screen_mail() -> void:
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(6)
+	c.add_child(v)
+	if gs.news.is_empty():
+		v.add_child(label(tr("Писем нет."), 14, C_DIM))
+	for n in gs.news:
+		var r := hbox(10)
+		r.add_child(preload("res://scripts/icons.gd").new().setup("mail", 18, C_DIM))
+		r.add_child(wrap_label(str(n), 13, Color("d6dbe3"), 820))
+		v.add_child(r)
+
+func screen_staff() -> void:
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(10)
+	c.add_child(v)
+	var h := hbox(14)
+	h.add_child(_circle(gs.photo_path, 72, Color(gs.team_color)))
+	var hv := vbox(2)
+	hv.add_child(label("%s%s" % [gs.coach_name, (" \"%s\"" % gs.coach_nick) if gs.coach_nick != "" else ""], 18, Color.WHITE))
+	hv.add_child(label(tr("Главный менеджер"), 13, C_DIM))
+	h.add_child(hv)
+	v.add_child(h)
+	if gs.staff_coach != "":
+		var h2 := hbox(14)
+		h2.add_child(_circle(gs.staff_photo, 72))
+		var v2 := vbox(2)
+		v2.add_child(label(gs.staff_coach, 18, Color.WHITE))
+		v2.add_child(label(tr("Тренер состава · +1.5 к силе команды"), 13, C_DIM))
+		h2.add_child(v2)
+		v.add_child(h2)
+	v.add_child(label(tr("Сотрудников штаба: %d (каждый +0.4 к силе, $400 в неделю)") % gs.staff_count, 14, Color("d6dbe3")))
+	var row := hbox(10)
+	for i in gs.staff_count:
+		row.add_child(_circle("", 48, Color(1, 1, 1, 0.4)))
+	v.add_child(row)
+
+func screen_stats() -> void:
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(6)
+	c.add_child(v)
+	v.add_child(label(tr("Статистика игроков"), 17, Color.WHITE))
+	for p in gs.players:
+		var r := hbox(10)
+		r.add_child(portrait(p, 30))
+		r.add_child(cell(p["nick"], 140, Color.WHITE))
+		r.add_child(cell(tr(p["role"]), 100, C_DIM))
+		r.add_child(cell(tr("Матчей: %d") % int(p["matches"]), 120, Color("d6dbe3")))
+		r.add_child(cell(tr("ОБЩ") + " %d" % gs.ovr(p), 80, stat_color(gs.ovr(p))))
+		v.add_child(r)
+	var c2 := _card()
+	content.add_child(c2)
+	var v2 := vbox(4)
+	c2.add_child(v2)
+	v2.add_child(label(tr("История карьеры · Титулов: %d") % gs.titles, 17, Color.WHITE))
+	if gs.history.is_empty():
+		v2.add_child(label(tr("Пока пусто."), 14, C_DIM))
+	for t in gs.history:
+		v2.add_child(label(t, 13, C_DIM))
+
+func screen_finance() -> void:
+	var income: int = int(4000 + gs.rep * 70.0 + float(gs.tier) * 3500.0)
+	var salaries: int = 0
+	for p in gs.players:
+		salaries += int(p["salary"])
+	var staff: int = 800 + gs.tier * 600 + gs.staff_count * 400
+	var net: int = income - salaries - staff
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(8)
+	c.add_child(v)
+	v.add_child(label(tr("Баланс: %s") % money_fmt(gs.money), 22, C_GOOD if gs.money >= 0 else C_BAD))
+	for e in [[tr("Спонсоры (в неделю)"), income, C_GOOD], [tr("Зарплаты игроков"), -salaries, C_BAD], [tr("Штаб и инфраструктура"), -staff, C_BAD]]:
+		var r := hbox(10)
+		r.add_child(cell(e[0], 260, Color("d6dbe3")))
+		r.add_child(cell(("+" if int(e[1]) >= 0 else "") + money_fmt(int(e[1])), 120, e[2]))
+		v.add_child(r)
+	var sep := ColorRect.new()
+	sep.color = Color(1, 1, 1, 0.1)
+	sep.custom_minimum_size = Vector2(0, 1)
+	v.add_child(sep)
+	var r2 := hbox(10)
+	r2.add_child(cell(tr("Итого за неделю"), 260, Color.WHITE))
+	r2.add_child(cell(("+" if net >= 0 else "") + money_fmt(net), 120, C_GOOD if net >= 0 else C_BAD))
+	v.add_child(r2)
+	v.add_child(label(tr("Призовые: победа в матче +$%d, места в лиге и титулы — в конце сезона.") % (1500 * (gs.tier + 1)), 12, C_DIM))
 
 func table_header() -> HBoxContainer:
 	var h := hbox(4)
@@ -2141,6 +2535,7 @@ func on_play_match() -> void:
 
 func show_prematch() -> void:
 	in_match = true
+	current = "match"
 	clear(content)
 	refresh_top()
 	var gi: int = int(m["game"]) + 1
