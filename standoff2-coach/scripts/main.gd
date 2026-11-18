@@ -759,6 +759,8 @@ func show_menu() -> void:
 	add_child(menu_right)
 
 func _menu_card(t: String) -> VBoxContainer:
+	if menu_right == null or not is_instance_valid(menu_right):
+		show_menu()
 	clear(menu_right)
 	var p := panel(Color(0.09, 0.105, 0.13, 0.96), 26)
 	p.set_anchors_preset(Control.PRESET_FULL_RECT)
