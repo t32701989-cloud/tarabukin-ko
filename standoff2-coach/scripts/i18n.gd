@@ -4,6 +4,10 @@ extends Node
 const LANGS := {"ru": "Русский", "en": "English"}
 
 const EN := {
+	"Глобальный рейтинг Rankoff": "Rankoff global ranking",
+	"STAGE 3": "STAGE 3",
+	"STAGE 2": "STAGE 2",
+	"ОБЩИЙ": "OVERALL",
 	"Игрок": "Player",
 	"%d лет": "Age %d",
 	"Характеристики": "Attributes",

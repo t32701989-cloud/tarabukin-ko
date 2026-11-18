@@ -863,8 +863,8 @@ func _team_stars(t: Dictionary) -> float:
 	return clampf((float(t.get("base", 45)) - 34.0) / 5.0 + float(t.get("tier", 0)) * 0.6, 0.5, 5.0)
 
 func _player_stars(p: Dictionary) -> float:
-	var o: float = float(p.get("aim", 50)) * 0.42 + float(p.get("iq", 50)) * 0.3 + float(p.get("tw", 50)) * 0.28
-	return clampf((o - 35.0) / 6.0, 0.5, 5.0)
+	var o: float = float(gs.ovr(p)) if p.has("attrs") else float(p.get("aim", 50)) * 0.42 + float(p.get("iq", 50)) * 0.3 + float(p.get("tw", 50)) * 0.28
+	return clampf((o - 35.0) / 9.0, 0.5, 5.0)
 
 ## Детерминированный состав для команд без реального ростера (одинаковый в превью и в игре).
 func _preview_roster(t: Dictionary) -> Array:
@@ -2236,29 +2236,33 @@ func screen_dashboard() -> void:
 	var c3 := vbox(12)
 	c3.custom_minimum_size = Vector2(300, 0)
 	cols.add_child(c3)
-	var rb := _block(tr("Рейтинг лиги"))
+	var rb := _block(tr("Глобальный рейтинг Rankoff"))
 	c3.add_child(rb)
 	var rc := _card()
 	rb.add_child(rc)
-	var rv2 := vbox(4)
+	var rv2 := vbox(3)
 	rc.add_child(rv2)
-	rv2.add_child(label(tr(gs.TIERS[gs.tier]).to_upper(), 13, C_DIM))
-	var rl: Array = gs.rank_list()
-	for i in rl.size():
-		var tname: String = rl[i]
-		var row := hbox(8)
-		var mine: bool = tname == gs.team_name
-		row.add_child(cell("#%d" % (i + 1), 30, C_ACC if mine else Color("d6dbe3"), 13))
-		row.add_child(team_icon(tname, 24))
-		var st: Dictionary = gs.standings[tname]
-		row.add_child(cell(tname, 150, C_ACC if mine else Color.WHITE, 13))
-		row.add_child(cell("%d-%d" % [int(st["w"]), int(st["l"])], 40, C_DIM, 12))
-		rv2.add_child(row)
-		if i == 3:
-			var sep := ColorRect.new()
-			sep.color = Color(1, 1, 1, 0.1)
-			sep.custom_minimum_size = Vector2(0, 1)
-			rv2.add_child(sep)
+	var rl: Array = gs.rankoff_list()
+	var my_pos: int = rl.find(gs.team_name)
+	for stage in [[tr("STAGE 3"), 0, 8], [tr("STAGE 2"), 8, 16]]:
+		rv2.add_child(label(stage[0], 13, C_DIM))
+		for i in range(stage[1], mini(stage[2], rl.size())):
+			rv2.add_child(_rank_row(i, rl[i]))
+	if my_pos >= 16:
+		var sep := ColorRect.new()
+		sep.color = Color(1, 1, 1, 0.1)
+		sep.custom_minimum_size = Vector2(0, 1)
+		rv2.add_child(sep)
+		rv2.add_child(_rank_row(my_pos, gs.team_name))
+
+func _rank_row(i: int, tname: String) -> Control:
+	var row := hbox(8)
+	var mine: bool = tname == gs.team_name
+	row.add_child(cell("#%d" % (i + 1), 34, C_ACC if mine else Color("d6dbe3"), 13))
+	row.add_child(team_icon(tname, 22))
+	row.add_child(cell(tname, 150, C_ACC if mine else Color.WHITE, 13))
+	row.add_child(cell(str(int(gs.rankoff[tname])), 44, C_DIM, 12))
+	return row
 
 # ------------------------------------------------------------ профиль игрока
 
@@ -2303,18 +2307,28 @@ func screen_player() -> void:
 	nr.add_child(_flag(str(pl.get("country", "xx")), 30))
 	nr.add_child(label(str(pl["nick"]), 30, Color.WHITE))
 	hv.add_child(nr)
+	var full: String = ("%s %s" % [str(pl.get("first", "")), str(pl.get("last", ""))]).strip_edges()
+	if full != "":
+		hv.add_child(label(full, 15, Color("c9ced8")))
 	var r2 := hbox(14)
 	r2.add_child(_stars(_player_stars(pl), 18))
 	r2.add_child(label(tr(pl["role"]), 15, C_ACC))
 	r2.add_child(label(tr("%d лет") % int(pl["age"]), 15, C_DIM))
 	hv.add_child(r2)
 	var r3 := hbox(18)
-	r3.add_child(label(tr("ОБЩ") + " %d" % gs.ovr(pl), 15, stat_color(gs.ovr(pl))))
 	r3.add_child(label(tr("Форма") + " %d%%" % int(pl["form"]), 15, C_GOOD if int(pl["form"]) >= 70 else C_ACC))
 	r3.add_child(label(tr("Зарплата") + " $%d" % int(pl["salary"]), 15, C_DIM))
 	r3.add_child(label(tr("Потенциал") + " ~%d" % int(pl.get("pot_est", pl["pot"])), 15, C_DIM))
 	hv.add_child(r3)
 	hh.add_child(hv)
+	var ob := vbox(0)
+	var on := label(str(gs.ovr(pl)), 44, stat_color(gs.ovr(pl)))
+	on.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ob.add_child(on)
+	var ol := label(tr("ОБЩИЙ"), 12, C_DIM)
+	ol.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ob.add_child(ol)
+	hh.add_child(ob)
 	var back := small_btn("<  " + tr("Назад"), func(): _hist_move(-1))
 	back.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	hh.add_child(back)

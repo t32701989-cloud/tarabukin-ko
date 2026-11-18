@@ -4,16 +4,16 @@ extends RefCounted
 ## base — средний уровень стартового состава, money — стартовый бюджет, rep — репутация.
 
 const START_TEAMS := [
-	{"name": "Virtus.pro", "country": "ru", "tag": "VP", "color": "ff5500", "diff": 1, "base": 60.0, "money": 220000, "rep": 60.0, "tier": 1,
+	{"name": "Virtus.pro", "country": "ru", "tag": "VP", "color": "ff5500", "diff": 1, "base": 76.0, "money": 220000, "rep": 60.0, "tier": 1,
 		"logo": "res://assets/teams/vp/logo.png",
 		"coach": {"name": "inverness", "photo": "res://assets/teams/vp/inverness.png"},
 		"desc": "Топ-организация. Стартует в Про-лиге, большой бюджет и высокие ожидания.",
 		"roster": [
-			{"nick": "Lunax", "role": "Саппорт", "aim": 59, "iq": 63, "tw": 66, "age": 21, "photo": "res://assets/teams/vp/lunax.png"},
-			{"nick": "reason", "role": "Снайпер", "aim": 66, "iq": 59, "tw": 60, "age": 20, "photo": "res://assets/teams/vp/reason.png"},
-			{"nick": "chipaa", "role": "Лурк", "aim": 63, "iq": 61, "tw": 58, "age": 18, "photo": "res://assets/teams/vp/chipaa.png"},
-			{"nick": "Arventy", "role": "Капитан", "aim": 58, "iq": 66, "tw": 63, "age": 19, "photo": "res://assets/teams/vp/arventy.png"},
-			{"nick": "Hi-Lo", "role": "Энтри", "aim": 64, "iq": 57, "tw": 60, "age": 20, "photo": "res://assets/teams/vp/hi-lo.png"},
+			{"nick": "Lunax", "first": "Никита", "last": "Макаров", "role": "Саппорт", "aim": 74, "iq": 78, "tw": 82, "age": 21, "photo": "res://assets/teams/vp/lunax.png"},
+			{"nick": "reason", "first": "Самир", "last": "Курбанов", "role": "Снайпер", "aim": 84, "iq": 74, "tw": 75, "age": 20, "photo": "res://assets/teams/vp/reason.png"},
+			{"nick": "chipaa", "first": "", "last": "", "role": "Лурк", "aim": 80, "iq": 76, "tw": 72, "age": 18, "photo": "res://assets/teams/vp/chipaa.png"},
+			{"nick": "Arventy", "first": "Иван", "last": "Шумкин", "role": "Капитан", "aim": 73, "iq": 84, "tw": 82, "age": 19, "photo": "res://assets/teams/vp/arventy.png"},
+			{"nick": "Hi-Lo", "first": "Иван", "last": "Сидоренков", "role": "Энтри", "aim": 82, "iq": 71, "tw": 74, "age": 20, "photo": "res://assets/teams/vp/hi-lo.png"},
 		]},
 ]
 

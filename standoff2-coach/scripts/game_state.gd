@@ -155,8 +155,24 @@ func bump(p: Dictionary, grp: String, delta: float) -> void:
 		p["attrs"][k] = snappedf(clampf(float(p["attrs"][k]) + d, 1.0, 20.0), 0.01)
 	derive(p)
 
+## Общий рейтинг 1..100: среднее всех характеристик (0..20) × 5, с упором на ключевые для роли.
 func ovr(p: Dictionary) -> int:
-	return int(round(float(p["aim"]) * 0.42 + float(p["iq"]) * 0.30 + float(p["tw"]) * 0.28))
+	var a: Dictionary = p.get("attrs", {})
+	if a.is_empty():
+		return clampi(int(round(float(p["aim"]) * 0.42 + float(p["iq"]) * 0.30 + float(p["tw"]) * 0.28)), 1, 100)
+	var s: float = 0.0
+	var n: float = 0.0
+	for k in a:
+		var w: float = 1.0
+		if k == "awp" and p.get("role", "") != "Снайпер":
+			w = 0.3
+		if k == "rifle" and p.get("role", "") == "Снайпер":
+			w = 0.5
+		if ["immunity", "strength", "loyalty", "conflict"].has(k):
+			w = 0.5
+		s += float(a[k]) * w
+		n += w
+	return clampi(int(round(s / maxf(1.0, n) * 5.0)), 1, 100)
 
 func _used_nicks() -> Array:
 	var u: Array = []
@@ -281,6 +297,44 @@ func team_power(st: String, map_name: String) -> Dictionary:
 func opp_strength(team: String) -> float:
 	return float(strengths.get(team, 50.0))
 
+# ---------------------------------------------------------------- глобальный рейтинг Rankoff
+
+var rankoff: Dictionary = {}     # команда -> очки (Эло)
+
+func _init_rankoff() -> void:
+	rankoff = {}
+	for n in AI_TEAMS:
+		var h: int = abs(hash(n))
+		rankoff[n] = 1350.0 + float(h % 500)
+	for n in strengths:
+		rankoff[n] = 600.0 + float(strengths[n]) * 14.0
+	rankoff[team_name] = 600.0 + team_power("balanced", MAPS[0])["base"] * 14.0
+
+func rankoff_update(a: String, b: String, a_won: bool, k: float = 28.0) -> void:
+	if rankoff.is_empty():
+		_init_rankoff()
+	var ra: float = float(rankoff.get(a, 1500.0))
+	var rb: float = float(rankoff.get(b, 1500.0))
+	var ea: float = 1.0 / (1.0 + pow(10.0, (rb - ra) / 400.0))
+	var sa: float = 1.0 if a_won else 0.0
+	rankoff[a] = ra + k * (sa - ea)
+	rankoff[b] = rb + k * ((1.0 - sa) - (1.0 - ea))
+
+func rankoff_list() -> Array:
+	if rankoff.is_empty():
+		_init_rankoff()
+	if not rankoff.has(team_name):
+		rankoff[team_name] = 600.0 + team_power("balanced", MAPS[0])["base"] * 14.0
+	var arr: Array = rankoff.keys()
+	arr.sort_custom(func(x, y): return float(rankoff[x]) > float(rankoff[y]))
+	return arr
+
+## Команды вне лиги тоже играют: лёгкое случайное движение очков каждую неделю.
+func _rankoff_drift() -> void:
+	for n in rankoff:
+		if not league_teams.has(n):
+			rankoff[n] = float(rankoff[n]) + randf_range(-12.0, 12.0)
+
 # ---------------------------------------------------------------- новости
 
 func add_news(t: String) -> void:
@@ -374,7 +428,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	else:
 		for rp in roster:
 			var p: Dictionary = gen_player(base, rp["role"])
-			for k in ["nick", "aim", "iq", "tw", "age", "photo", "country"]:
+			for k in ["nick", "aim", "iq", "tw", "age", "photo", "country", "first", "last"]:
 				if rp.has(k):
 					p[k] = rp[k]
 			if not rp.has("country"):
@@ -387,6 +441,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	if roster.is_empty() and not bool(team.get("empty_roster", false)) and not bool(team.get("custom", false)):
 		players.append(gen_player(base - 4.0))
 	_start_league()
+	_init_rankoff()
 	_refresh_market(12)
 	add_news(tr("%s (%d лет, %s) принимает команду «%s». Цель совета директоров: топ-%d в лиге «%s».") % [coach_name, coach_age, tr(coach_country), team_name, [4, 6, 8][tier], tr(TIERS[tier])])
 	if staff_coach != "":
@@ -488,6 +543,7 @@ func _record_league(a: String, b: String, res: Dictionary) -> void:
 	var diff: int = abs(int(sc[0]) - int(sc[1]))
 	standings[win_t]["rd"] += diff
 	standings[lose_t]["rd"] -= diff
+	rankoff_update(win_t, lose_t, true)
 
 func _ai_series(a: String, b: String, bo: int) -> Dictionary:
 	var need: int = (bo + 1) / 2
@@ -530,8 +586,10 @@ func report_match(res: Dictionary) -> void:
 			_record_league(a, b, {"winner": 0 if won else 1, "score": [res["my"], res["opp"]]})
 		"semi":
 			playoff["sf"][str(m["idx"])] = team_name if won else m["opp"]
+			rankoff_update(team_name, m["opp"], won, 40.0)
 		"final":
 			playoff["champion"] = team_name if won else m["opp"]
+			rankoff_update(team_name, m["opp"], won, 60.0)
 	if won:
 		money += 1500 * tier_k
 		rep = minf(100.0, rep + (1.5 if m["kind"] == "league" else 3.0))
@@ -559,6 +617,7 @@ func finish_week() -> String:
 		var r: Dictionary = _ai_series(team_name, pm["opp"], pm["bo"])
 		report_match({"won": r["winner"] == 0, "my": r["score"][0], "opp": r["score"][1], "maps_my": 1 if r["winner"] == 0 else 0, "maps_opp": 0 if r["winner"] == 0 else 1})
 	_sim_others()
+	_rankoff_drift()
 	_apply_training()
 	var rep_txt: String = _finances()
 	_weekly_event()
@@ -744,6 +803,9 @@ func _end_season() -> void:
 func _start_next_season() -> void:
 	season += 1
 	_start_league()
+	for n in strengths:
+		if not rankoff.has(n):
+			rankoff[n] = 600.0 + float(strengths[n]) * 14.0
 	_refresh_market(12)
 	add_news(tr("Начался сезон %d — %s.") % [season, tr(TIERS[tier])])
 
@@ -815,7 +877,7 @@ func to_dict() -> Dictionary:
 		"coach_age": coach_age, "coach_nick": coach_nick, "coach_gender": coach_gender, "coach_country_code": coach_country_code,
 		"coach_birth": coach_birth, "coach_attrs": coach_attrs, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
 		"photo_path": photo_path, "team_tag": team_tag, "team_color": team_color,
-		"team_logo": team_logo, "team_desc": team_desc, "staff_count": staff_count, "team_country": team_country, "can_be_fired": can_be_fired, "country_only": country_only, "staff_coach": staff_coach, "staff_photo": staff_photo,
+		"team_logo": team_logo, "team_desc": team_desc, "staff_count": staff_count, "team_country": team_country, "rankoff": rankoff, "can_be_fired": can_be_fired, "country_only": country_only, "staff_coach": staff_coach, "staff_photo": staff_photo,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -877,6 +939,10 @@ func from_dict(d: Dictionary) -> void:
 	team_desc = str(d.get("team_desc", ""))
 	staff_count = int(d.get("staff_count", 0))
 	team_country = str(d.get("team_country", "ru"))
+	rankoff = {}
+	var rk: Dictionary = d.get("rankoff", {})
+	for k in rk:
+		rankoff[k] = float(rk[k])
 	can_be_fired = bool(d.get("can_be_fired", true))
 	country_only = bool(d.get("country_only", false))
 	staff_coach = str(d.get("staff_coach", ""))
