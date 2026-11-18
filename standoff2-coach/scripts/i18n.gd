@@ -4,6 +4,19 @@ extends Node
 const LANGS := {"ru": "Русский", "en": "English"}
 
 const EN := {
+	"ВЫБРАТЬ СЛОТ СОХРАНЕНИЯ": "CHOOSE SAVE SLOT",
+	"ЗАГРУЗИТЬ ИГРУ": "LOAD GAME",
+	"СОЗДАТЬ НОВЫЙ СЛОТ": "CREATE NEW SLOT",
+	"Все %d слотов заняты — выберите слот, чтобы заменить карьеру.": "All %d slots are taken — pick a slot to replace its career.",
+	"НАЗАД": "BACK",
+	"Время игры": "Play time",
+	"%d нед.": "%d wk",
+	"Сохранено": "Saved",
+	"Удалить этот слот?": "Delete this slot?",
+	"Заменить эту карьеру новой?": "Replace this career with a new one?",
+	"Да": "Yes",
+	"Карьера в слоте %d будет заменена": "The career in slot %d will be replaced",
+	"Никнейм (необязательно)": "Nickname (optional)",
 	"ПРОДОЛЖИТЬ": "CONTINUE",
 	"как %s": "as %s",
 	"НОВАЯ ИГРА": "NEW GAME",

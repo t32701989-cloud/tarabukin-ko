@@ -126,6 +126,7 @@ const TMP_PHOTO := "user://coach_photo_new.png"
 var photo_tex: Texture2D = null
 var cr: Dictionary = {}            # данные мастера создания карьеры
 var cr_photo: Texture2D = null
+var cr_slot: int = -1
 
 func make_avatar(cfg: Dictionary, sz: int, tex: Texture2D = null) -> Control:
 	var a = Avatar.new()
@@ -240,6 +241,13 @@ func show_creator() -> void:
 	name_edit.placeholder_text = tr("Имя менеджера")
 	name_edit.text_changed.connect(func(t): cr["name"] = t)
 	rv.add_child(name_edit)
+	rv.add_child(label(tr("Никнейм (необязательно)"), 13, C_DIM))
+	var nick_edit := LineEdit.new()
+	nick_edit.text = str(cr.get("nick", ""))
+	nick_edit.max_length = 20
+	nick_edit.placeholder_text = "sirzephyr"
+	nick_edit.text_changed.connect(func(t): cr["nick"] = t)
+	rv.add_child(nick_edit)
 	var r2 := hbox(16)
 	var agev := vbox(4)
 	agev.add_child(label(tr("Возраст"), 13, C_DIM))
@@ -283,10 +291,10 @@ func show_creator() -> void:
 	rv.add_child(bgrid)
 
 	var bottom := hbox(12)
-	bottom.add_child(btn(tr("Назад в меню"), func(): cr = {}; show_menu(), C_DIM))
+	bottom.add_child(btn(tr("Назад"), func(): cr = {}; show_slots("new"), C_DIM))
 	bottom.add_child(spacer())
-	if gs.list_saves().size() >= gs.MAX_SLOTS:
-		bottom.add_child(label(tr("Все слоты заняты: самое старое сохранение будет перезаписано"), 13, C_BAD))
+	if cr_slot > 0 and gs.read_slot(cr_slot) != null:
+		bottom.add_child(label(tr("Карьера в слоте %d будет заменена") % cr_slot, 13, C_BAD))
 	bottom.add_child(menu_btn(tr("Далее: выбор команды"), func():
 		if str(cr["name"]).strip_edges() == "":
 			cr["err"] = tr("Введите имя менеджера.")
@@ -419,12 +427,13 @@ func team_card(t: Dictionary) -> Control:
 
 func start_career(team: Dictionary) -> void:
 	var photo := ""
-	gs.slot = gs.free_slot()
+	gs.slot = cr_slot if cr_slot > 0 else gs.free_slot()
 	gs.delete_slot(gs.slot)
+	cr_slot = -1
 	if str(cr.get("photo", "")) != "" and FileAccess.file_exists(TMP_PHOTO):
 		DirAccess.copy_absolute(ProjectSettings.globalize_path(TMP_PHOTO), ProjectSettings.globalize_path(gs.photo_path_for(gs.slot)))
 		photo = gs.photo_path_for(gs.slot)
-	gs.new_game({"name": cr["name"], "age": cr["age"], "country": cr["country"], "bg": cr["bg"], "avatar": cr["avatar"], "photo": photo}, team)
+	gs.new_game({"name": cr["name"], "nick": str(cr.get("nick", "")), "age": cr["age"], "country": cr["country"], "bg": cr["bg"], "avatar": cr["avatar"], "photo": photo}, team)
 	cr = {}
 	cr_photo = null
 	build_game()
@@ -483,12 +492,21 @@ func _save_icon(d: Dictionary, sz: int) -> Control:
 		var bgp := panel(Color(1, 1, 1, 0.08), 4)
 		bgp.add_child(pic(lp, sz - 8))
 		return bgp
-	var ph: Texture2D = null
-	var pp: String = str(d.get("photo_path", ""))
-	if pp != "" and FileAccess.file_exists(pp):
-		var im := Image.load_from_file(pp)
-		if im: ph = ImageTexture.create_from_image(im)
-	return make_avatar(d.get("avatar", {}), sz, ph)
+	# логотипа нет — плашка с тегом команды
+	var col := Color(str(d.get("team_color", "ffb23e")))
+	var badge := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col.darkened(0.6)
+	sb.border_color = col
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	badge.add_theme_stylebox_override("panel", sb)
+	badge.custom_minimum_size = Vector2(sz, sz)
+	var tag := label(str(d.get("team_tag", "?")), int(sz * 0.3), col)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.add_child(tag)
+	return badge
 
 func show_menu() -> void:
 	in_match = false
@@ -552,8 +570,8 @@ func show_menu() -> void:
 		var g2 := Control.new()
 		g2.custom_minimum_size = Vector2(0, 8)
 		left.add_child(g2)
-	left.add_child(text_btn(tr("НОВАЯ ИГРА"), func(): menu_page("new"), 26))
-	left.add_child(text_btn(tr("ЗАГРУЗИТЬ"), func(): menu_page("load")))
+	left.add_child(text_btn(tr("НОВАЯ ИГРА"), func(): show_slots("new"), 26))
+	left.add_child(text_btn(tr("ЗАГРУЗИТЬ"), func(): show_slots("load")))
 	left.add_child(text_btn(tr("ОБУЧЕНИЕ"), func(): tut_page = 0; menu_page("tutorial")))
 	left.add_child(text_btn(tr("НАСТРОЙКИ"), func(): menu_page("settings")))
 	left.add_child(text_btn(tr("ВЫХОД"), func(): get_tree().quit()))
@@ -589,6 +607,179 @@ func _menu_card(t: String) -> VBoxContainer:
 	v.add_child(h)
 	return v
 
+# ------------------------------------------------------------ экран слотов
+
+var slots_mode: String = "load"
+var slot_confirm: int = -1      # слот, ожидающий подтверждения (удаление / перезапись)
+var slot_action: String = ""
+
+func _fmt_date(s: String) -> String:
+	# "2026-11-18 20:13:36" -> "18.11.2026 20:13"
+	if s.length() < 16:
+		return s
+	return "%s.%s.%s %s" % [s.substr(8, 2), s.substr(5, 2), s.substr(0, 4), s.substr(11, 5)]
+
+func _outline_btn(t: String, cb: Callable, col: Color, size: int = 20) -> Button:
+	var b := Button.new()
+	b.text = t
+	b.add_theme_font_size_override("font_size", size)
+	b.add_theme_color_override("font_color", Color.WHITE)
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_color_override("font_disabled_color", Color("5b6270"))
+	for st in [["normal", 0.18], ["hover", 0.38], ["pressed", 0.5], ["focus", 0.18], ["disabled", 0.05]]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(col.r, col.g, col.b, st[1])
+		sb.border_color = col if st[0] != "disabled" else Color("3a3f4a")
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(6)
+		sb.content_margin_left = 26; sb.content_margin_right = 26
+		sb.content_margin_top = 10; sb.content_margin_bottom = 10
+		if st[0] == "hover":
+			sb.shadow_color = Color(col.r, col.g, col.b, 0.45)
+			sb.shadow_size = 10
+		b.add_theme_stylebox_override(st[0], sb)
+	b.pressed.connect(cb)
+	return b
+
+## Экран выбора слота. mode = "new" (создать/заменить карьеру) или "load" (загрузить).
+func show_slots(mode: String) -> void:
+	slots_mode = mode
+	_clear_root()
+	var bg := preload("res://scripts/menu_bg.gd").new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var p := panel(Color(0.085, 0.095, 0.12, 0.97), 28)
+	p.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	p.offset_left = 60
+	p.offset_right = 680
+	add_child(p)
+	var v := vbox(16)
+	p.add_child(v)
+	var t := label(tr("ВЫБРАТЬ СЛОТ СОХРАНЕНИЯ") if mode == "new" else tr("ЗАГРУЗИТЬ ИГРУ"), 32, Color.WHITE)
+	v.add_child(t)
+	var saves: Array = gs.list_saves()
+	if mode == "new":
+		var cc := CenterContainer.new()
+		var nb := _outline_btn("+  " + tr("СОЗДАТЬ НОВЫЙ СЛОТ"), func():
+			cr = {}
+			cr_slot = gs.free_slot()
+			show_creator(), C_GOOD)
+		nb.disabled = saves.size() >= gs.MAX_SLOTS
+		cc.add_child(nb)
+		v.add_child(cc)
+		if nb.disabled:
+			v.add_child(label(tr("Все %d слотов заняты — выберите слот, чтобы заменить карьеру.") % gs.MAX_SLOTS, 13, C_ACC))
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var list := vbox(12)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
+	if saves.is_empty():
+		list.add_child(label(tr("Нет сохранений."), 16, C_DIM))
+	for e in saves:
+		list.add_child(slot_card(e["data"], int(e["slot"])))
+	var bot := hbox(10)
+	bot.add_child(_outline_btn("<  " + tr("НАЗАД"), func(): slot_confirm = -1; show_menu(), Color("e0453a")))
+	v.add_child(bot)
+
+func slot_card(d: Dictionary, sl: int) -> Control:
+	var base_col := Color("1f232b")
+	var hover_col := Color("3f8f3a")
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = base_col
+	sb.set_corner_radius_all(14)
+	sb.set_content_margin_all(14)
+	card.add_theme_stylebox_override("panel", sb)
+	card.custom_minimum_size = Vector2(0, 118)
+	var h := hbox(16)
+	card.add_child(h)
+	var ic := _save_icon(d, 84)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(ic)
+	var info := vbox(1)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var nick: String = str(d.get("coach_nick", ""))
+	info.add_child(label(str(d.get("coach_name", "")) + ((" \"%s\"" % nick) if nick != "" else ""), 14, Color("d6dbe3")))
+	info.add_child(label(str(d.get("team_name", "")).to_upper(), 26, Color.WHITE))
+	var weeks: int = (int(d.get("season", 1)) - 1) * 10 + int(d.get("week", 1))
+	var r1 := hbox(6)
+	r1.add_child(label(tr("Время игры"), 14, Color("d6dbe3")))
+	r1.add_child(label(tr("%d нед.") % weeks, 14, Color.WHITE))
+	info.add_child(r1)
+	var r2 := hbox(6)
+	r2.add_child(label(tr("Сохранено"), 14, Color("d6dbe3")))
+	r2.add_child(label(_fmt_date(str(d.get("saved_at", ""))), 14, Color("7dff6b")))
+	info.add_child(r2)
+	h.add_child(info)
+	var ph: Texture2D = null
+	var pp: String = str(d.get("photo_path", ""))
+	if pp != "" and FileAccess.file_exists(pp):
+		var im := Image.load_from_file(pp)
+		if im: ph = ImageTexture.create_from_image(im)
+	var av := make_avatar(d.get("avatar", {}), 88, ph)
+	av.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(av)
+	# подтверждение
+	if slot_confirm == sl:
+		sb.bg_color = Color("3a2020")
+		var cv := info
+		var q := tr("Удалить этот слот?") if slot_action == "delete" else tr("Заменить эту карьеру новой?")
+		cv.add_child(label(q, 13, C_ACC))
+		var row := hbox(6)
+		row.add_child(btn(tr("Да"), func():
+			slot_confirm = -1
+			if slot_action == "delete":
+				gs.delete_slot(sl)
+				show_slots(slots_mode)
+			else:
+				cr = {}
+				cr_slot = sl
+				show_creator(), C_BAD))
+		row.add_child(btn(tr("Отмена"), func(): slot_confirm = -1; show_slots(slots_mode)))
+		cv.add_child(row)
+		return card
+	# крестик удаления
+	var x := Button.new()
+	x.text = "X"
+	x.add_theme_font_size_override("font_size", 20)
+	x.add_theme_color_override("font_color", Color("ff5a3c"))
+	x.add_theme_color_override("font_hover_color", Color("ff8a6c"))
+	for st in ["normal", "hover", "pressed", "focus"]:
+		x.add_theme_stylebox_override(st, _flat_style())
+	x.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	x.pressed.connect(func(): slot_confirm = sl; slot_action = "delete"; show_slots(slots_mode))
+	# вся карточка — кнопка
+	var hit := Button.new()
+	hit.flat = true
+	hit.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		hit.add_theme_stylebox_override(st, _flat_style())
+	hit.mouse_entered.connect(func(): sb.bg_color = hover_col)
+	hit.mouse_exited.connect(func(): sb.bg_color = base_col)
+	hit.pressed.connect(func():
+		if slots_mode == "load":
+			if gs.load_game(sl):
+				build_game()
+		else:
+			slot_confirm = sl
+			slot_action = "replace"
+			show_slots(slots_mode))
+	card.add_child(hit)
+	_ignore_mouse(h)
+	h.add_child(x)
+	# крестик поверх кнопки-карточки
+	h.move_to_front()
+	return card
+
+func _ignore_mouse(n: Node) -> void:
+	if n is Control:
+		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for c in n.get_children():
+		_ignore_mouse(c)
+
 const TUTORIAL := [
 	["Добро пожаловать", "Вы — менеджер киберспортивной команды по Standoff 2. Цель — пройти путь от Открытой лиги до титула Мировой серии."],
 	["Неделя", "Каждую неделю выберите фокус тренировок и стиль игры, сыграйте матч недели и нажмите «Завершить неделю»."],
@@ -608,35 +799,7 @@ func menu_page(page: String) -> void:
 		"new":
 			show_creator()
 		"load":
-			var v := _menu_card(tr("Загрузить игру"))
-			var saves: Array = gs.list_saves()
-			if saves.is_empty():
-				v.add_child(label(tr("Нет сохранений."), 16, C_DIM))
-			for e in saves:
-				var d: Dictionary = e["data"]
-				var sl: int = int(e["slot"])
-				var row := panel(Color("1f232b"), 12)
-				var h := hbox(14)
-				row.add_child(h)
-				h.add_child(_save_icon(d, 56))
-				var info := vbox(2)
-				info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				info.add_child(label("%s  ·  %s" % [d.get("team_name", ""), d.get("coach_name", "")], 18))
-				info.add_child(label(tr("Сезон %d · неделя %d/10 · %s") % [int(d.get("season", 1)), int(d.get("week", 1)), tr(gs.TIERS[int(d.get("tier", 0))])], 13, C_DIM))
-				info.add_child(label(tr("Слот %d") % sl + "  ·  " + tr("Сохранено: %s") % str(d.get("saved_at", "—")), 12, C_DIM))
-				if str(d.get("game_over", "")) != "":
-					info.add_child(label(tr("Карьера завершена: ") + str(d["game_over"]), 12, C_BAD))
-				h.add_child(info)
-				if pending_delete == sl:
-					h.add_child(btn(tr("Да, удалить"), func():
-						gs.delete_slot(sl); pending_delete = -1; show_menu(); menu_page("load"), C_BAD))
-					h.add_child(btn(tr("Отмена"), func(): pending_delete = -1; menu_page("load")))
-				else:
-					h.add_child(btn(tr("Загрузить"), func():
-						if gs.load_game(sl):
-							build_game(), C_GOOD))
-					h.add_child(btn(tr("Удалить"), func(): pending_delete = sl; menu_page("load"), C_BAD))
-				v.add_child(row)
+			show_slots("load")
 		"tutorial":
 			var v := _menu_card(tr("Обучение"))
 			var step: Array = TUTORIAL[tut_page]
@@ -657,7 +820,7 @@ func menu_page(page: String) -> void:
 			if tut_page < TUTORIAL.size() - 1:
 				row.add_child(btn(tr("Далее"), func(): tut_page += 1; menu_page("tutorial"), C_GOOD))
 			else:
-				row.add_child(btn(tr("Начать карьеру"), func(): menu_page("new"), C_GOOD))
+				row.add_child(btn(tr("Начать карьеру"), func(): show_slots("new"), C_GOOD))
 			v.add_child(row)
 		"settings":
 			var v := _menu_card(tr("Настройки"))

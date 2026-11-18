@@ -66,6 +66,7 @@ var next_id: int = 1
 var last_report: String = ""
 # профиль менеджера
 var coach_age: int = 30
+var coach_nick: String = ""
 var coach_country: String = tr("Россия")
 var coach_bg: String = "rookie"
 var avatar: Dictionary = {}
@@ -184,6 +185,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	coach_name = c_name if c_name != "" else "Тренер"
 	team_name = t_name if t_name != "" else "Моя команда"
 	coach_age = int(coach.get("age", 30))
+	coach_nick = str(coach.get("nick", "")).strip_edges()
 	coach_country = str(coach.get("country", "Россия"))
 	coach_bg = str(coach.get("bg", "rookie"))
 	avatar = coach.get("avatar", {}).duplicate()
@@ -664,7 +666,7 @@ func to_dict() -> Dictionary:
 		"train_focus": train_focus, "train_map": train_map, "league_teams": league_teams, "strengths": strengths,
 		"standings": standings, "schedule": schedule, "playoff": playoff, "match_done": match_done, "news": news,
 		"history": history, "titles": titles, "bad_seasons": bad_seasons, "next_id": next_id,
-		"coach_age": coach_age, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
+		"coach_age": coach_age, "coach_nick": coach_nick, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
 		"photo_path": photo_path, "team_tag": team_tag, "team_color": team_color,
 		"team_logo": team_logo, "staff_coach": staff_coach, "staff_photo": staff_photo,
 	}
@@ -707,6 +709,7 @@ func from_dict(d: Dictionary) -> void:
 	bad_seasons = int(d["bad_seasons"])
 	next_id = int(d["next_id"])
 	coach_age = int(d.get("coach_age", 30))
+	coach_nick = str(d.get("coach_nick", ""))
 	coach_country = str(d.get("coach_country", tr("Россия")))
 	coach_bg = str(d.get("coach_bg", "rookie"))
 	avatar = {}
