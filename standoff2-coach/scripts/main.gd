@@ -117,8 +117,27 @@ func pic(path: String, sz: int) -> TextureRect:
 	return r
 
 ## Портрет игрока: фото, если есть, иначе нарисованное лицо.
+var _player_pool: Array = []
+
+## Фото игрока: своё (если есть) или фотореалистичный портрет из набора, закреплённый за ником.
+func player_photo(pl: Dictionary) -> String:
+	var ph: String = str(pl.get("photo", ""))
+	if ph != "":
+		return ph
+	if _player_pool.is_empty():
+		var d := DirAccess.open("res://assets/players")
+		if d:
+			for f in d.get_files():
+				var n: String = f.trim_suffix(".import")
+				if n.ends_with(".png") and not _player_pool.has("res://assets/players/" + n):
+					_player_pool.append("res://assets/players/" + n)
+			_player_pool.sort()
+	if _player_pool.is_empty():
+		return ""
+	return _player_pool[abs(hash(str(pl.get("nick", "")))) % _player_pool.size()]
+
 func portrait(pl: Dictionary, sz: int) -> Control:
-	return _circle(str(pl.get("photo", "")), sz, Color(1, 1, 1, 0.5))
+	return _circle(player_photo(pl), sz, Color(1, 1, 1, 0.5))
 
 func cell(t: String, w: int, color: Color = Color.WHITE, size: int = 14) -> Label:
 	var l := label(t, size, color)
@@ -1058,7 +1077,7 @@ func _ts_detail(t: Dictionary) -> Control:
 	roster.alignment = BoxContainer.ALIGNMENT_CENTER
 	for pl in _preview_roster(t):
 		var pv := vbox(3)
-		var c := _circle(str(pl.get("photo", "")), 104)
+		var c := _circle(player_photo(pl), 104)
 		c.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		pv.add_child(c)
 		var nr := hbox(5)
@@ -2096,7 +2115,7 @@ func screen_dashboard() -> void:
 	var rr := hbox(8)
 	for p in gs.lineup():
 		var pv := vbox(2)
-		pv.add_child(_circle(str(p.get("photo", "")), 54))
+		pv.add_child(_circle(player_photo(p), 54))
 		var nl := label(p["nick"], 11, Color.WHITE)
 		nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		nl.custom_minimum_size = Vector2(54, 0)
