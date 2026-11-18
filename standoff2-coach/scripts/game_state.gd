@@ -737,22 +737,80 @@ func _fix_players(arr: Array) -> Array:
 		res.append(q)
 	return res
 
+# ---------------------------------------------------------------- слоты сохранений
+
+const SAVE_DIR := "user://saves/"
+const MAX_SLOTS := 5
+var slot: int = 1
+
+func slot_path(i: int) -> String:
+	return SAVE_DIR + "slot_%d.json" % i
+
+func photo_path_for(i: int) -> String:
+	return "user://coach_photo_%d.png" % i
+
+func _migrate_old_save() -> void:
+	if FileAccess.file_exists(SAVE_PATH) and not FileAccess.file_exists(slot_path(1)):
+		DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+		DirAccess.rename_absolute(ProjectSettings.globalize_path(SAVE_PATH), ProjectSettings.globalize_path(slot_path(1)))
+
 func save() -> void:
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+	var d: Dictionary = to_dict()
+	d["saved_at"] = Time.get_datetime_string_from_system(false, true)
+	d["saved_unix"] = Time.get_unix_time_from_system()
+	var f := FileAccess.open(slot_path(slot), FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify(to_dict()))
+		f.store_string(JSON.stringify(d))
+
+func read_slot(i: int):
+	if not FileAccess.file_exists(slot_path(i)):
+		return null
+	var f := FileAccess.open(slot_path(i), FileAccess.READ)
+	if f == null:
+		return null
+	var data = JSON.parse_string(f.get_as_text())
+	return data if typeof(data) == TYPE_DICTIONARY else null
+
+## Список сохранений: [{slot, data}], новые сверху.
+func list_saves() -> Array:
+	_migrate_old_save()
+	var res: Array = []
+	for i in range(1, MAX_SLOTS + 1):
+		var d = read_slot(i)
+		if d != null:
+			res.append({"slot": i, "data": d})
+	res.sort_custom(func(a, b): return float(a["data"].get("saved_unix", 0)) > float(b["data"].get("saved_unix", 0)))
+	return res
 
 func has_save() -> bool:
-	return FileAccess.file_exists(SAVE_PATH)
+	return not list_saves().is_empty()
 
-func load_game() -> bool:
-	if not has_save():
+func latest_slot() -> int:
+	var l: Array = list_saves()
+	return int(l[0]["slot"]) if not l.is_empty() else -1
+
+## Свободный слот для новой карьеры (или самый старый, если все заняты).
+func free_slot() -> int:
+	for i in range(1, MAX_SLOTS + 1):
+		if not FileAccess.file_exists(slot_path(i)):
+			return i
+	var l: Array = list_saves()
+	return int(l[l.size() - 1]["slot"])
+
+func delete_slot(i: int) -> void:
+	for pth in [slot_path(i), photo_path_for(i)]:
+		if FileAccess.file_exists(pth):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(pth))
+
+func load_game(i: int = -1) -> bool:
+	if i < 0:
+		i = latest_slot()
+	if i < 0:
 		return false
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if f == null:
+	var data = read_slot(i)
+	if data == null:
 		return false
-	var data = JSON.parse_string(f.get_as_text())
-	if typeof(data) != TYPE_DICTIONARY:
-		return false
+	slot = i
 	from_dict(data)
 	return true
