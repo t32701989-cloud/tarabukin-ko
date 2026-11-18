@@ -37,8 +37,8 @@ signal changed
 var active: bool = false
 var game_over: String = ""
 var legend: bool = false
-var coach_name: String = "Тренер"
-var team_name: String = "Моя команда"
+var coach_name: String = tr("Тренер")
+var team_name: String = tr("Моя команда")
 var season: int = 1
 var week: int = 1
 var tier: int = 0
@@ -66,7 +66,7 @@ var next_id: int = 1
 var last_report: String = ""
 # профиль менеджера
 var coach_age: int = 30
-var coach_country: String = "Россия"
+var coach_country: String = tr("Россия")
 var coach_bg: String = "rookie"
 var avatar: Dictionary = {}
 var photo_path: String = ""
@@ -169,7 +169,7 @@ func opp_strength(team: String) -> float:
 # ---------------------------------------------------------------- новости
 
 func add_news(t: String) -> void:
-	news.push_front("[Сез. %d, нед. %d] %s" % [season, week, t])
+	news.push_front(tr("[Сез. %d, нед. %d] %s") % [season, week, t])
 	while news.size() > 40:
 		news.pop_back()
 
@@ -249,9 +249,9 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	players.append(gen_player(base - 4.0))
 	_start_league()
 	_refresh_market(12)
-	add_news("%s (%d лет, %s) принимает команду «%s». Цель совета директоров: топ-%d в лиге «%s»." % [coach_name, coach_age, coach_country, team_name, [4, 6, 8][tier], TIERS[tier]])
+	add_news(tr("%s (%d лет, %s) принимает команду «%s». Цель совета директоров: топ-%d в лиге «%s».") % [coach_name, coach_age, tr(coach_country), team_name, [4, 6, 8][tier], tr(TIERS[tier])])
 	if staff_coach != "":
-		add_news("В тренерском штабе остаётся %s (+1.5 к силе команды)." % staff_coach)
+		add_news(tr("В тренерском штабе остаётся %s (+1.5 к силе команды).") % staff_coach)
 	save()
 	changed.emit()
 
@@ -311,10 +311,10 @@ func my_rank() -> int:
 	return rank_list().find(team_name) + 1
 
 func phase_name() -> String:
-	if week <= 7: return "Регулярный сезон, тур %d/7" % week
-	if week == 8: return "Плей-офф: полуфиналы"
-	if week == 9: return "Плей-офф: финал"
-	return "Межсезонье"
+	if week <= 7: return tr("Регулярный сезон, тур %d/7") % week
+	if week == 8: return tr("Плей-офф: полуфиналы")
+	if week == 9: return tr("Плей-офф: финал")
+	return tr("Межсезонье")
 
 func player_match() -> Dictionary:
 	if week <= 7:
@@ -394,9 +394,9 @@ func report_match(res: Dictionary) -> void:
 		p["matches"] += 1
 		if randf() < 0.03:
 			p["inj"] = randi_range(1, 3)
-			add_news("%s получил травму и пропустит %d нед." % [p["nick"], p["inj"]])
+			add_news(tr("%s получил травму и пропустит %d нед.") % [p["nick"], p["inj"]])
 	match_done = true
-	add_news("%s: %s %d:%d (%s)" % ["Победа" if won else "Поражение", m["opp"], res["my"], res["opp"], "серия %d:%d" % [res["maps_my"], res["maps_opp"]] if m["bo"] > 1 else "1 карта"])
+	add_news("%s: %s %d:%d (%s)" % [tr("Победа") if won else tr("Поражение"), m["opp"], res["my"], res["opp"], tr("серия %d:%d") % [res["maps_my"], res["maps_opp"]] if m["bo"] > 1 else tr("1 карта")])
 	changed.emit()
 
 # ---------------------------------------------------------------- неделя
@@ -461,14 +461,14 @@ func _make_playoffs() -> void:
 	playoff["semis"] = [[rl[0], rl[3]], [rl[1], rl[2]]]
 	playoff["sf"] = {}
 	if rl.slice(0, 4).has(team_name):
-		add_news("Команда вышла в плей-off! Полуфинал против %s." % player_match()["opp"])
+		add_news(tr("Команда вышла в плей-off! Полуфинал против %s.") % player_match()["opp"])
 	else:
-		add_news("Плей-офф пройдёт без вас: вы заняли %d-е место." % my_rank())
+		add_news(tr("Плей-офф пройдёт без вас: вы заняли %d-е место.") % my_rank())
 
 func _make_final() -> void:
 	playoff["final"] = [playoff["sf"]["0"], playoff["sf"]["1"]]
 	if playoff["final"].has(team_name):
-		add_news("Вы в финале! Соперник — %s." % player_match()["opp"])
+		add_news(tr("Вы в финале! Соперник — %s.") % player_match()["opp"])
 
 # ---------------------------------------------------------------- тренировки
 
@@ -506,7 +506,7 @@ func _finances() -> String:
 	var staff: int = 800 + tier * 600
 	var net: int = income - salaries - staff
 	money += net
-	return "Спонсоры +$%d, зарплаты -$%d, штаб -$%d (итого %s$%d)" % [income, salaries, staff, "+" if net >= 0 else "-", abs(net)]
+	return tr("Спонсоры +$%d, зарплаты -$%d, штаб -$%d (итого %s$%d)") % [income, salaries, staff, "+" if net >= 0 else "-", abs(net)]
 
 func _weekly_event() -> void:
 	if randf() > 0.12 or players.is_empty():
@@ -516,24 +516,24 @@ func _weekly_event() -> void:
 		0:
 			p["tw"] = maxi(20, int(p["tw"]) - 2)
 			p["form"] = maxi(20, int(p["form"]) - 8)
-			add_news("Конфликт в команде: %s поссорился с партнёрами (-сыгранность)." % p["nick"])
+			add_news(tr("Конфликт в команде: %s поссорился с партнёрами (-сыгранность).") % p["nick"])
 		1:
 			var b: int = 3000 * (tier + 1)
 			money += b
-			add_news("Новый спонсорский контракт: +$%d." % b)
+			add_news(tr("Новый спонсорский контракт: +$%d.") % b)
 		2:
 			p["aim"] = mini(99, int(p["aim"]) + 2)
-			add_news("%s провёл отличную серию на стриме и поверил в себя (+аим)." % p["nick"])
+			add_news(tr("%s провёл отличную серию на стриме и поверил в себя (+аим).") % p["nick"])
 		3:
 			p["form"] = maxi(20, int(p["form"]) - 15)
-			add_news("%s выгорел после напряжённых тренировок (-форма)." % p["nick"])
+			add_news(tr("%s выгорел после напряжённых тренировок (-форма).") % p["nick"])
 		4:
 			rep = minf(100.0, rep + 2.0)
-			add_news("Видео с хайлайтами команды стало вирусным: +2 репутации.")
+			add_news(tr("Видео с хайлайтами команды стало вирусным: +2 репутации."))
 
 func _check_fired() -> void:
 	if money < -40000:
-		game_over = "Команда обанкротилась. Совет директоров вас уволил."
+		game_over = tr("Команда обанкротилась. Совет директоров вас уволил.")
 		add_news(game_over)
 
 # ---------------------------------------------------------------- конец сезона
@@ -544,30 +544,30 @@ func _end_season() -> void:
 	var prize: int = int(prizes[pos - 1]) * (tier + 1)
 	money += prize
 	var champ: bool = playoff["champion"] == team_name
-	var txt: String = "Сезон %d (%s): %d-е место" % [season, TIERS[tier], pos]
+	var txt: String = tr("Сезон %d (%s): %d-е место") % [season, tr(TIERS[tier]), pos]
 	if champ:
 		var cp: int = 15000 * (tier + 1)
 		money += cp
 		rep = minf(100.0, rep + 12.0)
 		titles += 1
-		txt += ", ЧЕМПИОН (+$%d)" % cp
+		txt += tr(", ЧЕМПИОН (+$%d)") % cp
 		coach_pts += 3
 		if tier == 2 and not legend:
 			legend = true
-			add_news("Вы выиграли Мировую серию! Вы вошли в историю Standoff 2 как легендарный тренер!")
+			add_news(tr("Вы выиграли Мировую серию! Вы вошли в историю Standoff 2 как легендарный тренер!"))
 	elif playoff["final"].has(team_name):
-		txt += ", финалист"
+		txt += tr(", финалист")
 		rep = minf(100.0, rep + 4.0)
-	history.push_front(txt + " (приз за лигу +$%d)" % prize)
+	history.push_front(txt + tr(" (приз за лигу +$%d)") % prize)
 	add_news(txt)
 	# цели совета
 	var goal: int = [4, 6, 8][tier]
 	if pos > goal:
 		bad_seasons += 1
-		add_news("Совет директоров недоволен результатом (цель: топ-%d)." % goal)
+		add_news(tr("Совет директоров недоволен результатом (цель: топ-%d).") % goal)
 		rep = maxf(0.0, rep - 4.0)
 		if bad_seasons >= 2:
-			game_over = "Два неудачных сезона подряд. Совет директоров вас уволил."
+			game_over = tr("Два неудачных сезона подряд. Совет директоров вас уволил.")
 	else:
 		bad_seasons = 0
 	# возрастное развитие
@@ -585,35 +585,35 @@ func _end_season() -> void:
 	# переход между дивизионами
 	if pos <= 2 and tier < 2:
 		tier += 1
-		add_news("Повышение! Следующий сезон: %s." % TIERS[tier])
+		add_news(tr("Повышение! Следующий сезон: %s.") % tr(TIERS[tier]))
 	elif pos >= 7 and tier > 0:
 		tier -= 1
 		rep = maxf(0.0, rep - 5.0)
-		add_news("Вылет в дивизион ниже: %s." % TIERS[tier])
+		add_news(tr("Вылет в дивизион ниже: %s.") % tr(TIERS[tier]))
 	last_report = txt
 
 func _start_next_season() -> void:
 	season += 1
 	_start_league()
 	_refresh_market(12)
-	add_news("Начался сезон %d — %s." % [season, TIERS[tier]])
+	add_news(tr("Начался сезон %d — %s.") % [season, tr(TIERS[tier])])
 
 # ---------------------------------------------------------------- действия тренера
 
 func sign_player(idx: int) -> String:
 	if idx < 0 or idx >= market.size():
-		return "Ошибка"
+		return tr("Ошибка")
 	if players.size() >= MAX_ROSTER:
-		return "Состав заполнен (максимум %d)." % MAX_ROSTER
+		return tr("Состав заполнен (максимум %d).") % MAX_ROSTER
 	var p: Dictionary = market[idx]
 	var f: int = fee(p)
 	if money < f:
-		return "Не хватает денег."
+		return tr("Не хватает денег.")
 	money -= f
 	p.erase("pot_est")
 	players.append(p)
 	market.remove_at(idx)
-	add_news("Подписан %s (%s, общий %d) за $%d." % [p["nick"], p["role"], ovr(p), f])
+	add_news(tr("Подписан %s (%s, общий %d) за $%d.") % [p["nick"], tr(p["role"]), ovr(p), f])
 	changed.emit()
 	return ""
 
@@ -623,7 +623,7 @@ func release_player(idx: int) -> void:
 	var p: Dictionary = players[idx]
 	var sev: int = int(p["salary"]) * 4
 	money -= sev
-	add_news("%s отчислен (выплата $%d)." % [p["nick"], sev])
+	add_news(tr("%s отчислен (выплата $%d).") % [p["nick"], sev])
 	players.remove_at(idx)
 	changed.emit()
 
@@ -633,7 +633,7 @@ func sell_player(idx: int) -> void:
 	var p: Dictionary = players[idx]
 	var v: int = int(fee(p) * 0.6)
 	money += v
-	add_news("%s продан за $%d." % [p["nick"], v])
+	add_news(tr("%s продан за $%d.") % [p["nick"], v])
 	players.remove_at(idx)
 	changed.emit()
 
@@ -706,7 +706,7 @@ func from_dict(d: Dictionary) -> void:
 	bad_seasons = int(d["bad_seasons"])
 	next_id = int(d["next_id"])
 	coach_age = int(d.get("coach_age", 30))
-	coach_country = str(d.get("coach_country", "Россия"))
+	coach_country = str(d.get("coach_country", tr("Россия")))
 	coach_bg = str(d.get("coach_bg", "rookie"))
 	avatar = {}
 	var av: Dictionary = d.get("avatar", {})

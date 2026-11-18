@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3bj4snfmwnqd"
-path="res://.godot/imported/inverness.jpg-c23677c94cd8078afe5a079d4b81d285.ctex"
+uid="uid://vxt07husk147"
+path="res://.godot/imported/hi-lo.png-77a30339e340314cdce66cf612f2930c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/teams/vp/inverness.jpg"
-dest_files=["res://.godot/imported/inverness.jpg-c23677c94cd8078afe5a079d4b81d285.ctex"]
+source_file="res://assets/teams/vp/hi-lo.png"
+dest_files=["res://.godot/imported/hi-lo.png-77a30339e340314cdce66cf612f2930c.ctex"]
 
 [params]
 

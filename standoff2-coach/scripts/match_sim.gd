@@ -105,19 +105,19 @@ func play_round() -> Dictionary:
 	var elimination: bool = false
 	if attacker_won:
 		if rng.randf() < 0.55:
-			out["text"] = "%s закладывает бомбу на %s и удерживает позицию — бомба взорвана." % [names[w], site]
+			out["text"] = tr("%s закладывает бомбу на %s и удерживает позицию — бомба взорвана.") % [names[w], site]
 		else:
-			out["text"] = "%s зачищает защиту и берёт раунд." % names[w]
+			out["text"] = tr("%s зачищает защиту и берёт раунд.") % names[w]
 			elimination = true
 	else:
 		var r: float = rng.randf()
 		if r < 0.35:
-			out["text"] = "%s обезвреживает бомбу на %s." % [names[w], site]
+			out["text"] = tr("%s обезвреживает бомбу на %s.") % [names[w], site]
 		elif r < 0.7:
-			out["text"] = "%s останавливает атаку на %s." % [names[w], site]
+			out["text"] = tr("%s останавливает атаку на %s.") % [names[w], site]
 			elimination = true
 		else:
-			out["text"] = "%s не даёт атаке закрепиться — время вышло." % names[w]
+			out["text"] = tr("%s не даёт атаке закрепиться — время вышло.") % names[w]
 	# статистика
 	var kw: int = 5 if elimination else rng.randi_range(2, 4)
 	var kl: int = rng.randi_range(0, 3)
@@ -131,7 +131,7 @@ func play_round() -> Dictionary:
 	if not nicks[w].is_empty() and rng.randf() < 0.07:
 		var star: String = str(nicks[w][_pick(w)])
 		var n: int = rng.randi_range(2, 4)
-		out["text"] += " %s вытаскивает клатч 1v%d!" % [star, n]
+		out["text"] += tr(" %s вытаскивает клатч 1v%d!") % [star, n]
 	# овертайм / конец
 	if score[w] >= target:
 		finished = true

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bjfkujt0pdndt"
-path="res://.godot/imported/hi-lo.jpg-46a30883442147c3cb66ede3ba75bd8c.ctex"
+uid="uid://cyh8tarpw328g"
+path="res://.godot/imported/chipaa.png-5a586be7724434772f8b8a9fbc621145.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/teams/vp/hi-lo.jpg"
-dest_files=["res://.godot/imported/hi-lo.jpg-46a30883442147c3cb66ede3ba75bd8c.ctex"]
+source_file="res://assets/teams/vp/chipaa.png"
+dest_files=["res://.godot/imported/chipaa.png-5a586be7724434772f8b8a9fbc621145.ctex"]
 
 [params]
 

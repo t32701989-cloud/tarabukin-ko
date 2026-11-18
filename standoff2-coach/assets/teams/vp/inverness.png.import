@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3waw0k6la7dp"
-path="res://.godot/imported/lunax.jpg-89adae27e3702736604fdca1132d0028.ctex"
+uid="uid://c708330lmcg72"
+path="res://.godot/imported/inverness.png-7376aadfc03cbc8067c9d4f42cb508c7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/teams/vp/lunax.jpg"
-dest_files=["res://.godot/imported/lunax.jpg-89adae27e3702736604fdca1132d0028.ctex"]
+source_file="res://assets/teams/vp/inverness.png"
+dest_files=["res://.godot/imported/inverness.png-7376aadfc03cbc8067c9d4f42cb508c7.ctex"]
 
 [params]
 

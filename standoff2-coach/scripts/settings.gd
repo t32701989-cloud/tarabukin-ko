@@ -12,12 +12,16 @@ var ui_scale: float = 1.0
 var match_speed: String = "normal"
 var autosave: bool = true
 var show_buys: bool = true
+var language: String = ""
 
 func _ready() -> void:
 	load_settings()
+	if language == "":
+		language = "ru" if OS.get_locale_language() in ["ru", "uk", "be", "kk"] else "en"
 	apply()
 
 func apply() -> void:
+	TranslationServer.set_locale(language if language != "" else "ru")
 	var w := get_window()
 	if w:
 		if fullscreen:
@@ -38,6 +42,7 @@ func save_settings() -> void:
 	c.set_value("game", "match_speed", match_speed)
 	c.set_value("game", "autosave", autosave)
 	c.set_value("game", "show_buys", show_buys)
+	c.set_value("game", "language", language)
 	c.save(PATH)
 
 func load_settings() -> void:
@@ -50,6 +55,7 @@ func load_settings() -> void:
 	match_speed = str(c.get_value("game", "match_speed", match_speed))
 	autosave = bool(c.get_value("game", "autosave", autosave))
 	show_buys = bool(c.get_value("game", "show_buys", show_buys))
+	language = str(c.get_value("game", "language", language))
 
 func reset() -> void:
 	fullscreen = false

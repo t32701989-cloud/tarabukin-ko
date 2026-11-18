@@ -10,6 +10,7 @@ config/features=PackedStringArray("4.2", "GL Compatibility")
 
 [autoload]
 
+I18n="*res://scripts/i18n.gd"
 Settings="*res://scripts/settings.gd"
 GameState="*res://scripts/game_state.gd"
 
@@ -24,3 +25,7 @@ window/stretch/aspect="expand"
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[internationalization]
+
+locale/fallback="ru"

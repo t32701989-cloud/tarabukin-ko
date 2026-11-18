@@ -151,7 +151,7 @@ func _wizard_root(step: String) -> VBoxContainer:
 	root.offset_left = 36; root.offset_top = 24; root.offset_right = -36; root.offset_bottom = -20
 	add_child(root)
 	var h := hbox(14)
-	h.add_child(label("НОВАЯ КАРЬЕРА", 28, C_ACC))
+	h.add_child(label(tr("НОВАЯ КАРЬЕРА"), 28, C_ACC))
 	h.add_child(label(step, 18, C_DIM))
 	h.get_child(1).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	root.add_child(h)
@@ -164,7 +164,7 @@ func show_creator() -> void:
 	if cr["variants"].is_empty():
 		for i in 6:
 			cr["variants"].append(Avatar.random_cfg())
-	var root := _wizard_root("Шаг 1 из 2 · Создание менеджера")
+	var root := _wizard_root(tr("Шаг 1 из 2 · Создание менеджера"))
 	var body := hbox(18)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
@@ -179,19 +179,19 @@ func show_creator() -> void:
 	top.add_child(make_avatar(cr["avatar"], 190, cr_photo))
 	var tb := vbox(8)
 	top.add_child(tb)
-	tb.add_child(label("Внешность", 18, C_ACC))
-	tb.add_child(btn("Случайная внешность", func():
+	tb.add_child(label(tr("Внешность"), 18, C_ACC))
+	tb.add_child(btn(tr("Случайная внешность"), func():
 		cr["avatar"] = Avatar.random_cfg(); show_creator()))
-	tb.add_child(btn("Загрузить своё фото...", func(): open_photo_dialog()))
+	tb.add_child(btn(tr("Загрузить своё фото..."), func(): open_photo_dialog()))
 	if cr_photo != null:
-		tb.add_child(btn("Убрать фото", func():
+		tb.add_child(btn(tr("Убрать фото"), func():
 			cr_photo = null; cr["photo"] = ""; show_creator(), C_BAD))
-		tb.add_child(wrap_label("Используется загруженное фото.", 13, C_GOOD, 200))
+		tb.add_child(wrap_label(tr("Используется загруженное фото."), 13, C_GOOD, 200))
 	else:
-		tb.add_child(wrap_label("PNG / JPG / WEBP, фото обрежется до квадрата.", 13, C_DIM, 200))
+		tb.add_child(wrap_label(tr("PNG / JPG / WEBP, фото обрежется до квадрата."), 13, C_DIM, 200))
 	if str(cr.get("err", "")) != "":
 		tb.add_child(wrap_label(cr["err"], 13, C_BAD, 200))
-	lv.add_child(label("Варианты внешности — нажми, чтобы выбрать:", 14, C_DIM))
+	lv.add_child(label(tr("Варианты внешности — нажми, чтобы выбрать:"), 14, C_DIM))
 	var grid := hbox(6)
 	for vcfg in cr["variants"]:
 		var b := Button.new()
@@ -204,7 +204,7 @@ func show_creator() -> void:
 			cr["avatar"] = c.duplicate(); cr_photo = null; cr["photo"] = ""; show_creator())
 		grid.add_child(b)
 	lv.add_child(grid)
-	lv.add_child(btn("Ещё варианты", func():
+	lv.add_child(btn(tr("Ещё варианты"), func():
 		cr["variants"] = []; show_creator()))
 	# редактор частей
 	var parts := GridContainer.new()
@@ -232,17 +232,17 @@ func show_creator() -> void:
 	var rv := vbox(8)
 	rp.add_child(rv)
 	body.add_child(rp)
-	rv.add_child(label("Анкета менеджера", 18, C_ACC))
-	rv.add_child(label("Имя", 13, C_DIM))
+	rv.add_child(label(tr("Анкета менеджера"), 18, C_ACC))
+	rv.add_child(label(tr("Имя"), 13, C_DIM))
 	var name_edit := LineEdit.new()
 	name_edit.text = cr["name"]
 	name_edit.max_length = 24
-	name_edit.placeholder_text = "Имя менеджера"
+	name_edit.placeholder_text = tr("Имя менеджера")
 	name_edit.text_changed.connect(func(t): cr["name"] = t)
 	rv.add_child(name_edit)
 	var r2 := hbox(16)
 	var agev := vbox(4)
-	agev.add_child(label("Возраст", 13, C_DIM))
+	agev.add_child(label(tr("Возраст"), 13, C_DIM))
 	var age := SpinBox.new()
 	age.min_value = 21
 	age.max_value = 65
@@ -251,7 +251,7 @@ func show_creator() -> void:
 	agev.add_child(age)
 	r2.add_child(agev)
 	var cv := vbox(4)
-	cv.add_child(label("Страна", 13, C_DIM))
+	cv.add_child(label(tr("Страна"), 13, C_DIM))
 	var co := OptionButton.new()
 	for c2 in Teams.COUNTRIES:
 		co.add_item(c2)
@@ -260,7 +260,7 @@ func show_creator() -> void:
 	cv.add_child(co)
 	r2.add_child(cv)
 	rv.add_child(r2)
-	rv.add_child(label("Предыстория (бонус на старте)", 13, C_DIM))
+	rv.add_child(label(tr("Предыстория (бонус на старте)"), 13, C_DIM))
 	var bgrid := GridContainer.new()
 	bgrid.columns = 2
 	bgrid.add_theme_constant_override("h_separation", 8)
@@ -272,7 +272,7 @@ func show_creator() -> void:
 		bp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var bb := vbox(2)
 		bp.add_child(bb)
-		bb.add_child(label(("> " if sel else "") + b2["name"], 15, C_ACC if sel else Color.WHITE))
+		bb.add_child(label(("> " if sel else "") + tr(b2["name"]), 15, C_ACC if sel else Color.WHITE))
 		bb.add_child(label(b2["desc"], 12, C_DIM))
 		var hit := Button.new()
 		hit.flat = true
@@ -283,13 +283,13 @@ func show_creator() -> void:
 	rv.add_child(bgrid)
 
 	var bottom := hbox(12)
-	bottom.add_child(btn("Назад в меню", func(): cr = {}; show_menu(), C_DIM))
+	bottom.add_child(btn(tr("Назад в меню"), func(): cr = {}; show_menu(), C_DIM))
 	bottom.add_child(spacer())
 	if gs.has_save():
-		bottom.add_child(label("Текущее сохранение будет перезаписано", 13, C_BAD))
-	bottom.add_child(menu_btn("Далее: выбор команды", func():
+		bottom.add_child(label(tr("Текущее сохранение будет перезаписано"), 13, C_BAD))
+	bottom.add_child(menu_btn(tr("Далее: выбор команды"), func():
 		if str(cr["name"]).strip_edges() == "":
-			cr["err"] = "Введите имя менеджера."
+			cr["err"] = tr("Введите имя менеджера.")
 			show_creator()
 			return
 		cr["err"] = ""
@@ -300,8 +300,8 @@ func open_photo_dialog() -> void:
 	var fd := FileDialog.new()
 	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	fd.access = FileDialog.ACCESS_FILESYSTEM
-	fd.filters = PackedStringArray(["*.png, *.jpg, *.jpeg, *.webp ; Изображения"])
-	fd.title = "Выберите фото менеджера"
+	fd.filters = PackedStringArray([tr("*.png, *.jpg, *.jpeg, *.webp ; Изображения")])
+	fd.title = tr("Выберите фото менеджера")
 	fd.use_native_dialog = true
 	fd.size = Vector2i(900, 560)
 	add_child(fd)
@@ -314,7 +314,7 @@ func open_photo_dialog() -> void:
 func apply_photo(path: String) -> void:
 	var img := Image.load_from_file(path)
 	if img == null or img.is_empty():
-		cr["err"] = "Не удалось открыть изображение."
+		cr["err"] = tr("Не удалось открыть изображение.")
 		show_creator()
 		return
 	var s: int = mini(img.get_width(), img.get_height())
@@ -329,10 +329,10 @@ func apply_photo(path: String) -> void:
 # ------------------------------------------------------------ мастер: команда
 
 func show_team_select() -> void:
-	var root := _wizard_root("Шаг 2 из 2 · Выбор команды")
+	var root := _wizard_root(tr("Шаг 2 из 2 · Выбор команды"))
 	var info := hbox(12)
 	info.add_child(make_avatar(cr["avatar"], 44, cr_photo))
-	info.add_child(label("%s, %d лет · выберите клуб, который возглавите" % [cr["name"], cr["age"]], 16, C_DIM))
+	info.add_child(label(tr("%s, %d лет · выберите клуб, который возглавите") % [cr["name"], cr["age"]], 16, C_DIM))
 	info.get_child(1).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	root.add_child(info)
 	var sc := ScrollContainer.new()
@@ -352,30 +352,30 @@ func show_team_select() -> void:
 	cp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var cv := vbox(6)
 	cp.add_child(cv)
-	cv.add_child(label("СВОЯ КОМАНДА", 18, C_ACC))
-	cv.add_child(label("Сложно", 13, C_BAD))
+	cv.add_child(label(tr("СВОЯ КОМАНДА"), 18, C_ACC))
+	cv.add_child(label(tr("Сложно"), 13, C_BAD))
 	var ne := LineEdit.new()
-	ne.placeholder_text = "Название"
+	ne.placeholder_text = tr("Название")
 	ne.max_length = 24
 	cv.add_child(ne)
 	var te := LineEdit.new()
-	te.placeholder_text = "Тег (до 4 букв)"
+	te.placeholder_text = tr("Тег (до 4 букв)")
 	te.max_length = 4
 	cv.add_child(te)
-	cv.add_child(wrap_label("Создайте организацию с нуля: скромный бюджет и молодой состав.", 12, C_DIM, 230))
+	cv.add_child(wrap_label(tr("Создайте организацию с нуля: скромный бюджет и молодой состав."), 12, C_DIM, 230))
 	var err := label("", 12, C_BAD)
 	cv.add_child(err)
-	cv.add_child(btn("Создать и начать", func():
+	cv.add_child(btn(tr("Создать и начать"), func():
 		var n: String = ne.text.strip_edges()
 		if n == "":
-			err.text = "Введите название команды."
+			err.text = tr("Введите название команды.")
 			return
 		var tag: String = te.text.strip_edges().to_upper()
 		if tag == "": tag = n.substr(0, 3).to_upper()
 		start_career({"name": n, "tag": tag, "color": "ffffff", "diff": 2, "base": 43.0, "money": 60000, "rep": 10.0}), C_GOOD))
 	grid.add_child(cp)
 	var bottom := hbox(12)
-	bottom.add_child(btn("Назад к менеджеру", func(): show_creator(), C_DIM))
+	bottom.add_child(btn(tr("Назад к менеджеру"), func(): show_creator(), C_DIM))
 	root.add_child(bottom)
 
 func team_card(t: Dictionary) -> Control:
@@ -396,8 +396,8 @@ func team_card(t: Dictionary) -> Control:
 	h.add_child(dl)
 	v.add_child(h)
 	v.add_child(label(t["name"], 18))
-	v.add_child(label("Лига: %s" % gs.TIERS[int(t.get("tier", 0))], 13, C_ACC if int(t.get("tier", 0)) > 0 else C_DIM))
-	v.add_child(label("Уровень состава: ~%d" % int(t["base"]), 13, C_DIM))
+	v.add_child(label(tr("Лига: %s") % tr(gs.TIERS[int(t.get("tier", 0))]), 13, C_ACC if int(t.get("tier", 0)) > 0 else C_DIM))
+	v.add_child(label(tr("Уровень состава: ~%d") % int(t["base"]), 13, C_DIM))
 	var roster: Array = t.get("roster", [])
 	if not roster.is_empty():
 		var faces := hbox(3)
@@ -406,15 +406,15 @@ func team_card(t: Dictionary) -> Control:
 		v.add_child(faces)
 		v.add_child(wrap_label(", ".join(roster.map(func(x): return x["nick"])), 12, Color.WHITE, 230))
 	if t.has("coach"):
-		v.add_child(label("Тренер: %s" % t["coach"]["name"], 12, C_DIM))
-	v.add_child(label("Бюджет: %s" % money_fmt(int(t["money"])), 13, C_DIM))
-	v.add_child(label("Репутация: %d" % int(t["rep"]), 13, C_DIM))
+		v.add_child(label(tr("Тренер: %s") % t["coach"]["name"], 12, C_DIM))
+	v.add_child(label(tr("Бюджет: %s") % money_fmt(int(t["money"])), 13, C_DIM))
+	v.add_child(label(tr("Репутация: %d") % int(t["rep"]), 13, C_DIM))
 	v.add_child(wrap_label(t["desc"], 12, C_DIM, 230))
 	var f := Control.new()
 	f.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(f)
 	var team: Dictionary = t
-	v.add_child(btn("Выбрать", func(): start_career(team), C_GOOD))
+	v.add_child(btn(tr("Выбрать"), func(): start_career(team), C_GOOD))
 	return p
 
 func start_career(team: Dictionary) -> void:
@@ -494,23 +494,23 @@ func show_menu() -> void:
 	var c2 := label("COACH", 64, C_ACC)
 	c2.add_theme_constant_override("line_spacing", -10)
 	left.add_child(c2)
-	left.add_child(label("Карьера тренера по Standoff 2", 16, C_DIM))
+	left.add_child(label(tr("Карьера тренера по Standoff 2"), 16, C_DIM))
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 14)
 	left.add_child(gap)
 	if gs.has_save():
-		left.add_child(menu_btn("Продолжить", func():
+		left.add_child(menu_btn(tr("Продолжить"), func():
 			if gs.load_game():
 				build_game(), true))
-	left.add_child(menu_btn("Новая карьера", func(): menu_page("new"), not gs.has_save()))
-	left.add_child(menu_btn("Настройки", func(): menu_page("settings")))
-	left.add_child(menu_btn("Как играть", func(): menu_page("howto")))
-	left.add_child(menu_btn("Об игре", func(): menu_page("about")))
-	left.add_child(menu_btn("Выход", func(): get_tree().quit()))
+	left.add_child(menu_btn(tr("Новая карьера"), func(): menu_page("new"), not gs.has_save()))
+	left.add_child(menu_btn(tr("Настройки"), func(): menu_page("settings")))
+	left.add_child(menu_btn(tr("Как играть"), func(): menu_page("howto")))
+	left.add_child(menu_btn(tr("Об игре"), func(): menu_page("about")))
+	left.add_child(menu_btn(tr("Выход"), func(): get_tree().quit()))
 	var fill := Control.new()
 	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(fill)
-	left.add_child(label("%s · Godot 4.2 · фан-проект, не связан с разработчиками Standoff 2" % VERSION, 12, Color("5b6270")))
+	left.add_child(label(tr("%s · Godot 4.2 · фан-проект, не связан с разработчиками Standoff 2") % VERSION, 12, Color("5b6270")))
 	menu_right = vbox(12)
 	menu_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_child(menu_right)
@@ -531,7 +531,7 @@ func _menu_card(t: String) -> VBoxContainer:
 func menu_page(page: String) -> void:
 	match page:
 		"home":
-			var v := _menu_card("Последнее сохранение" if gs.has_save() else "Добро пожаловать, тренер")
+			var v := _menu_card(tr("Последнее сохранение") if gs.has_save() else tr("Добро пожаловать, тренер"))
 			if gs.has_save():
 				var d = _peek_save()
 				if d is Dictionary:
@@ -544,48 +544,48 @@ func menu_page(page: String) -> void:
 					hr.add_child(make_avatar(d.get("avatar", {}), 72, tex))
 					var hv := vbox(2)
 					hv.add_child(label(str(d.get("team_name", "")), 22))
-					hv.add_child(label("Менеджер: %s" % d.get("coach_name", ""), 15, C_DIM))
+					hv.add_child(label(tr("Менеджер: %s") % d.get("coach_name", ""), 15, C_DIM))
 					hr.add_child(hv)
 					v.add_child(hr)
-					v.add_child(label("Сезон %d · неделя %d/10 · %s" % [int(d.get("season", 1)), int(d.get("week", 1)), gs.TIERS[int(d.get("tier", 0))]], 15, C_DIM))
-					v.add_child(label("Деньги: %s · Репутация: %d · Титулов: %d" % [money_fmt(int(d.get("money", 0))), int(d.get("rep", 0)), int(d.get("titles", 0))], 15, C_DIM))
+					v.add_child(label(tr("Сезон %d · неделя %d/10 · %s") % [int(d.get("season", 1)), int(d.get("week", 1)), tr(gs.TIERS[int(d.get("tier", 0))])], 15, C_DIM))
+					v.add_child(label(tr("Деньги: %s · Репутация: %d · Титулов: %d") % [money_fmt(int(d.get("money", 0))), int(d.get("rep", 0)), int(d.get("titles", 0))], 15, C_DIM))
 					if str(d.get("game_over", "")) != "":
-						v.add_child(label("Карьера завершена: " + str(d["game_over"]), 14, C_BAD))
+						v.add_child(label(tr("Карьера завершена: ") + str(d["game_over"]), 14, C_BAD))
 			else:
-				v.add_child(label("Возьми под крыло команду новичков из Открытой лиги,\nпрокачай игроков, выстрой тактику и доведи их\nдо титула Мировой серии.", 16, C_DIM))
-				v.add_child(menu_btn("Начать карьеру", func(): menu_page("new"), true))
+				v.add_child(label(tr("Возьми под крыло команду новичков из Открытой лиги,\nпрокачай игроков, выстрой тактику и доведи их\nдо титула Мировой серии."), 16, C_DIM))
+				v.add_child(menu_btn(tr("Начать карьеру"), func(): menu_page("new"), true))
 		"new":
 			show_creator()
 		"settings":
-			var v := _menu_card("Настройки")
+			var v := _menu_card(tr("Настройки"))
 			build_settings(v, func(): menu_page("settings"))
-			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+			v.add_child(btn(tr("Назад"), func(): menu_page("home"), C_DIM))
 		"howto":
-			var v := _menu_card("Как играть")
+			var v := _menu_card(tr("Как играть"))
 			for t in [
-				"Каждую неделю выбирай фокус тренировок и стиль игры, затем жми «К матчу».",
-				"Перед матчем выбери карту — команда сильнее на картах с высоким мастерством.",
-				"Во время матча можно взять 2 тайм-аута за карту: смена стиля и бонус на 3 раунда.",
-				"Следи за формой игроков: после тяжёлых тренировок давай отдых.",
-				"Полный набор ролей в основе (Капитан, Снайпер, Энтри, Саппорт, Лурк) даёт бонус.",
-				"Топ-4 лиги выходят в плей-офф, топ-2 повышаются в дивизионе, двое последних вылетают.",
-				"Победы дают очки тренера — вкладывай их в тактику, мотивацию и скаутинг.",
-				"Два провала целей совета подряд или долг больше $40 000 — увольнение."]:
+				tr("Каждую неделю выбирай фокус тренировок и стиль игры, затем жми «К матчу»."),
+				tr("Перед матчем выбери карту — команда сильнее на картах с высоким мастерством."),
+				tr("Во время матча можно взять 2 тайм-аута за карту: смена стиля и бонус на 3 раунда."),
+				tr("Следи за формой игроков: после тяжёлых тренировок давай отдых."),
+				tr("Полный набор ролей в основе (Капитан, Снайпер, Энтри, Саппорт, Лурк) даёт бонус."),
+				tr("Топ-4 лиги выходят в плей-офф, топ-2 повышаются в дивизионе, двое последних вылетают."),
+				tr("Победы дают очки тренера — вкладывай их в тактику, мотивацию и скаутинг."),
+				tr("Два провала целей совета подряд или долг больше $40 000 — увольнение.")]:
 				v.add_child(label("•  " + t, 15))
-			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+			v.add_child(btn(tr("Назад"), func(): menu_page("home"), C_DIM))
 		"about":
-			var v := _menu_card("Об игре")
+			var v := _menu_card(tr("Об игре"))
 			v.add_child(label("Standoff Coach %s" % VERSION, 18))
-			v.add_child(label("Менеджер киберспортивной команды по мотивам Standoff 2.\nСделано на Godot 4.2. Все команды и игроки вымышлены.\nФан-проект, не связан с разработчиками Standoff 2.", 15, C_DIM))
-			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+			v.add_child(label(tr("Менеджер киберспортивной команды по мотивам Standoff 2.\nСделано на Godot 4.2. Часть команд вымышлена, реальные\nкоманды и игроки используются в рамках фан-проекта.\nНе связан с разработчиками Standoff 2."), 15, C_DIM))
+			v.add_child(btn(tr("Назад"), func(): menu_page("home"), C_DIM))
 		"confirm_delete":
-			var v := _menu_card("Удалить сохранение?")
-			v.add_child(label("Карьера будет удалена без возможности восстановления.", 15, C_BAD))
+			var v := _menu_card(tr("Удалить сохранение?"))
+			v.add_child(label(tr("Карьера будет удалена без возможности восстановления."), 15, C_BAD))
 			var row := hbox(10)
-			row.add_child(btn("Да, удалить", func():
+			row.add_child(btn(tr("Да, удалить"), func():
 				DirAccess.remove_absolute(ProjectSettings.globalize_path(gs.SAVE_PATH))
 				show_menu(), C_BAD))
-			row.add_child(btn("Отмена", func(): menu_page("settings")))
+			row.add_child(btn(tr("Отмена"), func(): menu_page("settings")))
 			v.add_child(row)
 
 func _peek_save():
@@ -597,19 +597,36 @@ func _peek_save():
 ## Общий блок настроек — используется и в главном меню, и в игре.
 func build_settings(v: VBoxContainer, refresh: Callable) -> void:
 	var st: Node = get_node("/root/Settings")
-	v.add_child(label("Экран", 17, C_ACC))
+	var lr := hbox(10)
+	lr.add_child(cell("Язык / Language", 260))
+	var lo := OptionButton.new()
+	var lkeys: Array = ["ru", "en"]
+	lo.add_item("Русский")
+	lo.add_item("English")
+	lo.selected = maxi(0, lkeys.find(st.language))
+	lo.item_selected.connect(func(i):
+		st.language = lkeys[i]; st.apply(); st.save_settings()
+		if top_label != null:
+			build_game()
+			show_screen("system")
+		else:
+			show_menu()
+			menu_page("settings"))
+	lr.add_child(lo)
+	v.add_child(lr)
+	v.add_child(label(tr("Экран"), 17, C_ACC))
 	var fs := CheckButton.new()
-	fs.text = "Полноэкранный режим"
+	fs.text = tr("Полноэкранный режим")
 	fs.button_pressed = st.fullscreen
 	fs.toggled.connect(func(on): st.fullscreen = on; st.apply(); st.save_settings())
 	v.add_child(fs)
 	var vs := CheckButton.new()
-	vs.text = "Вертикальная синхронизация (VSync)"
+	vs.text = tr("Вертикальная синхронизация (VSync)")
 	vs.button_pressed = st.vsync
 	vs.toggled.connect(func(on): st.vsync = on; st.apply(); st.save_settings())
 	v.add_child(vs)
 	var r1 := hbox(10)
-	r1.add_child(cell("Масштаб интерфейса", 260))
+	r1.add_child(cell(tr("Масштаб интерфейса"), 260))
 	var sc := OptionButton.new()
 	for s in st.UI_SCALES:
 		sc.add_item("%d%%" % int(round(s * 100)))
@@ -617,9 +634,9 @@ func build_settings(v: VBoxContainer, refresh: Callable) -> void:
 	sc.item_selected.connect(func(i): st.ui_scale = st.UI_SCALES[i]; st.apply(); st.save_settings())
 	r1.add_child(sc)
 	v.add_child(r1)
-	v.add_child(label("Игра", 17, C_ACC))
+	v.add_child(label(tr("Игра"), 17, C_ACC))
 	var r2 := hbox(10)
-	r2.add_child(cell("Скорость симуляции матча", 260))
+	r2.add_child(cell(tr("Скорость симуляции матча"), 260))
 	var sp := OptionButton.new()
 	var keys: Array = st.SPEED_NAMES.keys()
 	for k in keys:
@@ -629,19 +646,19 @@ func build_settings(v: VBoxContainer, refresh: Callable) -> void:
 	r2.add_child(sp)
 	v.add_child(r2)
 	var au := CheckButton.new()
-	au.text = "Автосохранение после каждой недели"
+	au.text = tr("Автосохранение после каждой недели")
 	au.button_pressed = st.autosave
 	au.toggled.connect(func(on): st.autosave = on; st.save_settings())
 	v.add_child(au)
 	var sb := CheckButton.new()
-	sb.text = "Показывать закупку команд в логе матча"
+	sb.text = tr("Показывать закупку команд в логе матча")
 	sb.button_pressed = st.show_buys
 	sb.toggled.connect(func(on): st.show_buys = on; st.save_settings())
 	v.add_child(sb)
 	var row := hbox(10)
-	row.add_child(btn("Сбросить настройки", func(): st.reset(); refresh.call()))
+	row.add_child(btn(tr("Сбросить настройки"), func(): st.reset(); refresh.call()))
 	if gs.has_save() and top_label == null:
-		row.add_child(btn("Удалить сохранение", func(): menu_page("confirm_delete"), C_BAD))
+		row.add_child(btn(tr("Удалить сохранение"), func(): menu_page("confirm_delete"), C_BAD))
 	v.add_child(row)
 
 # ------------------------------------------------------------ каркас игры
@@ -689,7 +706,7 @@ func build_game() -> void:
 	log_label.scroll_following = true
 	lp.add_child(log_label)
 	root.add_child(lp)
-	for e in [["dashboard", "Главная"], ["squad", "Состав"], ["training", "Тренировки и тактика"], ["transfers", "Трансферы"], ["league", "Лига"], ["coach", "Тренер"], ["system", "Меню / сохранение"]]:
+	for e in [["dashboard", tr("Главная")], ["squad", tr("Состав")], ["training", tr("Тренировки и тактика")], ["transfers", tr("Трансферы")], ["league", tr("Лига")], ["coach", tr("Тренер")], ["system", tr("Меню / сохранение")]]:
 		var key: String = e[0]
 		nav_box.add_child(btn(e[1], func(): show_screen(key)))
 	show_screen("dashboard")
@@ -697,7 +714,7 @@ func build_game() -> void:
 func refresh_top() -> void:
 	if top_label == null:
 		return
-	top_label.text = "%s  |  Сезон %d · Неделя %d/10 · %s  |  %s  |  Деньги: %s  |  Репутация: %d" % [gs.team_name, gs.season, gs.week, gs.TIERS[gs.tier], gs.phase_name(), money_fmt(gs.money), int(gs.rep)]
+	top_label.text = tr("%s  |  Сезон %d · Неделя %d/10 · %s  |  %s  |  Деньги: %s  |  Репутация: %d") % [gs.team_name, gs.season, gs.week, tr(gs.TIERS[gs.tier]), gs.phase_name(), money_fmt(gs.money), int(gs.rep)]
 	var t := ""
 	for i in min(4, gs.news.size()):
 		t += "[color=#9aa3b2]%s[/color]\n" % gs.news[i]
@@ -727,10 +744,10 @@ func show_game_over() -> void:
 	var p := panel(C_PANEL, 24)
 	var v := vbox(12)
 	p.add_child(v)
-	v.add_child(label("КАРЬЕРА ЗАВЕРШЕНА", 32, C_BAD))
+	v.add_child(label(tr("КАРЬЕРА ЗАВЕРШЕНА"), 32, C_BAD))
 	v.add_child(label(gs.game_over, 16))
-	v.add_child(label("Сезонов: %d · Титулов: %d" % [gs.season, gs.titles], 15, C_DIM))
-	v.add_child(btn("В главное меню", func(): show_menu()))
+	v.add_child(label(tr("Сезонов: %d · Титулов: %d") % [gs.season, gs.titles], 15, C_DIM))
+	v.add_child(btn(tr("В главное меню"), func(): show_menu()))
 	content.add_child(p)
 
 func title(t: String) -> Label:
@@ -739,7 +756,7 @@ func title(t: String) -> Label:
 # ------------------------------------------------------------ главная
 
 func screen_dashboard() -> void:
-	content.add_child(title("Главная"))
+	content.add_child(title(tr("Главная")))
 	var pm: Dictionary = gs.player_match()
 	var p := panel()
 	var v := vbox(8)
@@ -747,36 +764,36 @@ func screen_dashboard() -> void:
 	v.add_child(label(gs.phase_name(), 18, C_ACC))
 	var main_btn: Button
 	if gs.week > 9:
-		v.add_child(label("Межсезонье: подпишите игроков, потратьте очки тренера и подготовьтесь к новому сезону.", 14, C_DIM))
-		main_btn = btn("Начать новый сезон", on_finish_week, C_GOOD)
+		v.add_child(label(tr("Межсезонье: подпишите игроков, потратьте очки тренера и подготовьтесь к новому сезону."), 14, C_DIM))
+		main_btn = btn(tr("Начать новый сезон"), on_finish_week, C_GOOD)
 	elif pm.is_empty():
-		v.add_child(label("На этой неделе у вас нет матча.", 15, C_DIM))
-		main_btn = btn("Завершить неделю", on_finish_week, C_GOOD)
+		v.add_child(label(tr("На этой неделе у вас нет матча."), 15, C_DIM))
+		main_btn = btn(tr("Завершить неделю"), on_finish_week, C_GOOD)
 	elif gs.match_done:
-		v.add_child(label("Матч против %s сыгран." % pm["opp"], 15, C_GOOD))
-		main_btn = btn("Завершить неделю", on_finish_week, C_GOOD)
+		v.add_child(label(tr("Матч против %s сыгран.") % pm["opp"], 15, C_GOOD))
+		main_btn = btn(tr("Завершить неделю"), on_finish_week, C_GOOD)
 	else:
-		var kinds := {"league": "Матч лиги (BO1)", "semi": "Полуфинал плей-офф (BO3)", "final": "ФИНАЛ плей-офф (BO3)"}
-		v.add_child(label("%s: %s против %s" % [kinds[pm["kind"]], gs.team_name, pm["opp"]], 17))
+		var kinds := {"league": tr("Матч лиги (BO1)"), "semi": tr("Полуфинал плей-офф (BO3)"), "final": tr("ФИНАЛ плей-офф (BO3)")}
+		v.add_child(label(tr("%s: %s против %s") % [kinds[pm["kind"]], gs.team_name, pm["opp"]], 17))
 		var s: float = gs.opp_strength(pm["opp"])
 		var mine: float = gs.team_power(gs.style, gs.train_map)["base"]
 		var d: float = s - mine
-		var verdict := "примерно равны"
+		var verdict := tr("примерно равны")
 		var col := Color.WHITE
-		if d > 6: verdict = "соперник заметно сильнее"; col = C_BAD
-		elif d > 2: verdict = "соперник немного сильнее"; col = C_ACC
-		elif d < -6: verdict = "вы заметно сильнее"; col = C_GOOD
-		elif d < -2: verdict = "вы немного сильнее"; col = C_GOOD
+		if d > 6: verdict = tr("соперник заметно сильнее"); col = C_BAD
+		elif d > 2: verdict = tr("соперник немного сильнее"); col = C_ACC
+		elif d < -6: verdict = tr("вы заметно сильнее"); col = C_GOOD
+		elif d < -2: verdict = tr("вы немного сильнее"); col = C_GOOD
 		var scout_txt := verdict
 		if int(gs.coach_skill["scout"]) >= 3:
-			scout_txt += " (рейтинг %d против ваших %d)" % [int(s), int(mine)]
-		v.add_child(label("Оценка скаутов: " + scout_txt, 14, col))
+			scout_txt += tr(" (рейтинг %d против ваших %d)") % [int(s), int(mine)]
+		v.add_child(label(tr("Оценка скаутов: ") + scout_txt, 14, col))
 		if not gs.has_enough_players():
-			v.add_child(label("Недостаточно здоровых игроков (нужно 5)! Подпишите кого-нибудь.", 14, C_BAD))
-			main_btn = btn("Играть матч", func(): pass, C_DIM)
+			v.add_child(label(tr("Недостаточно здоровых игроков (нужно 5)! Подпишите кого-нибудь."), 14, C_BAD))
+			main_btn = btn(tr("Играть матч"), func(): pass, C_DIM)
 			main_btn.disabled = true
 		else:
-			main_btn = btn("К матчу", on_play_match, C_GOOD)
+			main_btn = btn(tr("К матчу"), on_play_match, C_GOOD)
 	v.add_child(main_btn)
 	content.add_child(p)
 
@@ -784,7 +801,7 @@ func screen_dashboard() -> void:
 	var tp := panel()
 	var tv := vbox(4)
 	tp.add_child(tv)
-	tv.add_child(label("Таблица лиги", 17, C_ACC))
+	tv.add_child(label(tr("Таблица лиги"), 17, C_ACC))
 	tv.add_child(table_header())
 	var rl: Array = gs.rank_list()
 	for i in rl.size():
@@ -794,14 +811,14 @@ func screen_dashboard() -> void:
 	var np := panel()
 	var nv := vbox(3)
 	np.add_child(nv)
-	nv.add_child(label("Новости", 17, C_ACC))
+	nv.add_child(label(tr("Новости"), 17, C_ACC))
 	for i in min(8, gs.news.size()):
 		nv.add_child(label(gs.news[i], 13, C_DIM))
 	content.add_child(np)
 
 func table_header() -> HBoxContainer:
 	var h := hbox(4)
-	h.add_child(cell("#", 30, C_DIM)); h.add_child(cell("Команда", 220, C_DIM)); h.add_child(cell("В", 40, C_DIM)); h.add_child(cell("П", 40, C_DIM)); h.add_child(cell("Раунды ±", 80, C_DIM))
+	h.add_child(cell("#", 30, C_DIM)); h.add_child(cell(tr("Команда"), 220, C_DIM)); h.add_child(cell(tr("В"), 40, C_DIM)); h.add_child(cell(tr("П"), 40, C_DIM)); h.add_child(cell(tr("Раунды ±"), 80, C_DIM))
 	return h
 
 func table_row(pos: int, team: String) -> HBoxContainer:
@@ -823,22 +840,22 @@ func on_finish_week() -> void:
 # ------------------------------------------------------------ состав
 
 func screen_squad() -> void:
-	content.add_child(title("Состав (первые 5 здоровых игроков выходят на карту)"))
+	content.add_child(title(tr("Состав (первые 5 здоровых игроков выходят на карту)")))
 	if gs.staff_coach != "":
 		var sp := panel()
 		var sh := hbox(12)
 		sp.add_child(sh)
 		sh.add_child(portrait({"photo": gs.staff_photo}, 56))
 		var sv := vbox(2)
-		sv.add_child(label("Тренер состава: " + gs.staff_coach, 17))
-		sv.add_child(label("Работает в вашем штабе: +1.5 к силе команды", 13, C_DIM))
+		sv.add_child(label(tr("Тренер состава: ") + gs.staff_coach, 17))
+		sv.add_child(label(tr("Работает в вашем штабе: +1.5 к силе команды"), 13, C_DIM))
 		sh.add_child(sv)
 		content.add_child(sp)
 	var p := panel()
 	var v := vbox(5)
 	p.add_child(v)
 	var h := hbox(4)
-	for e in [["", 34], ["Ник", 108], ["Роль", 78], ["Воз", 36], ["Аим", 40], ["ИИ", 40], ["Сыг", 40], ["ОБЩ", 44], ["Форма", 56], ["Зарплата", 70], ["Статус", 96]]:
+	for e in [["", 34], [tr("Ник"), 108], [tr("Роль"), 78], [tr("Воз"), 36], [tr("Аим"), 40], [tr("ИИ"), 40], [tr("Сыг"), 40], [tr("ОБЩ"), 44], [tr("Форма"), 56], [tr("Зарплата"), 70], [tr("Статус"), 96]]:
 		h.add_child(cell(e[0], e[1], C_DIM, 13))
 	v.add_child(h)
 	var lineup_ids: Array = []
@@ -859,17 +876,17 @@ func screen_squad() -> void:
 		var fc: Color = C_GOOD if pl["form"] >= 70 else (C_ACC if pl["form"] >= 45 else C_BAD)
 		r.add_child(cell(str(pl["form"]) + "%", 56, fc))
 		r.add_child(cell("$" + str(pl["salary"]), 70, C_DIM))
-		var st := "Основа" if starter else "Скамейка"
+		var st := tr("Основа") if starter else tr("Скамейка")
 		var stc: Color = C_GOOD if starter else C_DIM
 		if pl["inj"] > 0:
-			st = "Травма %dн" % pl["inj"]
+			st = tr("Травма %dн") % pl["inj"]
 			stc = C_BAD
 		r.add_child(cell(st, 96, stc))
 		var idx: int = i
-		r.add_child(btn("Вверх", func(): gs.move_player(idx, -1); show_screen("squad")))
-		r.add_child(btn("Вниз", func(): gs.move_player(idx, 1); show_screen("squad")))
-		r.add_child(btn("Продать", func(): gs.sell_player(idx); show_screen("squad")))
-		r.add_child(btn("Отчислить", func(): gs.release_player(idx); show_screen("squad"), C_BAD))
+		r.add_child(btn(tr("Вверх"), func(): gs.move_player(idx, -1); show_screen("squad")))
+		r.add_child(btn(tr("Вниз"), func(): gs.move_player(idx, 1); show_screen("squad")))
+		r.add_child(btn(tr("Продать"), func(): gs.sell_player(idx); show_screen("squad")))
+		r.add_child(btn(tr("Отчислить"), func(): gs.release_player(idx); show_screen("squad"), C_BAD))
 		v.add_child(r)
 	content.add_child(p)
 	var roles: Array = []
@@ -880,55 +897,55 @@ func screen_squad() -> void:
 	for rr in gs.ROLES:
 		if not roles.has(rr):
 			miss.append(rr)
-	var info := label("Роли в основе: %d/5.%s" % [roles.size(), (" Не хватает: " + ", ".join(miss) + " (бонус к силе команды)") if miss.size() > 0 else " Полный набор ролей: бонус +2!"], 14, C_DIM)
+	var info := label(tr("Роли в основе: %d/5.%s") % [roles.size(), (tr(" Не хватает: ") + ", ".join(miss.map(func(x): return tr(x))) + tr(" (бонус к силе команды)")) if miss.size() > 0 else tr(" Полный набор ролей: бонус +2!")], 14, C_DIM)
 	content.add_child(info)
 	var pw: Dictionary = gs.team_power(gs.style, gs.train_map)
-	content.add_child(label("Сила команды: атака %.1f · защита %.1f" % [pw["atk"], pw["dfn"]], 15, C_ACC))
+	content.add_child(label(tr("Сила команды: атака %.1f · защита %.1f") % [pw["atk"], pw["dfn"]], 15, C_ACC))
 
 # ------------------------------------------------------------ тренировки
 
 func screen_training() -> void:
-	content.add_child(title("Тренировки и тактика"))
+	content.add_child(title(tr("Тренировки и тактика")))
 	var p := panel()
 	var v := vbox(8)
 	p.add_child(v)
-	v.add_child(label("Недельный фокус тренировок", 17, C_ACC))
+	v.add_child(label(tr("Недельный фокус тренировок"), 17, C_ACC))
 	var ob := OptionButton.new()
 	var keys: Array = gs.TRAIN.keys()
 	for k in keys:
-		ob.add_item(gs.TRAIN[k])
+		ob.add_item(tr(gs.TRAIN[k]))
 	ob.selected = keys.find(gs.train_focus)
 	ob.item_selected.connect(func(i): gs.train_focus = keys[i]; show_screen("training"))
 	v.add_child(ob)
 	if gs.train_focus == "maps":
 		var mo := OptionButton.new()
 		for mm in gs.MAPS:
-			mo.add_item("%s (мастерство %d)" % [mm, int(gs.map_skill[mm])])
+			mo.add_item(tr("%s (мастерство %d)") % [mm, int(gs.map_skill[mm])])
 		mo.selected = gs.MAPS.find(gs.train_map)
 		mo.item_selected.connect(func(i): gs.train_map = gs.MAPS[i]; show_screen("training"))
 		v.add_child(mo)
-	var desc := {"aim": "Растёт аим. Утомляет игроков.", "iq": "Растёт игровое мышление. Утомляет игроков.", "tw": "Растёт сыгранность. Слегка утомляет.", "maps": "Команда лучше знает выбранную карту (+бонус к силе на ней).", "rest": "Игроки восстанавливают форму (+16%)."}
+	var desc := {"aim": tr("Растёт аим. Утомляет игроков."), "iq": tr("Растёт игровое мышление. Утомляет игроков."), "tw": tr("Растёт сыгранность. Слегка утомляет."), "maps": tr("Команда лучше знает выбранную карту (+бонус к силе на ней)."), "rest": tr("Игроки восстанавливают форму (+16%).")}
 	v.add_child(label(desc[gs.train_focus], 14, C_DIM))
 	content.add_child(p)
 
 	var tp := panel()
 	var tv := vbox(8)
 	tp.add_child(tv)
-	tv.add_child(label("Стиль игры", 17, C_ACC))
+	tv.add_child(label(tr("Стиль игры"), 17, C_ACC))
 	var so := OptionButton.new()
 	var skeys: Array = gs.STYLES.keys()
 	for k in skeys:
-		so.add_item(gs.STYLES[k])
+		so.add_item(tr(gs.STYLES[k]))
 	so.selected = skeys.find(gs.style)
 	so.item_selected.connect(func(i): gs.style = skeys[i]; show_screen("training"))
 	tv.add_child(so)
-	tv.add_child(label(gs.STYLE_DESC[gs.style], 14, C_DIM))
+	tv.add_child(label(tr(gs.STYLE_DESC[gs.style]), 14, C_DIM))
 	content.add_child(tp)
 
 	var mp := panel()
 	var mv := vbox(4)
 	mp.add_child(mv)
-	mv.add_child(label("Пул карт", 17, C_ACC))
+	mv.add_child(label(tr("Пул карт"), 17, C_ACC))
 	for mm in gs.MAPS:
 		var r := hbox(8)
 		r.add_child(cell(mm, 120))
@@ -946,13 +963,13 @@ func screen_training() -> void:
 # ------------------------------------------------------------ трансферы
 
 func screen_transfers() -> void:
-	content.add_child(title("Рынок свободных агентов"))
-	content.add_child(label("Состав: %d/%d · Деньги: %s · Скаутинг ур.%d (чем выше — тем точнее оценка потенциала)" % [gs.players.size(), gs.MAX_ROSTER, money_fmt(gs.money), int(gs.coach_skill["scout"])], 14, C_DIM))
+	content.add_child(title(tr("Рынок свободных агентов")))
+	content.add_child(label(tr("Состав: %d/%d · Деньги: %s · Скаутинг ур.%d (чем выше — тем точнее оценка потенциала)") % [gs.players.size(), gs.MAX_ROSTER, money_fmt(gs.money), int(gs.coach_skill["scout"])], 14, C_DIM))
 	var p := panel()
 	var v := vbox(5)
 	p.add_child(v)
 	var h := hbox(4)
-	for e in [["", 34], ["Ник", 130], ["Роль", 80], ["Воз", 40], ["Аим", 44], ["ИИ", 44], ["Сыг", 44], ["ОБЩ", 48], ["Потенциал", 80], ["Цена", 90], ["Зарплата", 80]]:
+	for e in [["", 34], [tr("Ник"), 130], [tr("Роль"), 80], [tr("Воз"), 40], [tr("Аим"), 44], [tr("ИИ"), 44], [tr("Сыг"), 44], [tr("ОБЩ"), 48], [tr("Потенциал"), 80], [tr("Цена"), 90], [tr("Зарплата"), 80]]:
 		h.add_child(cell(e[0], e[1], C_DIM, 13))
 	v.add_child(h)
 	for i in gs.market.size():
@@ -972,7 +989,7 @@ func screen_transfers() -> void:
 		r.add_child(cell("$" + str(fee), 90, C_GOOD if gs.money >= fee else C_BAD))
 		r.add_child(cell("$" + str(pl["salary"]), 80, C_DIM))
 		var idx: int = i
-		var b := btn("Подписать", func():
+		var b := btn(tr("Подписать"), func():
 			var err: String = gs.sign_player(idx)
 			if err != "":
 				gs.add_news(err)
@@ -984,7 +1001,7 @@ func screen_transfers() -> void:
 # ------------------------------------------------------------ лига
 
 func screen_league() -> void:
-	content.add_child(title("Лига: %s" % gs.TIERS[gs.tier]))
+	content.add_child(title(tr("Лига: %s") % tr(gs.TIERS[gs.tier])))
 	var p := panel()
 	var v := vbox(4)
 	p.add_child(v)
@@ -992,28 +1009,28 @@ func screen_league() -> void:
 	var rl: Array = gs.rank_list()
 	for i in rl.size():
 		v.add_child(table_row(i + 1, rl[i]))
-	v.add_child(label("Топ-4 выходят в плей-офф. Топ-2 повышаются в дивизионе, два последних — вылетают.", 13, C_DIM))
+	v.add_child(label(tr("Топ-4 выходят в плей-офф. Топ-2 повышаются в дивизионе, два последних — вылетают."), 13, C_DIM))
 	content.add_child(p)
 	var pp := panel()
 	var pv := vbox(4)
 	pp.add_child(pv)
-	pv.add_child(label("Плей-офф", 17, C_ACC))
+	pv.add_child(label(tr("Плей-офф"), 17, C_ACC))
 	if gs.playoff["semis"].is_empty():
-		pv.add_child(label("Начнётся после 7-го тура.", 14, C_DIM))
+		pv.add_child(label(tr("Начнётся после 7-го тура."), 14, C_DIM))
 	else:
 		for i in gs.playoff["semis"].size():
 			var s: Array = gs.playoff["semis"][i]
 			var w: String = str(gs.playoff["sf"].get(str(i), ""))
-			pv.add_child(label("Полуфинал %d: %s — %s%s" % [i + 1, s[0], s[1], ("  → " + w) if w != "" else ""], 14))
+			pv.add_child(label(tr("Полуфинал %d: %s — %s%s") % [i + 1, s[0], s[1], ("  → " + w) if w != "" else ""], 14))
 		if not gs.playoff["final"].is_empty():
-			pv.add_child(label("Финал: %s — %s%s" % [gs.playoff["final"][0], gs.playoff["final"][1], ("  → ЧЕМПИОН: " + gs.playoff["champion"]) if gs.playoff["champion"] != "" else ""], 15, C_ACC))
+			pv.add_child(label(tr("Финал: %s — %s%s") % [gs.playoff["final"][0], gs.playoff["final"][1], (tr("  → ЧЕМПИОН: ") + gs.playoff["champion"]) if gs.playoff["champion"] != "" else ""], 15, C_ACC))
 	content.add_child(pp)
 	var hp := panel()
 	var hv := vbox(3)
 	hp.add_child(hv)
-	hv.add_child(label("История карьеры · Титулов: %d" % gs.titles, 17, C_ACC))
+	hv.add_child(label(tr("История карьеры · Титулов: %d") % gs.titles, 17, C_ACC))
 	if gs.history.is_empty():
-		hv.add_child(label("Пока пусто.", 14, C_DIM))
+		hv.add_child(label(tr("Пока пусто."), 14, C_DIM))
 	for t in gs.history:
 		hv.add_child(label(t, 13, C_DIM))
 	content.add_child(hp)
@@ -1021,7 +1038,7 @@ func screen_league() -> void:
 # ------------------------------------------------------------ тренер
 
 func screen_coach() -> void:
-	content.add_child(title("Профиль менеджера"))
+	content.add_child(title(tr("Профиль менеджера")))
 	var pr := panel()
 	var ph := hbox(18)
 	pr.add_child(ph)
@@ -1029,40 +1046,40 @@ func screen_coach() -> void:
 	var pv := vbox(4)
 	ph.add_child(pv)
 	pv.add_child(label(gs.coach_name, 26))
-	pv.add_child(label("%d лет · %s" % [gs.coach_age, gs.coach_country], 15, C_DIM))
+	pv.add_child(label(tr("%d лет · %s") % [gs.coach_age, tr(gs.coach_country)], 15, C_DIM))
 	var bgname := ""
 	for b in Teams.BACKGROUNDS:
 		if b["id"] == gs.coach_bg: bgname = b["name"]
-	pv.add_child(label("Предыстория: " + bgname, 15, C_DIM))
-	pv.add_child(label("Команда: %s [%s]" % [gs.team_name, gs.team_tag], 15, Color(gs.team_color)))
+	pv.add_child(label(tr("Предыстория: ") + tr(bgname), 15, C_DIM))
+	pv.add_child(label(tr("Команда: %s [%s]") % [gs.team_name, gs.team_tag], 15, Color(gs.team_color)))
 	content.add_child(pr)
-	content.add_child(label("Очки навыков: %d (дают победы, плей-офф и титулы)" % gs.coach_pts, 16, C_GOOD))
+	content.add_child(label(tr("Очки навыков: %d (дают победы, плей-офф и титулы)") % gs.coach_pts, 16, C_GOOD))
 	var p := panel()
 	var v := vbox(8)
 	p.add_child(v)
 	for k in gs.COACH_SKILLS:
 		var r := hbox(10)
-		r.add_child(cell(gs.COACH_SKILLS[k], 460))
-		r.add_child(cell("Ур. %d/10" % int(gs.coach_skill[k]), 70, C_ACC))
+		r.add_child(cell(tr(gs.COACH_SKILLS[k]), 460))
+		r.add_child(cell(tr("Ур. %d/10") % int(gs.coach_skill[k]), 70, C_ACC))
 		var key: String = k
-		var b := btn("Улучшить", func(): gs.upgrade_coach(key); show_screen("coach"))
+		var b := btn(tr("Улучшить"), func(): gs.upgrade_coach(key); show_screen("coach"))
 		b.disabled = gs.coach_pts <= 0 or int(gs.coach_skill[k]) >= 10
 		r.add_child(b)
 		v.add_child(r)
 	content.add_child(p)
-	content.add_child(label("Репутация: %d · Титулов: %d · Дивизион: %s" % [int(gs.rep), gs.titles, gs.TIERS[gs.tier]], 15, C_DIM))
+	content.add_child(label(tr("Репутация: %d · Титулов: %d · Дивизион: %s") % [int(gs.rep), gs.titles, tr(gs.TIERS[gs.tier])], 15, C_DIM))
 	if gs.legend:
-		content.add_child(label("Вы выиграли Мировую серию — вы легенда Standoff 2!", 16, C_ACC))
+		content.add_child(label(tr("Вы выиграли Мировую серию — вы легенда Standoff 2!"), 16, C_ACC))
 
 # ------------------------------------------------------------ система
 
 func screen_system() -> void:
-	content.add_child(title("Меню"))
+	content.add_child(title(tr("Меню")))
 	var p := panel()
 	var v := vbox(8)
 	p.add_child(v)
-	v.add_child(btn("Сохранить игру", func(): gs.save(); gs.add_news("Игра сохранена."); show_screen("system")))
-	v.add_child(btn("Выйти в главное меню", func(): gs.save(); show_menu()))
+	v.add_child(btn(tr("Сохранить игру"), func(): gs.save(); gs.add_news(tr("Игра сохранена.")); show_screen("system")))
+	v.add_child(btn(tr("Выйти в главное меню"), func(): gs.save(); show_menu()))
 	content.add_child(p)
 	var sp := panel()
 	var sv := vbox(8)
@@ -1093,11 +1110,11 @@ func show_prematch() -> void:
 	clear(content)
 	refresh_top()
 	var gi: int = int(m["game"]) + 1
-	content.add_child(title("%s — карта %d (счёт серии %d:%d)" % [m["opp"], gi, m["wins"][0], m["wins"][1]]))
+	content.add_child(title(tr("%s — карта %d (счёт серии %d:%d)") % [m["opp"], gi, m["wins"][0], m["wins"][1]]))
 	var p := panel()
 	var v := vbox(8)
 	p.add_child(v)
-	v.add_child(label("Выбор карты", 17, C_ACC))
+	v.add_child(label(tr("Выбор карты"), 17, C_ACC))
 	var avail: Array = []
 	for mm in gs.MAPS:
 		if not m["played"].has(mm):
@@ -1105,26 +1122,26 @@ func show_prematch() -> void:
 	var map_ob := OptionButton.new()
 	if gi == 1:
 		for mm in avail:
-			map_ob.add_item("%s (наше мастерство %d)" % [mm, int(gs.map_skill[mm])])
+			map_ob.add_item(tr("%s (наше мастерство %d)") % [mm, int(gs.map_skill[mm])])
 		m["pick"] = avail[0]
 		map_ob.item_selected.connect(func(i): m["pick"] = avail[i])
 		v.add_child(map_ob)
 	else:
 		var forced: String = avail[randi() % avail.size()]
 		m["pick"] = forced
-		v.add_child(label("Карта выбрана жребием: %s (мастерство %d)" % [forced, int(gs.map_skill[forced])], 15))
-	v.add_child(label("Стиль на карту", 17, C_ACC))
+		v.add_child(label(tr("Карта выбрана жребием: %s (мастерство %d)") % [forced, int(gs.map_skill[forced])], 15))
+	v.add_child(label(tr("Стиль на карту"), 17, C_ACC))
 	var so := OptionButton.new()
 	var skeys: Array = gs.STYLES.keys()
 	for k in skeys:
-		so.add_item(gs.STYLES[k])
+		so.add_item(tr(gs.STYLES[k]))
 	so.selected = skeys.find(gs.style)
-	var sdesc := label(gs.STYLE_DESC[gs.style], 13, C_DIM)
-	so.item_selected.connect(func(i): gs.style = skeys[i]; sdesc.text = gs.STYLE_DESC[skeys[i]])
+	var sdesc := label(tr(gs.STYLE_DESC[gs.style]), 13, C_DIM)
+	so.item_selected.connect(func(i): gs.style = skeys[i]; sdesc.text = tr(gs.STYLE_DESC[skeys[i]]))
 	v.add_child(so)
 	v.add_child(sdesc)
-	v.add_child(label("Состав: " + ", ".join(gs.lineup().map(func(x): return "%s (%s)" % [x["nick"], x["role"]])), 13, C_DIM))
-	v.add_child(btn("Начать карту", func(): start_map(), C_GOOD))
+	v.add_child(label(tr("Состав: ") + ", ".join(gs.lineup().map(func(x): return "%s (%s)" % [x["nick"], tr(x["role"])])), 13, C_DIM))
+	v.add_child(btn(tr("Начать карту"), func(): start_map(), C_GOOD))
 	content.add_child(p)
 
 func start_map() -> void:
@@ -1159,9 +1176,9 @@ func show_map_ui() -> void:
 	head.add_child(label("%d : %d" % [sim.score[0], sim.score[1]], 34))
 	head.add_child(label(m["opp"], 22, C_CT))
 	hv.add_child(head)
-	var mine_side := "АТАКА (T)" if sim.side_atk == 0 else "ЗАЩИТА (CT)"
-	var ot := " · ОВЕРТАЙМ" if sim.is_overtime() else ""
-	var c := label("Карта: %s · Раунд %d · Вы: %s%s · Серия: %d:%d (BO%d)" % [m["map"], sim.rounds + 1, mine_side, ot, m["wins"][0], m["wins"][1], m["bo"]], 14, C_DIM)
+	var mine_side := tr("АТАКА (T)") if sim.side_atk == 0 else tr("ЗАЩИТА (CT)")
+	var ot := tr(" · ОВЕРТАЙМ") if sim.is_overtime() else ""
+	var c := label(tr("Карта: %s · Раунд %d · Вы: %s%s · Серия: %d:%d (BO%d)") % [m["map"], sim.rounds + 1, mine_side, ot, m["wins"][0], m["wins"][1], m["bo"]], 14, C_DIM)
 	c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hv.add_child(c)
 	content.add_child(hp)
@@ -1175,10 +1192,10 @@ func show_map_ui() -> void:
 	if m.has("log_text"):
 		rt.text = m["log_text"]
 	var bar := hbox(8)
-	bar.add_child(btn("Следующий раунд", func(): play(1), C_GOOD))
-	bar.add_child(btn("5 раундов", func(): play(5)))
-	bar.add_child(btn("До конца карты", func(): play(100)))
-	var to := btn("Тайм-аут (%d)" % sim.timeouts[0], func(): m["tactic_open"] = !m["tactic_open"]; show_map_ui())
+	bar.add_child(btn(tr("Следующий раунд"), func(): play(1), C_GOOD))
+	bar.add_child(btn(tr("5 раундов"), func(): play(5)))
+	bar.add_child(btn(tr("До конца карты"), func(): play(100)))
+	var to := btn(tr("Тайм-аут (%d)") % sim.timeouts[0], func(): m["tactic_open"] = !m["tactic_open"]; show_map_ui())
 	to.disabled = sim.timeouts[0] <= 0
 	bar.add_child(to)
 	content.add_child(bar)
@@ -1186,10 +1203,10 @@ func show_map_ui() -> void:
 		var tp := panel(C_PANEL, 10)
 		var tv := hbox(8)
 		tp.add_child(tv)
-		tv.add_child(label("Тайм-аут: смените стиль (+%d к силе на 3 раунда)" % (3 + int(gs.coach_skill["tactics"] / 3)), 14))
+		tv.add_child(label(tr("Тайм-аут: смените стиль (+%d к силе на 3 раунда)") % (3 + int(gs.coach_skill["tactics"] / 3)), 14))
 		for k in gs.STYLES:
 			var key: String = k
-			tv.add_child(btn(gs.STYLES[k], func(): use_timeout(key)))
+			tv.add_child(btn(tr(gs.STYLES[k]), func(): use_timeout(key)))
 		content.add_child(tp)
 
 func use_timeout(st: String) -> void:
@@ -1199,7 +1216,7 @@ func use_timeout(st: String) -> void:
 		var pw: Dictionary = gs.team_power(st, m["map"])
 		sim.atk[0] = pw["atk"]
 		sim.dfn[0] = pw["dfn"]
-		m["log_text"] = str(m.get("log_text", "")) + "[color=#ffb23e]Тайм-аут! Стиль: %s[/color]\n" % gs.STYLES[st]
+		m["log_text"] = str(m.get("log_text", "")) + tr("[color=#ffb23e]Тайм-аут! Стиль: %s[/color]\n") % tr(gs.STYLES[st])
 	m["tactic_open"] = false
 	show_map_ui()
 
@@ -1212,12 +1229,12 @@ func play(n: int) -> void:
 	while i < n and not sim.finished:
 		var r: Dictionary = sim.play_round()
 		var col := "#5dd16f" if r["winner"] == 0 else "#ff7b7b"
-		var line := "[color=%s]Р%d  %d:%d[/color]  %s\n" % [col, r["round"], sim.score[0], sim.score[1], r["text"]]
+		var line := tr("[color=%s]Р%d  %d:%d[/color]  %s\n") % [col, r["round"], sim.score[0], sim.score[1], r["text"]]
 		if r["swap"]:
-			line = "[color=#ffb23e]— Смена сторон —[/color]\n" + line
-		var modes := {"pistol": "пистолеты", "full": "фулл-бай", "force": "форс-бай", "eco": "эко"}
+			line = tr("[color=#ffb23e]— Смена сторон —[/color]\n") + line
+		var modes := {"pistol": tr("пистолеты"), "full": tr("фулл-бай"), "force": tr("форс-бай"), "eco": tr("эко")}
 		if get_node("/root/Settings").show_buys:
-			line += "[color=#6b7280]   Закупка: вы — %s, соперник — %s[/color]\n" % [modes[r["buy"][0]], modes[r["buy"][1]]]
+			line += tr("[color=#6b7280]   Закупка: вы — %s, соперник — %s[/color]\n") % [modes[r["buy"][0]], modes[r["buy"][1]]]
 		m["log_text"] = str(m.get("log_text", "")) + line
 		i += 1
 		if n > 1:
@@ -1251,9 +1268,9 @@ func finish_map() -> void:
 	var p := panel(C_PANEL, 20)
 	var v := vbox(10)
 	p.add_child(v)
-	v.add_child(label("Карта %s: %s %d:%d" % [m["map"], "победа" if won else "поражение", sim.score[0], sim.score[1]], 24, C_GOOD if won else C_BAD))
-	v.add_child(label("Счёт в серии: %d:%d" % [m["wins"][0], m["wins"][1]], 18))
-	v.add_child(btn("Следующая карта", func(): show_prematch(), C_GOOD))
+	v.add_child(label(tr("Карта %s: %s %d:%d") % [m["map"], tr("победа") if won else tr("поражение"), sim.score[0], sim.score[1]], 24, C_GOOD if won else C_BAD))
+	v.add_child(label(tr("Счёт в серии: %d:%d") % [m["wins"][0], m["wins"][1]], 18))
+	v.add_child(btn(tr("Следующая карта"), func(): show_prematch(), C_GOOD))
 	content.add_child(p)
 
 func show_match_result() -> void:
@@ -1262,9 +1279,9 @@ func show_match_result() -> void:
 	var p := panel(C_PANEL, 20)
 	var v := vbox(8)
 	p.add_child(v)
-	v.add_child(label("ПОБЕДА!" if won else "ПОРАЖЕНИЕ", 36, C_GOOD if won else C_BAD))
-	v.add_child(label("%s %d:%d %s (по картам). Раундов: %d:%d" % [gs.team_name, m["wins"][0], m["wins"][1], m["opp"], m["total"][0], m["total"][1]], 17))
-	v.add_child(label("Статистика игроков", 16, C_ACC))
+	v.add_child(label(tr("ПОБЕДА!") if won else tr("ПОРАЖЕНИЕ"), 36, C_GOOD if won else C_BAD))
+	v.add_child(label(tr("%s %d:%d %s (по картам). Раундов: %d:%d") % [gs.team_name, m["wins"][0], m["wins"][1], m["opp"], m["total"][0], m["total"][1]], 17))
+	v.add_child(label(tr("Статистика игроков"), 16, C_ACC))
 	var best: Dictionary = {}
 	for s in m["stats"]:
 		var kd: float = float(s["k"]) / maxf(1.0, float(s["d"]))
@@ -1273,7 +1290,7 @@ func show_match_result() -> void:
 		r.add_child(cell("%d / %d" % [s["k"], s["d"]], 90))
 		r.add_child(cell("K/D %.2f" % kd, 100, C_GOOD if kd >= 1.0 else C_BAD))
 		v.add_child(r)
-	v.add_child(btn("Завершить матч", func(): end_match(won), C_GOOD))
+	v.add_child(btn(tr("Завершить матч"), func(): end_match(won), C_GOOD))
 	content.add_child(p)
 
 func end_match(won: bool) -> void:

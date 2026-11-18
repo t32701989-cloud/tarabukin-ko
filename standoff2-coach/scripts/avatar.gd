@@ -43,7 +43,7 @@ static func part_value_name(key: String, idx: int) -> String:
 		"beard": return BEARDS[idx]
 		"glasses": return GLASSES[idx]
 		"extra": return EXTRAS[idx]
-	return "Вариант %d" % (idx + 1)
+	return String(TranslationServer.translate("Вариант %d")) % (idx + 1)
 
 func set_cfg(c: Dictionary) -> void:
 	cfg = c.duplicate()

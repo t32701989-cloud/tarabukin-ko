@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ceoaa6epoyvb"
-path="res://.godot/imported/arventy.jpg-eb98e0532f8ab355ac1255c191193574.ctex"
+uid="uid://duti0mik4ratf"
+path="res://.godot/imported/reason.png-fc491d659a7ac417369bf730b1d3a77a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/teams/vp/arventy.jpg"
-dest_files=["res://.godot/imported/arventy.jpg-eb98e0532f8ab355ac1255c191193574.ctex"]
+source_file="res://assets/teams/vp/reason.png"
+dest_files=["res://.godot/imported/reason.png-fc491d659a7ac417369bf730b1d3a77a.ctex"]
 
 [params]
 
