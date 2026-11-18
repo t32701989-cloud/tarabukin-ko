@@ -11,7 +11,7 @@ const START_TEAMS := [
 		"roster": [
 			{"nick": "Lunax", "first": "Никита", "last": "Макаров", "role": "Саппорт", "aim": 74, "iq": 78, "tw": 82, "age": 21, "photo": "res://assets/teams/vp/lunax.png"},
 			{"nick": "reason", "first": "Самир", "last": "Курбанов", "role": "Снайпер", "aim": 84, "iq": 74, "tw": 75, "age": 20, "photo": "res://assets/teams/vp/reason.png"},
-			{"nick": "chipaa", "first": "", "last": "", "role": "Лурк", "aim": 80, "iq": 76, "tw": 72, "age": 18, "photo": "res://assets/teams/vp/chipaa.png"},
+			{"nick": "chipaa", "first": "Александр", "last": "Калинченков", "role": "Лурк", "aim": 80, "iq": 76, "tw": 72, "age": 18, "photo": "res://assets/teams/vp/chipaa.png"},
 			{"nick": "Arventy", "first": "Иван", "last": "Шумкин", "role": "Капитан", "aim": 73, "iq": 84, "tw": 82, "age": 19, "photo": "res://assets/teams/vp/arventy.png"},
 			{"nick": "Hi-Lo", "first": "Иван", "last": "Сидоренков", "role": "Энтри", "aim": 82, "iq": 71, "tw": 74, "age": 20, "photo": "res://assets/teams/vp/hi-lo.png"},
 		]},

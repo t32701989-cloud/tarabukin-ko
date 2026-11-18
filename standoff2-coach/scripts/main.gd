@@ -2307,7 +2307,7 @@ func screen_player() -> void:
 	nr.add_child(_flag(str(pl.get("country", "xx")), 30))
 	nr.add_child(label(str(pl["nick"]), 30, Color.WHITE))
 	hv.add_child(nr)
-	var full: String = ("%s %s" % [str(pl.get("first", "")), str(pl.get("last", ""))]).strip_edges()
+	var full: String = ("%s %s" % [tr(str(pl.get("first", ""))), tr(str(pl.get("last", "")))]).strip_edges()
 	if full != "":
 		hv.add_child(label(full, 15, Color("c9ced8")))
 	var r2 := hbox(14)

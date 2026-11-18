@@ -4,6 +4,15 @@ extends Node
 const LANGS := {"ru": "Русский", "en": "English"}
 
 const EN := {
+	"Никита": "Nikita",
+	"Макаров": "Makarov",
+	"Александр": "Aleksander",
+	"Калинченков": "Kalinchenkov",
+	"Иван": "Ivan",
+	"Шумкин": "Shumkin",
+	"Самир": "Samir",
+	"Курбанов": "Kurbanov",
+	"Сидоренков": "Sidorenkov",
 	"Глобальный рейтинг Rankoff": "Rankoff global ranking",
 	"STAGE 3": "STAGE 3",
 	"STAGE 2": "STAGE 2",
