@@ -277,8 +277,9 @@ func show_creator() -> void:
 		hit.mouse_entered.connect(func(): sb.bg_color = Color("2c3442"))
 		hit.mouse_exited.connect(func(): sb.bg_color = Color("232833"))
 		var g: String = mp["gender"]
+		var nm: String = mp["name"]
 		hit.pressed.connect(func():
-			cr["portrait"] = file; cr["gender"] = g; cr_photo = null; cr["photo"] = ""; show_creator())
+			cr["portrait"] = file; cr["gender"] = g; cr["name"] = tr(nm); cr_photo = null; cr["photo"] = ""; show_creator())
 		card.add_child(hit)
 		grid.add_child(card)
 
