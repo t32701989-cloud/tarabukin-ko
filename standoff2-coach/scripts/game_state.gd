@@ -368,7 +368,9 @@ func finish_week() -> String:
 	elif prev_week == LAST_WEEK:
 		_start_next_season()
 	_check_fired()
-	save()
+	var st = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Settings")
+	if st == null or st.autosave:
+		save()
 	changed.emit()
 	return rep_txt
 

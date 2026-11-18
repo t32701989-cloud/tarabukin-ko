@@ -24,6 +24,7 @@ var in_match: bool = false
 func _ready() -> void:
 	gs = get_node("/root/GameState")
 	var bg := ColorRect.new()
+	bg.name = "BG"
 	bg.color = C_BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -89,50 +90,240 @@ func cell(t: String, w: int, color: Color = Color.WHITE, size: int = 14) -> Labe
 
 # ------------------------------------------------------------ главное меню
 
-func show_menu() -> void:
-	in_match = false
+const VERSION := "v0.2"
+var menu_right: VBoxContainer
+
+func _clear_root() -> void:
 	for c in get_children():
-		if c is ColorRect:
+		if c is ColorRect and c.name == "BG":
 			continue
 		remove_child(c)
 		c.queue_free()
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-	var p := panel(C_PANEL, 30)
-	center.add_child(p)
+	top_label = null
+
+func menu_btn(t: String, cb: Callable, accent: bool = false) -> Button:
+	var b := Button.new()
+	b.text = "   " + t
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.custom_minimum_size = Vector2(340, 48)
+	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_color_override("font_color", C_ACC if accent else Color.WHITE)
+	b.add_theme_color_override("font_hover_color", Color.BLACK)
+	b.add_theme_color_override("font_pressed_color", Color.BLACK)
+	b.add_theme_color_override("font_disabled_color", Color("4b5260"))
+	for st in [["normal", Color("1f232b"), 0], ["hover", C_ACC, 6], ["pressed", Color("e09a2c"), 6], ["disabled", Color("181b21"), 0], ["focus", Color(0, 0, 0, 0), 0]]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = st[1]
+		sb.set_corner_radius_all(6)
+		sb.border_width_left = 6
+		sb.border_color = C_ACC if st[0] == "normal" and accent else Color(st[1]).darkened(0.25)
+		if st[0] == "focus":
+			sb.border_width_left = 0
+			sb.border_width_bottom = 2
+			sb.border_color = C_ACC
+		b.add_theme_stylebox_override(st[0], sb)
+	b.pressed.connect(cb)
+	return b
+
+func _stripe(x: float, w: float, color: Color) -> ColorRect:
+	var r := ColorRect.new()
+	r.color = color
+	r.size = Vector2(w, 2400)
+	r.position = Vector2(x, -600)
+	r.rotation = deg_to_rad(18)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+func show_menu() -> void:
+	in_match = false
+	busy = false
+	_clear_root()
+	# фон: диагональные полосы
+	var deco := Control.new()
+	deco.set_anchors_preset(Control.PRESET_FULL_RECT)
+	deco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	deco.clip_contents = true
+	add_child(deco)
+	deco.add_child(_stripe(760, 260, Color(1, 0.7, 0.24, 0.05)))
+	deco.add_child(_stripe(1060, 60, Color(1, 0.7, 0.24, 0.10)))
+	deco.add_child(_stripe(1160, 18, Color(0.35, 0.66, 1.0, 0.18)))
+	var root := HBoxContainer.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = 80; root.offset_top = 44; root.offset_right = -60; root.offset_bottom = -24
+	root.add_theme_constant_override("separation", 60)
+	add_child(root)
+	var left := vbox(10)
+	left.custom_minimum_size = Vector2(360, 0)
+	root.add_child(left)
+	left.add_child(label("STANDOFF", 64, Color.WHITE))
+	var c2 := label("COACH", 64, C_ACC)
+	c2.add_theme_constant_override("line_spacing", -10)
+	left.add_child(c2)
+	left.add_child(label("Карьера тренера по Standoff 2", 16, C_DIM))
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 14)
+	left.add_child(gap)
+	if gs.has_save():
+		left.add_child(menu_btn("Продолжить", func():
+			if gs.load_game():
+				build_game(), true))
+	left.add_child(menu_btn("Новая карьера", func(): menu_page("new"), not gs.has_save()))
+	left.add_child(menu_btn("Настройки", func(): menu_page("settings")))
+	left.add_child(menu_btn("Как играть", func(): menu_page("howto")))
+	left.add_child(menu_btn("Об игре", func(): menu_page("about")))
+	left.add_child(menu_btn("Выход", func(): get_tree().quit()))
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(fill)
+	left.add_child(label("%s · Godot 4.2 · фан-проект, не связан с разработчиками Standoff 2" % VERSION, 12, Color("5b6270")))
+	menu_right = vbox(12)
+	menu_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_child(menu_right)
+	menu_page("home")
+
+func _menu_card(t: String) -> VBoxContainer:
+	clear(menu_right)
+	var top := Control.new()
+	top.custom_minimum_size = Vector2(0, 40)
+	menu_right.add_child(top)
+	var p := panel(Color(0.12, 0.137, 0.168, 0.94), 26)
+	menu_right.add_child(p)
 	var v := vbox(12)
-	v.custom_minimum_size = Vector2(440, 0)
 	p.add_child(v)
-	v.add_child(label("STANDOFF COACH", 40, C_ACC))
-	v.add_child(label("Карьера тренера киберспортивной команды по Standoff 2.\nПрокачай состав, выиграй Мировую серию и стань легендой.", 14, C_DIM))
-	var coach := LineEdit.new()
-	coach.placeholder_text = "Имя тренера"
-	coach.text = "Алексей"
-	var team := LineEdit.new()
-	team.placeholder_text = "Название команды"
-	team.text = "Tarabukin Esports"
-	v.add_child(label("Тренер", 13, C_DIM))
-	v.add_child(coach)
-	v.add_child(label("Команда", 13, C_DIM))
-	v.add_child(team)
-	v.add_child(btn("Новая карьера", func():
-		gs.new_game(coach.text, team.text)
-		build_game()))
-	var cont := btn("Продолжить", func():
-		if gs.load_game():
-			build_game())
-	cont.disabled = not gs.has_save()
-	v.add_child(cont)
+	v.add_child(label(t, 28, C_ACC))
+	return v
+
+func menu_page(page: String) -> void:
+	match page:
+		"home":
+			var v := _menu_card("Последнее сохранение" if gs.has_save() else "Добро пожаловать, тренер")
+			if gs.has_save():
+				var d = _peek_save()
+				if d is Dictionary:
+					v.add_child(label(str(d.get("team_name", "")), 22))
+					v.add_child(label("Тренер: %s" % d.get("coach_name", ""), 15, C_DIM))
+					v.add_child(label("Сезон %d · неделя %d/10 · %s" % [int(d.get("season", 1)), int(d.get("week", 1)), gs.TIERS[int(d.get("tier", 0))]], 15, C_DIM))
+					v.add_child(label("Деньги: %s · Репутация: %d · Титулов: %d" % [money_fmt(int(d.get("money", 0))), int(d.get("rep", 0)), int(d.get("titles", 0))], 15, C_DIM))
+					if str(d.get("game_over", "")) != "":
+						v.add_child(label("Карьера завершена: " + str(d["game_over"]), 14, C_BAD))
+			else:
+				v.add_child(label("Возьми под крыло команду новичков из Открытой лиги,\nпрокачай игроков, выстрой тактику и доведи их\nдо титула Мировой серии.", 16, C_DIM))
+				v.add_child(menu_btn("Начать карьеру", func(): menu_page("new"), true))
+		"new":
+			var v := _menu_card("Новая карьера")
+			if gs.has_save():
+				v.add_child(label("Внимание: текущее сохранение будет перезаписано.", 14, C_BAD))
+			v.add_child(label("Имя тренера", 14, C_DIM))
+			var coach := LineEdit.new()
+			coach.text = "Алексей"
+			coach.max_length = 24
+			coach.custom_minimum_size = Vector2(380, 40)
+			v.add_child(coach)
+			v.add_child(label("Название команды", 14, C_DIM))
+			var team := LineEdit.new()
+			team.text = "Tarabukin Esports"
+			team.max_length = 24
+			team.custom_minimum_size = Vector2(380, 40)
+			v.add_child(team)
+			v.add_child(label("Старт: Открытая лига, $80 000, состав из 6 молодых игроков.", 14, C_DIM))
+			var row := hbox(10)
+			row.add_child(menu_btn("Начать", func():
+				gs.new_game(coach.text, team.text)
+				build_game(), true))
+			v.add_child(row)
+			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+		"settings":
+			var v := _menu_card("Настройки")
+			build_settings(v, func(): menu_page("settings"))
+			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+		"howto":
+			var v := _menu_card("Как играть")
+			for t in [
+				"Каждую неделю выбирай фокус тренировок и стиль игры, затем жми «К матчу».",
+				"Перед матчем выбери карту — команда сильнее на картах с высоким мастерством.",
+				"Во время матча можно взять 2 тайм-аута за карту: смена стиля и бонус на 3 раунда.",
+				"Следи за формой игроков: после тяжёлых тренировок давай отдых.",
+				"Полный набор ролей в основе (Капитан, Снайпер, Энтри, Саппорт, Лурк) даёт бонус.",
+				"Топ-4 лиги выходят в плей-офф, топ-2 повышаются в дивизионе, двое последних вылетают.",
+				"Победы дают очки тренера — вкладывай их в тактику, мотивацию и скаутинг.",
+				"Два провала целей совета подряд или долг больше $40 000 — увольнение."]:
+				v.add_child(label("•  " + t, 15))
+			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+		"about":
+			var v := _menu_card("Об игре")
+			v.add_child(label("Standoff Coach %s" % VERSION, 18))
+			v.add_child(label("Менеджер киберспортивной команды по мотивам Standoff 2.\nСделано на Godot 4.2. Все команды и игроки вымышлены.\nФан-проект, не связан с разработчиками Standoff 2.", 15, C_DIM))
+			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+		"confirm_delete":
+			var v := _menu_card("Удалить сохранение?")
+			v.add_child(label("Карьера будет удалена без возможности восстановления.", 15, C_BAD))
+			var row := hbox(10)
+			row.add_child(btn("Да, удалить", func():
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(gs.SAVE_PATH))
+				show_menu(), C_BAD))
+			row.add_child(btn("Отмена", func(): menu_page("settings")))
+			v.add_child(row)
+
+func _peek_save():
+	var f := FileAccess.open(gs.SAVE_PATH, FileAccess.READ)
+	if f == null:
+		return null
+	return JSON.parse_string(f.get_as_text())
+
+## Общий блок настроек — используется и в главном меню, и в игре.
+func build_settings(v: VBoxContainer, refresh: Callable) -> void:
+	var st: Node = get_node("/root/Settings")
+	v.add_child(label("Экран", 17, C_ACC))
+	var fs := CheckButton.new()
+	fs.text = "Полноэкранный режим"
+	fs.button_pressed = st.fullscreen
+	fs.toggled.connect(func(on): st.fullscreen = on; st.apply(); st.save_settings())
+	v.add_child(fs)
+	var vs := CheckButton.new()
+	vs.text = "Вертикальная синхронизация (VSync)"
+	vs.button_pressed = st.vsync
+	vs.toggled.connect(func(on): st.vsync = on; st.apply(); st.save_settings())
+	v.add_child(vs)
+	var r1 := hbox(10)
+	r1.add_child(cell("Масштаб интерфейса", 260))
+	var sc := OptionButton.new()
+	for s in st.UI_SCALES:
+		sc.add_item("%d%%" % int(round(s * 100)))
+	sc.selected = maxi(0, st.UI_SCALES.find(st.ui_scale))
+	sc.item_selected.connect(func(i): st.ui_scale = st.UI_SCALES[i]; st.apply(); st.save_settings())
+	r1.add_child(sc)
+	v.add_child(r1)
+	v.add_child(label("Игра", 17, C_ACC))
+	var r2 := hbox(10)
+	r2.add_child(cell("Скорость симуляции матча", 260))
+	var sp := OptionButton.new()
+	var keys: Array = st.SPEED_NAMES.keys()
+	for k in keys:
+		sp.add_item(st.SPEED_NAMES[k])
+	sp.selected = maxi(0, keys.find(st.match_speed))
+	sp.item_selected.connect(func(i): st.match_speed = keys[i]; st.save_settings())
+	r2.add_child(sp)
+	v.add_child(r2)
+	var au := CheckButton.new()
+	au.text = "Автосохранение после каждой недели"
+	au.button_pressed = st.autosave
+	au.toggled.connect(func(on): st.autosave = on; st.save_settings())
+	v.add_child(au)
+	var sb := CheckButton.new()
+	sb.text = "Показывать закупку команд в логе матча"
+	sb.button_pressed = st.show_buys
+	sb.toggled.connect(func(on): st.show_buys = on; st.save_settings())
+	v.add_child(sb)
+	var row := hbox(10)
+	row.add_child(btn("Сбросить настройки", func(): st.reset(); refresh.call()))
+	if gs.has_save() and top_label == null:
+		row.add_child(btn("Удалить сохранение", func(): menu_page("confirm_delete"), C_BAD))
+	v.add_child(row)
 
 # ------------------------------------------------------------ каркас игры
 
 func build_game() -> void:
-	for c in get_children():
-		if c is ColorRect:
-			continue
-		remove_child(c)
-		c.queue_free()
+	_clear_root()
 	var root := vbox(8)
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 12; root.offset_top = 12; root.offset_right = -12; root.offset_bottom = -12
@@ -195,6 +386,7 @@ func show_screen(name: String) -> void:
 		"league": screen_league()
 		"coach": screen_coach()
 		"system": screen_system()
+		_: screen_dashboard()
 
 func show_game_over() -> void:
 	var p := panel(C_PANEL, 24)
@@ -510,8 +702,21 @@ func screen_system() -> void:
 	p.add_child(v)
 	v.add_child(btn("Сохранить игру", func(): gs.save(); gs.add_news("Игра сохранена."); show_screen("system")))
 	v.add_child(btn("Выйти в главное меню", func(): gs.save(); show_menu()))
-	v.add_child(label("Игра сохраняется автоматически после каждой недели.", 13, C_DIM))
 	content.add_child(p)
+	var sp := panel()
+	var sv := vbox(8)
+	sp.add_child(sv)
+	build_settings(sv, func(): show_screen("system"))
+	content.add_child(sp)
+
+func _unhandled_input(e: InputEvent) -> void:
+	if not e.is_action_pressed("ui_cancel") or busy:
+		return
+	if top_label == null:
+		if menu_right != null and is_instance_valid(menu_right):
+			menu_page("home")
+	elif not in_match:
+		show_screen("system" if current != "system" else "dashboard")
 
 # ------------------------------------------------------------ матч: подготовка
 
@@ -650,11 +855,12 @@ func play(n: int) -> void:
 		if r["swap"]:
 			line = "[color=#ffb23e]— Смена сторон —[/color]\n" + line
 		var modes := {"pistol": "пистолеты", "full": "фулл-бай", "force": "форс-бай", "eco": "эко"}
-		line += "[color=#6b7280]   Закупка: вы — %s, соперник — %s[/color]\n" % [modes[r["buy"][0]], modes[r["buy"][1]]]
+		if get_node("/root/Settings").show_buys:
+			line += "[color=#6b7280]   Закупка: вы — %s, соперник — %s[/color]\n" % [modes[r["buy"][0]], modes[r["buy"][1]]]
 		m["log_text"] = str(m.get("log_text", "")) + line
 		i += 1
 		if n > 1:
-			await get_tree().create_timer(0.05).timeout
+			await get_tree().create_timer(get_node("/root/Settings").round_delay()).timeout
 		if not is_inside_tree():
 			return
 	busy = false
