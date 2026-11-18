@@ -38,7 +38,7 @@ func _gui_input(e: InputEvent) -> void:
 		accept_event()
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.2, 0.3, 0.6, 0.06))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.15, 0.2, 0.45, 0.035))
 	if strokes.is_empty():
 		draw_string(ThemeDB.fallback_font, Vector2(10, size.y * 0.55), "✎", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(0, 0, 0, 0.25))
 	draw_line(Vector2(0, size.y - 6), Vector2(size.x, size.y - 6), Color(0, 0, 0, 0.55), 1.5)

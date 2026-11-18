@@ -21,8 +21,11 @@ var m: Dictionary = {}          # состояние матча
 var busy: bool = false
 var in_match: bool = false
 
+const UITheme := preload("res://scripts/ui_theme.gd")
+
 func _ready() -> void:
 	gs = get_node("/root/GameState")
+	get_tree().root.theme = UITheme.build()
 	var bg := ColorRect.new()
 	bg.name = "BG"
 	bg.color = C_BG
@@ -49,6 +52,10 @@ func panel(color: Color = C_PANEL, pad: int = 12) -> PanelContainer:
 func label(t: String, size: int = 15, color: Color = Color.WHITE) -> Label:
 	var l := Label.new()
 	l.text = t
+	if size >= 26:
+		l.add_theme_font_override("font", UITheme.heavy())
+	elif size >= 16:
+		l.add_theme_font_override("font", UITheme.bold())
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	return l
@@ -230,15 +237,7 @@ func show_creator() -> void:
 		cr = {"attrs": _cr_random_attrs(), "err": ""}
 		_cr_random_identity()
 	_clear_root()
-	var bg := ColorRect.new()
-	bg.color = Color("171a21")
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
-	var glow := preload("res://scripts/menu_bg.gd").new()
-	glow.set_anchors_preset(Control.PRESET_FULL_RECT)
-	glow.modulate = Color(1, 1, 1, 0.25)
-	glow.show_cup = false
-	add_child(glow)
+	_photo_bg("res://assets/ui/arena_bg.jpg", 0.3)
 
 	# ---- галерея справа
 	var gal := panel(Color(0.07, 0.08, 0.1, 0.96), 12)
@@ -482,13 +481,28 @@ const INVEST := [
 const TMP_LOGO := "user://team_logo_new.png"
 var org: Dictionary = {}
 
-func _dark_bg() -> void:
-	var bg := preload("res://scripts/menu_bg.gd").new()
+func _photo_bg(path: String = "res://assets/ui/arena_bg.jpg", shade_a: float = 0.35) -> void:
+	var base := ColorRect.new()
+	base.color = Color("0e1219")
+	base.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(base)
+	var bg := TextureRect.new()
+	bg.texture = tex(path)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.show_cup = false
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 	var shade := ColorRect.new()
-	shade.color = Color(0.06, 0.07, 0.09, 0.72)
+	shade.color = Color(0.04, 0.05, 0.08, shade_a)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shade)
+
+func _dark_bg() -> void:
+	_photo_bg()
+	var shade := ColorRect.new()
+	shade.color = Color(0.06, 0.07, 0.09, 0.25)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
@@ -1113,27 +1127,48 @@ func show_contract() -> void:
 	var cc := CenterContainer.new()
 	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(cc)
+	# тень под листом
+	var shadow_wrap := PanelContainer.new()
+	var shs := StyleBoxFlat.new()
+	shs.bg_color = Color(0, 0, 0, 0)
+	shs.shadow_color = Color(0, 0, 0, 0.65)
+	shs.shadow_size = 26
+	shs.shadow_offset = Vector2(0, 8)
+	shadow_wrap.add_theme_stylebox_override("panel", shs)
+	cc.add_child(shadow_wrap)
 	var paper := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("f3f1ea")
-	sb.set_corner_radius_all(4)
-	sb.content_margin_left = 34; sb.content_margin_right = 34
-	sb.content_margin_top = 22; sb.content_margin_bottom = 18
-	sb.shadow_color = Color(0, 0, 0, 0.6)
-	sb.shadow_size = 18
+	var sb := StyleBoxTexture.new()
+	sb.texture = tex("res://assets/ui/paper.jpg")
+	sb.content_margin_left = 46; sb.content_margin_right = 46
+	sb.content_margin_top = 30; sb.content_margin_bottom = 24
 	paper.add_theme_stylebox_override("panel", sb)
-	paper.custom_minimum_size = Vector2(760, 0)
-	cc.add_child(paper)
-	var v := vbox(5)
+	paper.custom_minimum_size = Vector2(800, 0)
+	shadow_wrap.add_child(paper)
+	var v := vbox(4)
 	paper.add_child(v)
-	var ink := Color("2b2f38")
-	var dim := Color("5a606b")
-	var h1 := label(tr("УЧРЕДИТЕЛЬНЫЙ ДОГОВОР") if custom else tr("КОНТРАКТ МЕНЕДЖЕРА КОМАНДЫ"), 22, ink)
-	h1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(h1)
-	var h2 := label(tr("киберспортивной организации «%s»") % t["name"], 13, dim)
-	h2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(h2)
+	var ink := Color("23262d")
+	var dim := Color("43474f")
+	# шапка: логотип + номер документа
+	var hh := hbox(14)
+	var lp: String = str(t.get("logo", ""))
+	if tex(lp) != null:
+		hh.add_child(pic(lp, 54))
+	var hv := vbox(0)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var h1 := _serif_label(tr("УЧРЕДИТЕЛЬНЫЙ ДОГОВОР") if custom else tr("КОНТРАКТ МЕНЕДЖЕРА КОМАНДЫ"), 24, ink, true)
+	hv.add_child(h1)
+	var h2 := _serif_label(tr("киберспортивной организации «%s»") % t["name"], 14, dim)
+	hv.add_child(h2)
+	hh.add_child(hv)
+	var num := _serif_label("№ %s-%04d" % [str(t.get("tag", "SO")), abs(hash(str(t["name"]) + str(cr.get("nick", "")))) % 10000], 13, dim)
+	num.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	hh.add_child(num)
+	v.add_child(hh)
+	for i in 2:
+		var rule := ColorRect.new()
+		rule.color = Color(0.1, 0.1, 0.12, 0.6 if i == 0 else 0.25)
+		rule.custom_minimum_size = Vector2(0, 2 if i == 0 else 1)
+		v.add_child(rule)
 	var who: String = "%s \"%s\" %s" % [cr.get("name", ""), cr.get("nick", ""), cr.get("last", "")]
 	var paras: Array = []
 	if custom:
@@ -1150,19 +1185,26 @@ func show_contract() -> void:
 			[tr("Цели сезона"), tr("Совет директоров ожидает место не ниже %d в лиге «%s».") % [[4, 6, 8][int(t.get("tier", 0))], tr(gs.TIERS[int(t.get("tier", 0))])]],
 			[tr("Финансы"), tr("Менеджер распоряжается бюджетом Клуба в размере %s и отвечает за выплату зарплат игрокам и персоналу.") % money_fmt(int(t["money"]))],
 		]
+	var n_par: int = 1
 	for p in paras:
-		v.add_child(label(p[0] + ":", 13, ink))
-		v.add_child(wrap_label(p[1], 12, dim, 690))
+		v.add_child(_serif_label("%d. %s" % [n_par, p[0]], 15, ink, true))
+		var body := _serif_label(p[1], 14, dim)
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		body.custom_minimum_size = Vector2(700, 0)
+		v.add_child(body)
+		n_par += 1
 	var sep := ColorRect.new()
 	sep.color = Color(0, 0, 0, 0.12)
 	sep.custom_minimum_size = Vector2(0, 1)
 	v.add_child(sep)
-	v.add_child(label(tr("ДОПОЛНИТЕЛЬНЫЕ УСЛОВИЯ"), 13, dim))
+	v.add_child(_serif_label(tr("ДОПОЛНИТЕЛЬНЫЕ УСЛОВИЯ"), 14, ink, true))
 	for o in [["fire", tr("Менеджер может быть уволен советом директоров")],
 			["country_only", tr("Только игроки из страны организации") + " (" + tr(_country_name(str(t.get("country", "ru")))) + ")"]]:
 		var cb := CheckBox.new()
 		cb.text = o[1]
 		cb.button_pressed = bool(contract_opts[o[0]])
+		cb.add_theme_font_override("font", UITheme.serif())
+		cb.add_theme_font_size_override("font_size", 15)
 		cb.add_theme_color_override("font_color", ink)
 		cb.add_theme_color_override("font_hover_color", Color.BLACK)
 		cb.add_theme_color_override("font_pressed_color", ink)
@@ -1172,9 +1214,9 @@ func show_contract() -> void:
 		v.add_child(cb)
 	var bottom := hbox(16)
 	var dv := vbox(0)
-	dv.add_child(label(tr("Дата:"), 12, dim))
+	dv.add_child(_serif_label(tr("Дата:"), 13, dim))
 	var now := Time.get_date_dict_from_system()
-	dv.add_child(label("%02d.%02d.%d" % [now["day"], now["month"], now["year"]], 15, ink))
+	dv.add_child(_serif_label("%02d.%02d.%d" % [now["day"], now["month"], now["year"]], 16, ink, true))
 	dv.size_flags_vertical = Control.SIZE_SHRINK_END
 	bottom.add_child(dv)
 	bottom.add_child(spacer())
@@ -1183,13 +1225,21 @@ func show_contract() -> void:
 	sig.custom_minimum_size = Vector2(300, 80)
 	sv.add_child(sig)
 	var sh := hbox(8)
-	sh.add_child(label(tr("Поставьте подпись здесь"), 13, ink))
+	sh.add_child(_serif_label(tr("Поставьте подпись здесь"), 13, dim))
 	sh.add_child(spacer())
 	var clr := btn(tr("Очистить"), func(): sig.clear_sig())
 	sh.add_child(clr)
 	sv.add_child(sh)
 	bottom.add_child(sv)
 	v.add_child(bottom)
+	var stamp := preload("res://scripts/stamp.gd").new().setup(str(t["name"]), str(t.get("tag", "")))
+	stamp.visible = false
+	var anchor := Control.new()
+	anchor.custom_minimum_size = Vector2(0, 0)
+	anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sv.add_child(anchor)
+	anchor.add_child(stamp)
+	stamp.position = Vector2(-165, -118)
 	# кнопки под листом
 	var bar := hbox(10)
 	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
@@ -1202,7 +1252,21 @@ func show_contract() -> void:
 	var go := _outline_btn(tr("ПРОДОЛЖИТЬ") + "  >", func(): _finish_contract(), C_GOOD, 18)
 	go.disabled = true
 	bar.add_child(go)
-	sig.changed.connect(func(): go.disabled = not sig.has_signature())
+	sig.changed.connect(func():
+		go.disabled = not sig.has_signature()
+		if sig.has_signature() and not stamp.visible:
+			stamp.appear = 0.0
+			stamp.visible = true
+		elif not sig.has_signature():
+			stamp.visible = false)
+
+func _serif_label(t: String, size: int, color: Color, bold_f: bool = false) -> Label:
+	var l := Label.new()
+	l.text = t
+	l.add_theme_font_override("font", UITheme.serif_bold() if bold_f else UITheme.serif())
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	return l
 
 func _country_name(code: String) -> String:
 	for c in Teams.COUNTRY_LIST:
@@ -1704,9 +1768,9 @@ var nav_btns: Dictionary = {}
 
 const NAV := [
 	["dashboard", "Главная", "home"], ["mail", "Почта", "mail"], [],
-	["squad", "Состав", "squad"], ["staff", "Штат", "staff"], ["training", "Тренировка", "training"],
-	[], ["transfers", "Трансферы", "transfers"], ["league", "Турниры", "tournaments"], ["stats", "Статистика", "stats"],
-	[], ["finance", "Финансы", "finance"], ["coach", "Профиль", "profile"], [], ["system", "Настройки", "settings"],
+	["squad", "Состав", "groups"], ["staff", "Штат", "badge"], ["training", "Тренировка", "fitness_center"],
+	[], ["transfers", "Трансферы", "swap_horiz"], ["league", "Турниры", "emoji_events"], ["stats", "Статистика", "bar_chart"],
+	[], ["finance", "Финансы", "payments"], ["coach", "Профиль", "account_circle"], [], ["system", "Настройки", "settings"],
 ]
 const SCREEN_TITLES := {"dashboard": "Главная", "mail": "Почта", "squad": "Состав", "staff": "Штат", "training": "Тренировка",
 	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч"}
@@ -1755,8 +1819,8 @@ func _nav_btn(key: String, text: String, icon: String) -> Button:
 		sb.bg_color = st[1]
 		sb.set_corner_radius_all(6)
 		b.add_theme_stylebox_override(st[0], sb)
-	var ic := preload("res://scripts/icons.gd").new().setup(icon, 20)
-	ic.position = Vector2(10, 8)
+	var ic := UITheme.icon(icon, 20)
+	ic.position = Vector2(10, 7)
 	b.add_child(ic)
 	b.pressed.connect(func(): show_screen(key))
 	return b
@@ -1765,15 +1829,7 @@ func build_game() -> void:
 	_clear_root()
 	hist = []
 	hist_pos = -1
-	var bg := ColorRect.new()
-	bg.color = Color("151b26")
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
-	var glow := preload("res://scripts/menu_bg.gd").new()
-	glow.set_anchors_preset(Control.PRESET_FULL_RECT)
-	glow.show_cup = false
-	glow.modulate = Color(0.55, 0.65, 0.9, 0.12)
-	add_child(glow)
+	_photo_bg("res://assets/ui/arena_bg.jpg", 0.45)
 	var root := HBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_theme_constant_override("separation", 0)
@@ -1859,7 +1915,7 @@ func build_game() -> void:
 	show_screen("dashboard")
 
 func _nav_btn_exit() -> Button:
-	var b := _nav_btn("system", tr("Выйти в меню"), "exit")
+	var b := _nav_btn("system", tr("Выйти в меню"), "logout")
 	for c in b.pressed.get_connections():
 		b.pressed.disconnect(c["callable"])
 	b.pressed.connect(func(): gs.save(); show_menu())
@@ -1998,7 +2054,7 @@ func screen_dashboard() -> void:
 	else:
 		status_t = tr("Готовы к следующей неделе")
 		status_d = tr("Работа здесь завершена. Нажмите «Продолжить», чтобы перейти дальше.")
-	th.add_child(preload("res://scripts/icons.gd").new().setup("thumb", 34, Color("d6dbe3")))
+	th.add_child(UITheme.icon("thumb_up", 34, Color("d6dbe3")))
 	var sv := vbox(0)
 	sv.add_child(label(status_t, 15, Color.WHITE))
 	sv.add_child(label(status_d, 12, C_DIM))
@@ -2161,7 +2217,7 @@ func screen_mail() -> void:
 		v.add_child(label(tr("Писем нет."), 14, C_DIM))
 	for n in gs.news:
 		var r := hbox(10)
-		r.add_child(preload("res://scripts/icons.gd").new().setup("mail", 18, C_DIM))
+		r.add_child(UITheme.icon("mail", 18, C_DIM))
 		r.add_child(wrap_label(str(n), 13, Color("d6dbe3"), 820))
 		v.add_child(r)
 
