@@ -91,7 +91,11 @@ func tex(path: String) -> Texture2D:
 	if _tex_cache.has(path):
 		return _tex_cache[path]
 	var t: Texture2D = null
-	if ResourceLoader.exists(path):
+	if path.begins_with("user://"):
+		if FileAccess.file_exists(path):
+			var im := Image.load_from_file(path)
+			if im != null: t = ImageTexture.create_from_image(im)
+	elif ResourceLoader.exists(path):
 		t = load(path)
 	_tex_cache[path] = t
 	return t
@@ -463,7 +467,303 @@ func _cr_confirm() -> void:
 			show_creator()
 			return
 	cr["err"] = ""
-	show_team_select()
+	show_org_choice()
+
+# ------------------------------------------------------------ выбор / создание организации
+
+const TEAM_COLORS := [
+	["ffb23e", "Оранжевый"], ["e74c3c", "Красный"], ["ff4fa3", "Розовый"], ["8e44ad", "Фиолетовый"],
+	["5aa9ff", "Синий"], ["1abc9c", "Бирюзовый"], ["2ecc71", "Зелёный"], ["f1c40f", "Жёлтый"],
+	["ecf0f1", "Белый"], ["95a5a6", "Серый"], ["2c3e50", "Тёмно-синий"], ["111111", "Чёрный"],
+]
+const INVEST := [
+	{"money": 10000, "staff": 0, "name": "СЛОЖНО ($10 000)", "base": 40.0},
+	{"money": 100000, "staff": 2, "name": "НОРМАЛЬНО ($100 000)", "base": 43.0},
+	{"money": 1000000, "staff": 4, "name": "ЛЕГКО ($1 000 000)", "base": 46.0},
+	{"money": 10000000, "staff": 6, "name": "КАЗУАЛЬНО ($10 000 000)", "base": 50.0},
+]
+const TMP_LOGO := "user://team_logo_new.png"
+var org: Dictionary = {}
+
+func _dark_bg() -> void:
+	var bg := preload("res://scripts/menu_bg.gd").new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.show_cup = false
+	add_child(bg)
+	var shade := ColorRect.new()
+	shade.color = Color(0.06, 0.07, 0.09, 0.72)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shade)
+
+func _choice_card(icon: String, title_t: String, desc: String, note: String, col: Color, cb: Callable) -> Control:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.12, 0.13, 0.17, 0.95)
+	sb.set_corner_radius_all(14)
+	sb.set_border_width_all(2)
+	sb.border_color = Color(col.r, col.g, col.b, 0.25)
+	sb.set_content_margin_all(26)
+	card.add_theme_stylebox_override("panel", sb)
+	card.custom_minimum_size = Vector2(340, 440)
+	var v := vbox(14)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(v)
+	var ic := pic(icon, 170)
+	ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(ic)
+	var t := label(title_t, 22, Color.WHITE)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.custom_minimum_size = Vector2(290, 0)
+	v.add_child(t)
+	var d := wrap_label(desc, 14, Color("c9ced8"), 290)
+	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(d)
+	if note != "":
+		var f := Control.new()
+		f.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		v.add_child(f)
+		var n := label(note, 12, C_DIM)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(n)
+	var hit := Button.new()
+	hit.flat = true
+	for st in ["normal", "hover", "pressed", "focus"]:
+		hit.add_theme_stylebox_override(st, _flat_style())
+	hit.mouse_entered.connect(func():
+		sb.border_color = col; sb.bg_color = Color(0.15, 0.17, 0.22, 0.97))
+	hit.mouse_exited.connect(func():
+		sb.border_color = Color(col.r, col.g, col.b, 0.25); sb.bg_color = Color(0.12, 0.13, 0.17, 0.95))
+	hit.pressed.connect(cb)
+	card.add_child(hit)
+	_ignore_mouse(v)
+	return card
+
+func show_org_choice() -> void:
+	_clear_root()
+	_dark_bg()
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(cc)
+	var h := hbox(40)
+	cc.add_child(h)
+	h.add_child(_choice_card("res://assets/ui/ico_cup.png", tr("ВЫБРАТЬ СУЩЕСТВУЮЩУЮ ОРГАНИЗАЦИЮ"),
+		tr("Выберите одну из существующих организаций и возглавьте её. Управляйте командой и ведите её к победам."), "",
+		Color("8a7dff"), func(): show_team_select()))
+	h.add_child(_choice_card("res://assets/ui/ico_pad.png", tr("СОЗДАТЬ ОРГАНИЗАЦИЮ"),
+		tr("Создайте свою организацию с уникальным названием и стилем управления. Развивайте её с нуля и ведите к успеху."),
+		tr("* ДЛЯ ОПЫТНЫХ ИГРОКОВ"), C_GOOD, func(): org = {}; show_org_creator()))
+	var back := _outline_btn("<  " + tr("НАЗАД"), func(): show_creator(), Color("e0453a"), 16)
+	back.position = Vector2(24, 650)
+	add_child(back)
+
+func _logo_list() -> Array:
+	var res: Array = []
+	var d := DirAccess.open("res://assets/logos")
+	if d:
+		for f in d.get_files():
+			var n: String = f.trim_suffix(".import")
+			if n.ends_with(".png") and not res.has("res://assets/logos/" + n):
+				res.append("res://assets/logos/" + n)
+	res.sort()
+	return res
+
+func show_org_creator() -> void:
+	var logos: Array = _logo_list()
+	if org.is_empty():
+		org = {"country": cr.get("country", "ru"), "color": 0, "tag": "", "name": "", "desc": "", "invest": 1, "fill": true,
+			"logo": logos[randi() % logos.size()] if not logos.is_empty() else "", "err": ""}
+	_clear_root()
+	_dark_bg()
+	# галерея логотипов справа
+	var gal := panel(Color(0.07, 0.08, 0.1, 0.97), 12)
+	gal.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	gal.offset_left = -330
+	add_child(gal)
+	var gsc := ScrollContainer.new()
+	gsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	gal.add_child(gsc)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	gsc.add_child(grid)
+	for lp in logos:
+		var file: String = lp
+		var card := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color("1b1f28")
+		sb.set_corner_radius_all(10)
+		sb.set_border_width_all(2)
+		sb.border_color = Color("2fb8e8") if org["logo"] == file else Color("1b1f28")
+		sb.set_content_margin_all(6)
+		card.add_theme_stylebox_override("panel", sb)
+		card.add_child(pic(file, 138))
+		var hit := Button.new()
+		hit.flat = true
+		for st in ["normal", "hover", "pressed", "focus"]:
+			hit.add_theme_stylebox_override(st, _flat_style())
+		hit.mouse_entered.connect(func(): sb.bg_color = Color("262c38"))
+		hit.mouse_exited.connect(func(): sb.bg_color = Color("1b1f28"))
+		hit.pressed.connect(func(): org["logo"] = file; show_org_creator())
+		card.add_child(hit)
+		grid.add_child(card)
+
+	var area := Control.new()
+	area.set_anchors_preset(Control.PRESET_FULL_RECT)
+	area.offset_right = -330
+	add_child(area)
+	var ttl := label(tr("СОЗДАТЬ ОРГАНИЗАЦИЮ"), 34, Color.WHITE)
+	ttl.position = Vector2(250, 22)
+	area.add_child(ttl)
+	var fp := panel(Color(0.09, 0.1, 0.13, 0.95), 18)
+	fp.position = Vector2(40, 84)
+	fp.custom_minimum_size = Vector2(870, 520)
+	area.add_child(fp)
+	var fh := hbox(24)
+	fp.add_child(fh)
+	var fv := vbox(6)
+	fv.custom_minimum_size = Vector2(500, 0)
+	fh.add_child(fv)
+	# страна + цвет
+	var r1 := hbox(14)
+	var cv := vbox(2)
+	cv.add_child(label(tr("СТРАНА") + " *", 12, C_DIM))
+	var co := OptionButton.new()
+	for i in Teams.COUNTRY_LIST.size():
+		var c: Array = Teams.COUNTRY_LIST[i]
+		var ft: Texture2D = tex("res://assets/flags/%s.png" % c[0])
+		if ft != null: co.add_icon_item(ft, tr(c[1]))
+		else: co.add_item(tr(c[1]))
+		if c[0] == org["country"]: co.selected = i
+	co.item_selected.connect(func(i): org["country"] = Teams.COUNTRY_LIST[i][0])
+	co.custom_minimum_size = Vector2(230, 0)
+	cv.add_child(co)
+	r1.add_child(cv)
+	var colv := vbox(2)
+	colv.add_child(label(tr("ЦВЕТ КОМАНДЫ") + " *", 12, C_DIM))
+	var cob := OptionButton.new()
+	for i in TEAM_COLORS.size():
+		var img := Image.create(20, 20, false, Image.FORMAT_RGBA8)
+		img.fill(Color(TEAM_COLORS[i][0]))
+		cob.add_icon_item(ImageTexture.create_from_image(img), tr(TEAM_COLORS[i][1]))
+	cob.selected = int(org["color"])
+	cob.item_selected.connect(func(i): org["color"] = i; show_org_creator())
+	cob.custom_minimum_size = Vector2(220, 0)
+	colv.add_child(cob)
+	r1.add_child(colv)
+	fv.add_child(r1)
+	# имена
+	var r2 := hbox(14)
+	r2.add_child(_org_field(tr("КОРОТКОЕ ИМЯ") + " *", "tag", 140, 5))
+	r2.add_child(_org_field(tr("ПОЛНОЕ ИМЯ") + " *", "name", 300, 24))
+	fv.add_child(r2)
+	fv.add_child(label(tr("ОПИСАНИЕ") + " *", 12, C_DIM))
+	var de := TextEdit.new()
+	de.text = org["desc"]
+	de.placeholder_text = tr("Введите краткое описание здесь")
+	de.custom_minimum_size = Vector2(470, 64)
+	de.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	de.text_changed.connect(func(): org["desc"] = de.text)
+	fv.add_child(de)
+	# инвестиции
+	fv.add_child(label(tr("НАЧАЛЬНЫЕ ИНВЕСТИЦИИ (СЛОЖНОСТЬ)") + " *", 12, C_DIM))
+	for i in INVEST.size():
+		var cb := CheckBox.new()
+		var inv: Dictionary = INVEST[i]
+		cb.text = tr(inv["name"]) + ((("  +  %d " % inv["staff"]) + tr("(ПЕРСОНАЛ)")) if int(inv["staff"]) > 0 else "")
+		cb.button_pressed = int(org["invest"]) == i
+		var idx: int = i
+		cb.pressed.connect(func(): org["invest"] = idx; show_org_creator())
+		fv.add_child(cb)
+	fv.add_child(label(tr("ЗАПОЛНИТЬ СВОБОДНЫМИ АГЕНТАМИ") + " *", 12, C_DIM))
+	var fill := CheckBox.new()
+	fill.text = tr("НАЧАТЬ С 5 ИГРОКАМИ")
+	fill.button_pressed = bool(org["fill"])
+	fill.toggled.connect(func(on): org["fill"] = on)
+	fv.add_child(fill)
+	if str(org.get("err", "")) != "":
+		fv.add_child(label(org["err"], 13, C_BAD))
+	# логотип
+	var lv := vbox(8)
+	fh.add_child(lv)
+	lv.add_child(label(tr("ЛОГОТИП КОМАНДЫ") + " *", 12, C_DIM))
+	var lbox := PanelContainer.new()
+	var lsb := StyleBoxFlat.new()
+	var tc := Color(TEAM_COLORS[int(org["color"])][0])
+	lsb.bg_color = tc.darkened(0.35)
+	lsb.set_corner_radius_all(8)
+	lsb.set_content_margin_all(14)
+	lbox.add_theme_stylebox_override("panel", lsb)
+	var lt := TextureRect.new()
+	lt.texture = tex(str(org["logo"]))
+	lt.custom_minimum_size = Vector2(270, 270)
+	lt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	lt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	lbox.add_child(lt)
+	lv.add_child(lbox)
+	var lb := hbox(8)
+	lb.add_child(_blue_btn(tr("СЛУЧАЙНО"), func():
+		if not logos.is_empty(): org["logo"] = logos[randi() % logos.size()]
+		show_org_creator(), 12))
+	lb.add_child(_blue_btn(tr("ЗАГРУЗИТЬ"), func(): open_logo_dialog(), 12))
+	lv.add_child(lb)
+	var f2 := Control.new()
+	f2.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	lv.add_child(f2)
+	var cr8 := _outline_btn(tr("СОЗДАТЬ") + "  >", func(): _org_create(), C_GOOD, 18)
+	cr8.size_flags_horizontal = Control.SIZE_SHRINK_END
+	lv.add_child(cr8)
+	var back := _outline_btn("<  " + tr("НАЗАД"), func(): show_org_choice(), Color("e0453a"), 16)
+	back.position = Vector2(24, 650)
+	area.add_child(back)
+
+func _org_field(title_t: String, key: String, w: int, maxlen: int) -> VBoxContainer:
+	var v := vbox(2)
+	v.add_child(label(title_t, 12, C_DIM))
+	var e := LineEdit.new()
+	e.text = str(org.get(key, ""))
+	e.max_length = maxlen
+	e.custom_minimum_size = Vector2(w, 36)
+	e.text_changed.connect(func(t): org[key] = t)
+	v.add_child(e)
+	return v
+
+func open_logo_dialog() -> void:
+	var fd := FileDialog.new()
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	fd.access = FileDialog.ACCESS_FILESYSTEM
+	fd.filters = PackedStringArray([tr("*.png, *.jpg, *.jpeg, *.webp ; Изображения")])
+	fd.use_native_dialog = true
+	fd.size = Vector2i(900, 560)
+	add_child(fd)
+	fd.file_selected.connect(func(path):
+		var img := Image.load_from_file(path)
+		if img != null and not img.is_empty():
+			var s: int = mini(img.get_width(), img.get_height())
+			img = img.get_region(Rect2i((img.get_width() - s) / 2, (img.get_height() - s) / 2, s, s))
+			img.resize(256, 256, Image.INTERPOLATE_LANCZOS)
+			img.save_png(TMP_LOGO)
+			_tex_cache.erase(TMP_LOGO)
+			org["logo"] = TMP_LOGO
+		show_org_creator()
+		fd.queue_free())
+	fd.canceled.connect(func(): fd.queue_free())
+	fd.popup_centered()
+
+func _org_create() -> void:
+	var tag: String = str(org["tag"]).strip_edges().to_upper()
+	var nm: String = str(org["name"]).strip_edges()
+	if tag == "" or nm == "":
+		org["err"] = tr("Заполните короткое и полное имя.")
+		show_org_creator()
+		return
+	var inv: Dictionary = INVEST[int(org["invest"])]
+	var desc: String = str(org["desc"]).strip_edges()
+	start_career({"name": nm, "tag": tag, "color": TEAM_COLORS[int(org["color"])][0], "diff": 2, "base": inv["base"],
+		"money": inv["money"], "rep": 5.0, "logo": str(org["logo"]), "desc": desc if desc != "" else tr("Новая организация."),
+		"staff": inv["staff"], "empty_roster": not bool(org["fill"]), "custom": true})
 
 func open_photo_dialog() -> void:
 	var fd := FileDialog.new()
@@ -549,7 +849,7 @@ func show_team_select() -> void:
 		start_career({"name": n, "tag": tag, "color": "ffffff", "diff": 2, "base": 43.0, "money": 60000, "rep": 10.0}), C_GOOD))
 	grid.add_child(cp)
 	var bottom := hbox(12)
-	bottom.add_child(btn(tr("Назад к менеджеру"), func(): show_creator(), C_DIM))
+	bottom.add_child(btn(tr("Назад"), func(): show_org_choice(), C_DIM))
 	root.add_child(bottom)
 
 func team_card(t: Dictionary) -> Control:
@@ -601,6 +901,12 @@ func start_career(team: Dictionary) -> void:
 		photo = gs.photo_path_for(gs.slot)
 	if photo == "":
 		photo = str(cr.get("portrait", ""))
+	if str(team.get("logo", "")) == TMP_LOGO:
+		var dst: String = "user://team_logo_%d.png" % gs.slot
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(TMP_LOGO), ProjectSettings.globalize_path(dst))
+		team = team.duplicate()
+		team["logo"] = dst
+		_tex_cache.erase(dst)
 	gs.new_game({"name": "%s %s" % [cr["name"], cr["last"]], "nick": str(cr.get("nick", "")), "age": _cr_age(), "country": _cr_country_name(),
 		"country_code": cr["country"], "gender": cr["gender"], "birth": [cr["day"], cr["month"], cr["year"]], "attrs": cr["attrs"], "avatar": {}, "photo": photo}, team)
 	cr = {}

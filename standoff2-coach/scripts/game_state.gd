@@ -78,6 +78,8 @@ var photo_path: String = ""
 var team_tag: String = ""
 var team_color: String = "ffb23e"
 var team_logo: String = ""
+var team_desc: String = ""
+var staff_count: int = 0
 var staff_coach: String = ""
 var staff_photo: String = ""
 
@@ -156,6 +158,7 @@ func team_power(st: String, map_name: String) -> Dictionary:
 	bonus += float(coach_skill["tactics"]) * 0.7
 	if staff_coach != "":
 		bonus += 1.5
+	bonus += float(staff_count) * 0.4
 	bonus += (float(map_skill.get(map_name, 40)) - 40.0) / 8.0
 	var a: float = s + bonus
 	var d: float = s + bonus
@@ -201,6 +204,8 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	team_tag = str(team.get("tag", team_name.substr(0, 3).to_upper()))
 	team_color = str(team.get("color", "ffb23e"))
 	team_logo = str(team.get("logo", ""))
+	team_desc = str(team.get("desc", ""))
+	staff_count = int(team.get("staff", 0))
 	var staff: Dictionary = team.get("coach", {})
 	staff_coach = str(staff.get("name", ""))
 	staff_photo = str(staff.get("photo", ""))
@@ -249,7 +254,9 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 		map_skill[m] = randi_range(32, 52)
 	train_map = MAPS[0]
 	var roster: Array = team.get("roster", [])
-	if roster.is_empty():
+	if bool(team.get("empty_roster", false)):
+		pass
+	elif roster.is_empty():
 		for r in ROLES:
 			players.append(gen_player(base, r))
 		for p in players:
@@ -263,7 +270,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
 			p["salary"] = int(300 + (ovr(p) - 30) * 32)
 			players.append(p)
-	if roster.is_empty():
+	if roster.is_empty() and not bool(team.get("empty_roster", false)):
 		players.append(gen_player(base - 4.0))
 	_start_league()
 	_refresh_market(12)
@@ -529,7 +536,7 @@ func _finances() -> String:
 	var salaries: int = 0
 	for p in players:
 		salaries += int(p["salary"])
-	var staff: int = 800 + tier * 600
+	var staff: int = 800 + tier * 600 + staff_count * 400
 	var net: int = income - salaries - staff
 	money += net
 	return tr("Спонсоры +$%d, зарплаты -$%d, штаб -$%d (итого %s$%d)") % [income, salaries, staff, "+" if net >= 0 else "-", abs(net)]
@@ -692,7 +699,7 @@ func to_dict() -> Dictionary:
 		"coach_age": coach_age, "coach_nick": coach_nick, "coach_gender": coach_gender, "coach_country_code": coach_country_code,
 		"coach_birth": coach_birth, "coach_attrs": coach_attrs, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
 		"photo_path": photo_path, "team_tag": team_tag, "team_color": team_color,
-		"team_logo": team_logo, "staff_coach": staff_coach, "staff_photo": staff_photo,
+		"team_logo": team_logo, "team_desc": team_desc, "staff_count": staff_count, "staff_coach": staff_coach, "staff_photo": staff_photo,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -751,6 +758,8 @@ func from_dict(d: Dictionary) -> void:
 	team_tag = str(d.get("team_tag", team_name.substr(0, 3).to_upper()))
 	team_color = str(d.get("team_color", "ffb23e"))
 	team_logo = str(d.get("team_logo", ""))
+	team_desc = str(d.get("team_desc", ""))
+	staff_count = int(d.get("staff_count", 0))
 	staff_coach = str(d.get("staff_coach", ""))
 	staff_photo = str(d.get("staff_photo", ""))
 	changed.emit()
