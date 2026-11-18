@@ -47,3 +47,43 @@ const BACKGROUNDS := [
 ]
 
 const COUNTRIES := ["Россия", "Украина", "Беларусь", "Казахстан", "Узбекистан", "Кыргызстан", "Армения", "Грузия", "Азербайджан", "Молдова", "Другая"]
+
+## Страны: код флага (assets/flags/<код>.png) и название.
+const COUNTRY_LIST := [
+	["ru", "Россия"], ["ua", "Украина"], ["by", "Беларусь"], ["kz", "Казахстан"], ["uz", "Узбекистан"],
+	["kg", "Кыргызстан"], ["tj", "Таджикистан"], ["am", "Армения"], ["ge", "Грузия"], ["az", "Азербайджан"],
+	["md", "Молдова"], ["pl", "Польша"], ["de", "Германия"], ["us", "США"], ["xx", "Другая"],
+]
+
+## Качества менеджера парами (левое / правое), 0..20 каждое, общий пул очков.
+const ATTR_PAIRS := [
+	["communication", "Коммуникация", "finance", "Фин. грамотность"],
+	["tactics", "Тактика", "stress", "Стрессоустойчивость"],
+	["motivation", "Мотивация", "image", "Публичный имидж"],
+	["scouting", "Скаутинг", "vision", "Видение игры"],
+	["leadership", "Лидерство", "loyalty", "Лояльность"],
+	["discipline", "Дисциплина", "analytics", "Аналитика"],
+]
+const ATTR_MAX := 20
+const ATTR_POOL := 100
+
+## Галерея готовых менеджеров (фотореалистичные портреты вымышленных людей).
+const MANAGER_PORTRAITS := [
+	{"file": "res://assets/managers/m01.png", "name": "Артём", "gender": "m"},
+	{"file": "res://assets/managers/f01.png", "name": "Алина", "gender": "f"},
+	{"file": "res://assets/managers/m02.png", "name": "Тимур", "gender": "m"},
+	{"file": "res://assets/managers/f02.png", "name": "Дана", "gender": "f"},
+	{"file": "res://assets/managers/m03.png", "name": "Марк", "gender": "m"},
+	{"file": "res://assets/managers/f03.png", "name": "Вероника", "gender": "f"},
+	{"file": "res://assets/managers/m04.png", "name": "Руслан", "gender": "m"},
+	{"file": "res://assets/managers/f04.png", "name": "Камила", "gender": "f"},
+	{"file": "res://assets/managers/m05.png", "name": "Давид", "gender": "m"},
+	{"file": "res://assets/managers/f05.png", "name": "София", "gender": "f"},
+	{"file": "res://assets/managers/m06.png", "name": "Олег", "gender": "m"},
+	{"file": "res://assets/managers/f06.png", "name": "Ева", "gender": "f"},
+]
+
+const FIRST_M := ["Артём", "Максим", "Тимур", "Даниил", "Руслан", "Марк", "Илья", "Арсен", "Никита", "Егор"]
+const FIRST_F := ["Алина", "Дана", "София", "Камила", "Ева", "Вероника", "Мария", "Аружан", "Полина", "Диана"]
+const LAST := ["Иванов", "Ким", "Алиев", "Смирнов", "Петров", "Нуриев", "Ковалёв", "Сергеев", "Ахмедов", "Орлов"]
+const NICKS := ["sirzephyr", "noahlord", "kingpin", "tactix", "mindgame", "coldcall", "ironmind", "blueprint", "overwatch", "maestro"]

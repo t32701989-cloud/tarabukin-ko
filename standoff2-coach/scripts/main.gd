@@ -158,151 +158,311 @@ func _wizard_root(step: String) -> VBoxContainer:
 	root.add_child(h)
 	return root
 
+const MONTHS := ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+
+func _cr_random_attrs() -> Dictionary:
+	var a := {}
+	for p in Teams.ATTR_PAIRS:
+		a[p[0]] = 0
+		a[p[2]] = 0
+	var keys: Array = a.keys()
+	var left: int = Teams.ATTR_POOL
+	while left > 0:
+		var k: String = keys[randi() % keys.size()]
+		if int(a[k]) < Teams.ATTR_MAX:
+			a[k] = int(a[k]) + 1
+			left -= 1
+	return a
+
+func _cr_points_left() -> int:
+	var s: int = 0
+	for k in cr["attrs"]:
+		s += int(cr["attrs"][k])
+	return Teams.ATTR_POOL - s
+
+func _cr_random_identity() -> void:
+	var g: String = "m" if randf() < 0.5 else "f"
+	cr["gender"] = g
+	cr["name"] = (Teams.FIRST_M if g == "m" else Teams.FIRST_F)[randi() % 10]
+	var ln: String = Teams.LAST[randi() % Teams.LAST.size()]
+	if g == "f" and (ln.ends_with("ов") or ln.ends_with("ев") or ln.ends_with("ёв") or ln.ends_with("ин")):
+		ln += "а"
+	cr["last"] = ln
+	cr["nick"] = Teams.NICKS[randi() % Teams.NICKS.size()]
+	cr["country"] = Teams.COUNTRY_LIST[randi() % 6][0]
+	cr["day"] = randi_range(1, 28)
+	cr["month"] = randi_range(1, 12)
+	cr["year"] = randi_range(1975, 2000)
+	_cr_random_portrait()
+
+func _cr_random_portrait() -> void:
+	var pool: Array = Teams.MANAGER_PORTRAITS.filter(func(x): return x["gender"] == cr["gender"])
+	if pool.is_empty():
+		pool = Teams.MANAGER_PORTRAITS
+	cr["portrait"] = pool[randi() % pool.size()]["file"]
+	cr_photo = null
+	cr["photo"] = ""
+
+func _cr_age() -> int:
+	var now := Time.get_date_dict_from_system()
+	var age: int = int(now["year"]) - int(cr["year"])
+	if int(now["month"]) < int(cr["month"]) or (int(now["month"]) == int(cr["month"]) and int(now["day"]) < int(cr["day"])):
+		age -= 1
+	return age
+
+func _cr_country_name() -> String:
+	for c in Teams.COUNTRY_LIST:
+		if c[0] == cr["country"]:
+			return c[1]
+	return "Другая"
+
+func _cr_portrait_tex() -> Texture2D:
+	if cr_photo != null:
+		return cr_photo
+	return tex(str(cr.get("portrait", "")))
+
+func _blue_btn(t: String, cb: Callable, size: int = 15) -> Button:
+	return _outline_btn(t, cb, Color("2fb8e8"), size)
+
 func show_creator() -> void:
 	if cr.is_empty():
-		cr = {"name": "Алексей", "age": 32, "country": "Россия", "bg": "pro", "avatar": Avatar.random_cfg(), "photo": "", "variants": [], "err": ""}
-		cr_photo = null
-	if cr["variants"].is_empty():
-		for i in 6:
-			cr["variants"].append(Avatar.random_cfg())
-	var root := _wizard_root(tr("Шаг 1 из 2 · Создание менеджера"))
-	var body := hbox(18)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(body)
+		cr = {"attrs": _cr_random_attrs(), "err": ""}
+		_cr_random_identity()
+	_clear_root()
+	var bg := ColorRect.new()
+	bg.color = Color("171a21")
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var glow := preload("res://scripts/menu_bg.gd").new()
+	glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glow.modulate = Color(1, 1, 1, 0.25)
+	glow.show_cup = false
+	add_child(glow)
 
-	# --- внешность
-	var lp := panel(C_PANEL, 16)
-	var lv := vbox(10)
-	lp.add_child(lv)
-	body.add_child(lp)
-	var top := hbox(16)
-	lv.add_child(top)
-	top.add_child(make_avatar(cr["avatar"], 190, cr_photo))
-	var tb := vbox(8)
-	top.add_child(tb)
-	tb.add_child(label(tr("Внешность"), 18, C_ACC))
-	tb.add_child(btn(tr("Случайная внешность"), func():
-		cr["avatar"] = Avatar.random_cfg(); show_creator()))
-	tb.add_child(btn(tr("Загрузить своё фото..."), func(): open_photo_dialog()))
-	if cr_photo != null:
-		tb.add_child(btn(tr("Убрать фото"), func():
-			cr_photo = null; cr["photo"] = ""; show_creator(), C_BAD))
-		tb.add_child(wrap_label(tr("Используется загруженное фото."), 13, C_GOOD, 200))
-	else:
-		tb.add_child(wrap_label(tr("PNG / JPG / WEBP, фото обрежется до квадрата."), 13, C_DIM, 200))
-	if str(cr.get("err", "")) != "":
-		tb.add_child(wrap_label(cr["err"], 13, C_BAD, 200))
-	lv.add_child(label(tr("Варианты внешности — нажми, чтобы выбрать:"), 14, C_DIM))
-	var grid := hbox(6)
-	for vcfg in cr["variants"]:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(66, 66)
-		var av := make_avatar(vcfg, 58)
-		av.position = Vector2(4, 4)
-		b.add_child(av)
-		var c: Dictionary = vcfg
-		b.pressed.connect(func():
-			cr["avatar"] = c.duplicate(); cr_photo = null; cr["photo"] = ""; show_creator())
-		grid.add_child(b)
-	lv.add_child(grid)
-	lv.add_child(btn(tr("Ещё варианты"), func():
-		cr["variants"] = []; show_creator()))
-	# редактор частей
-	var parts := GridContainer.new()
-	parts.columns = 2
-	parts.add_theme_constant_override("h_separation", 22)
-	parts.add_theme_constant_override("v_separation", 4)
-	for part in Avatar.PARTS:
-		var key: String = part[0]
-		var cnt: int = part[2]
-		var row := hbox(4)
-		row.add_child(cell(part[1], 92, C_DIM, 13))
-		row.add_child(btn("<", func():
-			cr["avatar"][key] = (int(cr["avatar"].get(key, 0)) - 1 + cnt) % cnt; show_creator()))
-		var val := cell(Avatar.part_value_name(key, int(cr["avatar"].get(key, 0))), 96, Color.WHITE, 13)
-		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		row.add_child(val)
-		row.add_child(btn(">", func():
-			cr["avatar"][key] = (int(cr["avatar"].get(key, 0)) + 1) % cnt; show_creator()))
-		parts.add_child(row)
-	lv.add_child(parts)
-
-	# --- анкета
-	var rp := panel(C_PANEL, 16)
-	rp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var rv := vbox(8)
-	rp.add_child(rv)
-	body.add_child(rp)
-	rv.add_child(label(tr("Анкета менеджера"), 18, C_ACC))
-	rv.add_child(label(tr("Имя"), 13, C_DIM))
-	var name_edit := LineEdit.new()
-	name_edit.text = cr["name"]
-	name_edit.max_length = 24
-	name_edit.placeholder_text = tr("Имя менеджера")
-	name_edit.text_changed.connect(func(t): cr["name"] = t)
-	rv.add_child(name_edit)
-	rv.add_child(label(tr("Никнейм (необязательно)"), 13, C_DIM))
-	var nick_edit := LineEdit.new()
-	nick_edit.text = str(cr.get("nick", ""))
-	nick_edit.max_length = 20
-	nick_edit.placeholder_text = "sirzephyr"
-	nick_edit.text_changed.connect(func(t): cr["nick"] = t)
-	rv.add_child(nick_edit)
-	var r2 := hbox(16)
-	var agev := vbox(4)
-	agev.add_child(label(tr("Возраст"), 13, C_DIM))
-	var age := SpinBox.new()
-	age.min_value = 21
-	age.max_value = 65
-	age.value = cr["age"]
-	age.value_changed.connect(func(v): cr["age"] = int(v))
-	agev.add_child(age)
-	r2.add_child(agev)
-	var cv := vbox(4)
-	cv.add_child(label(tr("Страна"), 13, C_DIM))
-	var co := OptionButton.new()
-	for c2 in Teams.COUNTRIES:
-		co.add_item(c2)
-	co.selected = maxi(0, Teams.COUNTRIES.find(cr["country"]))
-	co.item_selected.connect(func(i): cr["country"] = Teams.COUNTRIES[i])
-	cv.add_child(co)
-	r2.add_child(cv)
-	rv.add_child(r2)
-	rv.add_child(label(tr("Предыстория (бонус на старте)"), 13, C_DIM))
-	var bgrid := GridContainer.new()
-	bgrid.columns = 2
-	bgrid.add_theme_constant_override("h_separation", 8)
-	bgrid.add_theme_constant_override("v_separation", 8)
-	for b2 in Teams.BACKGROUNDS:
-		var id: String = b2["id"]
-		var sel: bool = cr["bg"] == id
-		var bp := panel(Color("3a2f1c") if sel else Color("262a33"), 10)
-		bp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var bb := vbox(2)
-		bp.add_child(bb)
-		bb.add_child(label(("> " if sel else "") + tr(b2["name"]), 15, C_ACC if sel else Color.WHITE))
-		bb.add_child(label(b2["desc"], 12, C_DIM))
+	# ---- галерея справа
+	var gal := panel(Color(0.07, 0.08, 0.1, 0.96), 12)
+	gal.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	gal.offset_left = -300
+	add_child(gal)
+	var gsc := ScrollContainer.new()
+	gsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	gal.add_child(gsc)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	gsc.add_child(grid)
+	for mp in Teams.MANAGER_PORTRAITS:
+		var file: String = mp["file"]
+		var sel: bool = cr_photo == null and str(cr.get("portrait", "")) == file
+		var card := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color("232833")
+		sb.set_corner_radius_all(10)
+		sb.set_border_width_all(2)
+		sb.border_color = Color("2fb8e8") if sel else Color("232833")
+		sb.set_content_margin_all(6)
+		card.add_theme_stylebox_override("panel", sb)
+		var cv := vbox(2)
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(pic(file, 120))
+		var nl := label(tr(mp["name"]), 16, Color.WHITE)
+		nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cv.add_child(nl)
+		card.add_child(cv)
 		var hit := Button.new()
 		hit.flat = true
-		hit.set_anchors_preset(Control.PRESET_FULL_RECT)
-		hit.pressed.connect(func(): cr["bg"] = id; show_creator())
-		bp.add_child(hit)
-		bgrid.add_child(bp)
-	rv.add_child(bgrid)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			hit.add_theme_stylebox_override(st, _flat_style())
+		hit.mouse_entered.connect(func(): sb.bg_color = Color("2c3442"))
+		hit.mouse_exited.connect(func(): sb.bg_color = Color("232833"))
+		var g: String = mp["gender"]
+		hit.pressed.connect(func():
+			cr["portrait"] = file; cr["gender"] = g; cr_photo = null; cr["photo"] = ""; show_creator())
+		card.add_child(hit)
+		grid.add_child(card)
 
-	var bottom := hbox(12)
-	bottom.add_child(btn(tr("Назад"), func(): cr = {}; show_slots("new"), C_DIM))
-	bottom.add_child(spacer())
+	# ---- центральная часть
+	var main_area := Control.new()
+	main_area.set_anchors_preset(Control.PRESET_FULL_RECT)
+	main_area.offset_right = -300
+	add_child(main_area)
+	var ttl := label(tr("СОЗДАТЬ МЕНЕДЖЕРА"), 34, Color.WHITE)
+	ttl.position = Vector2(400, 28)
+	main_area.add_child(ttl)
+
+	# качества (слева)
+	var ap := panel(Color(0.09, 0.1, 0.13, 0.95), 14)
+	ap.position = Vector2(24, 96)
+	ap.custom_minimum_size = Vector2(372, 0)
+	main_area.add_child(ap)
+	var av := vbox(4)
+	ap.add_child(av)
+	for pair in Teams.ATTR_PAIRS:
+		var lk: String = pair[0]
+		var rk: String = pair[2]
+		var names := hbox(0)
+		names.add_child(label(tr(pair[1]).to_upper(), 11, Color("d6dbe3")))
+		names.add_child(spacer())
+		names.add_child(label(tr(pair[3]).to_upper(), 11, Color("d6dbe3")))
+		av.add_child(names)
+		var row := hbox(2)
+		var ls := HSlider.new()
+		ls.min_value = 0
+		ls.max_value = Teams.ATTR_MAX
+		ls.value = Teams.ATTR_MAX - int(cr["attrs"][lk])
+		ls.custom_minimum_size = Vector2(150, 18)
+		var rs := HSlider.new()
+		rs.min_value = 0
+		rs.max_value = Teams.ATTR_MAX
+		rs.value = int(cr["attrs"][rk])
+		rs.custom_minimum_size = Vector2(150, 18)
+		var lv := cell(str(int(cr["attrs"][lk])), 24, C_GOOD, 13)
+		var rv2 := cell(str(int(cr["attrs"][rk])), 24, C_GOOD, 13)
+		rv2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		ls.value_changed.connect(func(v): _cr_set_attr(lk, Teams.ATTR_MAX - int(v), ls, true))
+		rs.value_changed.connect(func(v): _cr_set_attr(rk, int(v), rs, false))
+		row.add_child(lv)
+		row.add_child(ls)
+		row.add_child(rs)
+		row.add_child(rv2)
+		av.add_child(row)
+	var abot := hbox(8)
+	abot.add_child(_blue_btn(tr("СЛУЧАЙНО"), func(): cr["attrs"] = _cr_random_attrs(); show_creator(), 13))
+	abot.add_child(spacer())
+	abot.add_child(label(tr("ОСТАЛОСЬ ОЧКОВ:"), 13, Color.WHITE))
+	abot.add_child(label(str(_cr_points_left()), 18, C_GOOD if _cr_points_left() == 0 else C_ACC))
+	av.add_child(abot)
+	av.add_child(wrap_label(tr("Тактика и видение игры усиливают команду, мотивация и лидерство — форму игроков, скаутинг — трансферы, фин. грамотность — бюджет, имидж — репутацию."), 11, C_DIM, 340))
+
+	# анкета (центр)
+	var fp := panel(Color(0.09, 0.1, 0.13, 0.95), 16)
+	fp.position = Vector2(410, 96)
+	fp.custom_minimum_size = Vector2(560, 400)
+	main_area.add_child(fp)
+	var fh := hbox(10)
+	fp.add_child(fh)
+	var fv := vbox(4)
+	fv.custom_minimum_size = Vector2(250, 0)
+	fh.add_child(fv)
+	var r1 := hbox(8)
+	r1.add_child(_cr_field(tr("НИК") + " *", "nick", 110))
+	r1.add_child(_cr_field(tr("ИМЯ") + " *", "name", 130))
+	fv.add_child(r1)
+	fv.add_child(_cr_field(tr("ФАМИЛИЯ") + " *", "last", 250))
+	fv.add_child(label(tr("ПОЛ") + " *", 12, C_DIM))
+	var gr := hbox(16)
+	for gv in [["m", tr("М")], ["f", tr("Ж")]]:
+		var cb := CheckBox.new()
+		cb.text = gv[1]
+		cb.button_pressed = cr["gender"] == gv[0]
+		var gk: String = gv[0]
+		cb.pressed.connect(func():
+			if cr["gender"] != gk:
+				cr["gender"] = gk
+				if cr_photo == null: _cr_random_portrait()
+				show_creator()
+			else:
+				cb.button_pressed = true)
+		gr.add_child(cb)
+	fv.add_child(gr)
+	fv.add_child(label(tr("СТРАНА") + " *", 12, C_DIM))
+	var co := OptionButton.new()
+	for i in Teams.COUNTRY_LIST.size():
+		var c: Array = Teams.COUNTRY_LIST[i]
+		var ft: Texture2D = tex("res://assets/flags/%s.png" % c[0])
+		if ft != null:
+			co.add_icon_item(ft, tr(c[1]))
+		else:
+			co.add_item(tr(c[1]))
+		if c[0] == cr["country"]:
+			co.selected = i
+	co.item_selected.connect(func(i): cr["country"] = Teams.COUNTRY_LIST[i][0])
+	fv.add_child(co)
+	fv.add_child(label(tr("ДАТА РОЖДЕНИЯ") + " *", 12, C_DIM))
+	var dr := hbox(6)
+	var dd := OptionButton.new()
+	for d in range(1, 32):
+		dd.add_item(str(d))
+	dd.selected = int(cr["day"]) - 1
+	dd.item_selected.connect(func(i): cr["day"] = i + 1)
+	dr.add_child(dd)
+	var mm := OptionButton.new()
+	for mo in MONTHS:
+		mm.add_item(tr(mo))
+	mm.selected = int(cr["month"]) - 1
+	mm.item_selected.connect(func(i): cr["month"] = i + 1)
+	dr.add_child(mm)
+	var yy := OptionButton.new()
+	var years: Array = range(2005, 1959, -1)
+	for y in years:
+		yy.add_item(str(y))
+	yy.selected = maxi(0, years.find(int(cr["year"])))
+	yy.item_selected.connect(func(i): cr["year"] = years[i])
+	dr.add_child(yy)
+	fv.add_child(dr)
+	if str(cr.get("err", "")) != "":
+		fv.add_child(label(cr["err"], 12, C_BAD))
+	# портрет
+	var pv := vbox(6)
+	fh.add_child(pv)
+	var pb := hbox(6)
+	pb.add_child(spacer())
+	pb.add_child(_blue_btn(tr("ЗАГРУЗИТЬ"), func(): open_photo_dialog(), 12))
+	pv.add_child(pb)
+	var portrait := TextureRect.new()
+	portrait.texture = _cr_portrait_tex()
+	portrait.custom_minimum_size = Vector2(270, 270)
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pv.add_child(portrait)
+	var pb2 := hbox(6)
+	pb2.add_child(spacer())
+	pb2.add_child(_blue_btn(tr("СЛУЧАЙНО"), func(): _cr_random_portrait(); show_creator(), 12))
+	pv.add_child(pb2)
+
+	# нижние кнопки
+	var bb := hbox(14)
+	bb.position = Vector2(470, 520)
+	bb.add_child(_blue_btn(tr("РАНДОМИЗИРОВАТЬ ВСЁ"), func():
+		cr["attrs"] = _cr_random_attrs(); _cr_random_identity(); show_creator(), 15))
+	bb.add_child(_blue_btn(tr("ВЫБРАТЬ МЕНЕДЖЕРА") + "  >", func(): _cr_confirm(), 15))
+	main_area.add_child(bb)
 	if cr_slot > 0 and gs.read_slot(cr_slot) != null:
-		bottom.add_child(label(tr("Карьера в слоте %d будет заменена") % cr_slot, 13, C_BAD))
-	bottom.add_child(menu_btn(tr("Далее: выбор команды"), func():
-		if str(cr["name"]).strip_edges() == "":
-			cr["err"] = tr("Введите имя менеджера.")
+		var w := label(tr("Карьера в слоте %d будет заменена") % cr_slot, 13, C_BAD)
+		w.position = Vector2(470, 580)
+		main_area.add_child(w)
+	var back := _outline_btn("<  " + tr("НАЗАД"), func(): cr = {}; show_slots("new"), Color("e0453a"), 16)
+	back.position = Vector2(24, 640)
+	main_area.add_child(back)
+
+func _cr_field(title: String, key: String, w: int) -> VBoxContainer:
+	var v := vbox(2)
+	v.add_child(label(title, 12, C_DIM))
+	var e := LineEdit.new()
+	e.text = str(cr.get(key, ""))
+	e.max_length = 20
+	e.custom_minimum_size = Vector2(w, 34)
+	e.text_changed.connect(func(t): cr[key] = t)
+	v.add_child(e)
+	return v
+
+func _cr_set_attr(key: String, val: int, slider: HSlider, inverted: bool) -> void:
+	var cur: int = int(cr["attrs"][key])
+	var left: int = _cr_points_left()
+	if val - cur > left:
+		val = cur + left
+	cr["attrs"][key] = val
+	show_creator.call_deferred()
+
+func _cr_confirm() -> void:
+	for k in ["nick", "name", "last"]:
+		if str(cr.get(k, "")).strip_edges() == "":
+			cr["err"] = tr("Заполните ник, имя и фамилию.")
 			show_creator()
 			return
-		cr["err"] = ""
-		show_team_select(), true))
-	root.add_child(bottom)
+	cr["err"] = ""
+	show_team_select()
 
 func open_photo_dialog() -> void:
 	var fd := FileDialog.new()
@@ -339,8 +499,13 @@ func apply_photo(path: String) -> void:
 func show_team_select() -> void:
 	var root := _wizard_root(tr("Шаг 2 из 2 · Выбор команды"))
 	var info := hbox(12)
-	info.add_child(make_avatar(cr["avatar"], 44, cr_photo))
-	info.add_child(label(tr("%s, %d лет · выберите клуб, который возглавите") % [cr["name"], cr["age"]], 16, C_DIM))
+	var it := TextureRect.new()
+	it.texture = _cr_portrait_tex()
+	it.custom_minimum_size = Vector2(48, 48)
+	it.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	it.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	info.add_child(it)
+	info.add_child(label(tr("%s, %d лет · выберите клуб, который возглавите") % ["%s \"%s\" %s" % [cr["name"], cr["nick"], cr["last"]], _cr_age()], 16, C_DIM))
 	info.get_child(1).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	root.add_child(info)
 	var sc := ScrollContainer.new()
@@ -433,7 +598,10 @@ func start_career(team: Dictionary) -> void:
 	if str(cr.get("photo", "")) != "" and FileAccess.file_exists(TMP_PHOTO):
 		DirAccess.copy_absolute(ProjectSettings.globalize_path(TMP_PHOTO), ProjectSettings.globalize_path(gs.photo_path_for(gs.slot)))
 		photo = gs.photo_path_for(gs.slot)
-	gs.new_game({"name": cr["name"], "nick": str(cr.get("nick", "")), "age": cr["age"], "country": cr["country"], "bg": cr["bg"], "avatar": cr["avatar"], "photo": photo}, team)
+	if photo == "":
+		photo = str(cr.get("portrait", ""))
+	gs.new_game({"name": "%s %s" % [cr["name"], cr["last"]], "nick": str(cr.get("nick", "")), "age": _cr_age(), "country": _cr_country_name(),
+		"country_code": cr["country"], "gender": cr["gender"], "birth": [cr["day"], cr["month"], cr["year"]], "attrs": cr["attrs"], "avatar": {}, "photo": photo}, team)
 	cr = {}
 	cr_photo = null
 	build_game()
@@ -715,10 +883,7 @@ func slot_card(d: Dictionary, sl: int) -> Control:
 	info.add_child(r2)
 	h.add_child(info)
 	var ph: Texture2D = null
-	var pp: String = str(d.get("photo_path", ""))
-	if pp != "" and FileAccess.file_exists(pp):
-		var im := Image.load_from_file(pp)
-		if im: ph = ImageTexture.create_from_image(im)
+	ph = gs.photo_texture(str(d.get("photo_path", "")))
 	var av := make_avatar(d.get("avatar", {}), 88, ph)
 	av.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(av)

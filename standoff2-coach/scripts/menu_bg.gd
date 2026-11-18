@@ -7,6 +7,7 @@ const TILE := 150.0
 var tiles: Array = []      # [{color, tag, logo}]
 var t: float = 0.0
 var font: Font
+var show_cup: bool = true
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -54,7 +55,8 @@ func _draw() -> void:
 		var a: float = 0.92 * (1.0 - float(i) / steps)
 		draw_rect(Rect2(i * sz.x * 0.6 / steps, 0, sz.x * 0.6 / steps + 1, sz.y), Color(0.06, 0.07, 0.09, a))
 	draw_rect(Rect2(Vector2.ZERO, sz), Color(0.06, 0.07, 0.09, 0.35))
-	_draw_cup(Vector2(sz.x * 0.68, sz.y * 0.52), minf(sz.y / 720.0, sz.x / 1280.0))
+	if show_cup:
+		_draw_cup(Vector2(sz.x * 0.68, sz.y * 0.52), minf(sz.y / 720.0, sz.x / 1280.0))
 
 func _ell(c: Vector2, rx: float, ry: float, a0: float, a1: float, n: int = 24) -> PackedVector2Array:
 	var p := PackedVector2Array()

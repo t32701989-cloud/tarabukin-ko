@@ -67,6 +67,10 @@ var last_report: String = ""
 # профиль менеджера
 var coach_age: int = 30
 var coach_nick: String = ""
+var coach_gender: String = "m"
+var coach_country_code: String = "ru"
+var coach_birth: Array = [1, 1, 1990]
+var coach_attrs: Dictionary = {}
 var coach_country: String = tr("Россия")
 var coach_bg: String = "rookie"
 var avatar: Dictionary = {}
@@ -186,6 +190,10 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	team_name = t_name if t_name != "" else "Моя команда"
 	coach_age = int(coach.get("age", 30))
 	coach_nick = str(coach.get("nick", "")).strip_edges()
+	coach_gender = str(coach.get("gender", "m"))
+	coach_country_code = str(coach.get("country_code", "ru"))
+	coach_birth = coach.get("birth", [1, 1, 1990])
+	coach_attrs = coach.get("attrs", {}).duplicate()
 	coach_country = str(coach.get("country", "Россия"))
 	coach_bg = str(coach.get("bg", "rookie"))
 	avatar = coach.get("avatar", {}).duplicate()
@@ -219,6 +227,13 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 			rep += 15.0; money += 15000
 		"rookie":
 			coach_pts += 3
+	if not coach_attrs.is_empty():
+		var A := func(k: String) -> int: return int(coach_attrs.get(k, 0))
+		coach_skill["tactics"] = clampi((A.call("tactics") + A.call("vision") + A.call("analytics")) / 12, 0, 5)
+		coach_skill["motivation"] = clampi((A.call("motivation") + A.call("leadership") + A.call("communication")) / 12, 0, 5)
+		coach_skill["scout"] = clampi((A.call("scouting") + A.call("analytics")) / 8, 0, 5)
+		money += A.call("finance") * 1500
+		rep += float(A.call("image")) * 0.6
 	var base: float = float(team.get("base", 46.0))
 	players = []
 	market = []
@@ -363,9 +378,17 @@ func _ai_series(a: String, b: String, bo: int) -> Dictionary:
 	return {"winner": 0 if wins[0] > wins[1] else 1, "score": total}
 
 func load_photo() -> Texture2D:
-	if photo_path == "" or not FileAccess.file_exists(photo_path):
+	return photo_texture(photo_path)
+
+## Фото по пути: res:// — ресурс игры, user:// — загруженный файл.
+static func photo_texture(path: String) -> Texture2D:
+	if path == "":
 		return null
-	var img := Image.load_from_file(photo_path)
+	if path.begins_with("res://"):
+		return load(path) if ResourceLoader.exists(path) else null
+	if not FileAccess.file_exists(path):
+		return null
+	var img := Image.load_from_file(path)
 	if img == null:
 		return null
 	return ImageTexture.create_from_image(img)
@@ -666,7 +689,8 @@ func to_dict() -> Dictionary:
 		"train_focus": train_focus, "train_map": train_map, "league_teams": league_teams, "strengths": strengths,
 		"standings": standings, "schedule": schedule, "playoff": playoff, "match_done": match_done, "news": news,
 		"history": history, "titles": titles, "bad_seasons": bad_seasons, "next_id": next_id,
-		"coach_age": coach_age, "coach_nick": coach_nick, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
+		"coach_age": coach_age, "coach_nick": coach_nick, "coach_gender": coach_gender, "coach_country_code": coach_country_code,
+		"coach_birth": coach_birth, "coach_attrs": coach_attrs, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
 		"photo_path": photo_path, "team_tag": team_tag, "team_color": team_color,
 		"team_logo": team_logo, "staff_coach": staff_coach, "staff_photo": staff_photo,
 	}
@@ -710,6 +734,13 @@ func from_dict(d: Dictionary) -> void:
 	next_id = int(d["next_id"])
 	coach_age = int(d.get("coach_age", 30))
 	coach_nick = str(d.get("coach_nick", ""))
+	coach_gender = str(d.get("coach_gender", "m"))
+	coach_country_code = str(d.get("coach_country_code", "ru"))
+	coach_birth = d.get("coach_birth", [1, 1, 1990])
+	coach_attrs = {}
+	var ca: Dictionary = d.get("coach_attrs", {})
+	for k in ca:
+		coach_attrs[k] = int(ca[k])
 	coach_country = str(d.get("coach_country", tr("Россия")))
 	coach_bg = str(d.get("coach_bg", "rookie"))
 	avatar = {}
