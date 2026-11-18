@@ -116,11 +116,39 @@ func gen_player(base: float, role: String = "") -> Dictionary:
 	var pot: int = clampi(int(base + randf_range(4, 26) - maxf(0.0, float(age - 22)) * 3.0), int(base) + 2, 99)
 	if role == "":
 		role = ROLES[randi() % ROLES.size()]
-	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": "", "country": _rand_country()}
+	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": free_photo(), "country": _rand_country()}
 	next_id += 1
 	var o: int = ovr(p)
 	p["salary"] = int(300 + (o - 30) * 32)
 	return p
+
+var _photo_pool: Array = []
+
+## Набор фотореалистичных портретов для игроков без своего фото.
+func photo_pool() -> Array:
+	if _photo_pool.is_empty():
+		var d := DirAccess.open("res://assets/players")
+		if d:
+			for f in d.get_files():
+				var n: String = f.trim_suffix(".import")
+				var pth: String = "res://assets/players/" + n
+				if (n.ends_with(".jpg") or n.ends_with(".png")) and not _photo_pool.has(pth):
+					_photo_pool.append(pth)
+			_photo_pool.sort()
+	return _photo_pool
+
+## Свободный портрет: не занятый игроками команды и рынка.
+func free_photo() -> String:
+	var pool: Array = photo_pool()
+	if pool.is_empty():
+		return ""
+	var used: Array = []
+	for p in players + market:
+		used.append(str(p.get("photo", "")))
+	var free: Array = pool.filter(func(x): return not used.has(x))
+	if free.is_empty():
+		free = pool
+	return free[randi() % free.size()]
 
 const PLAYER_COUNTRIES := ["ru", "ru", "ru", "ua", "by", "kz", "kz", "uz", "kg", "am", "ge", "az", "md", "pl", "de", "us"]
 
@@ -277,7 +305,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	else:
 		for rp in roster:
 			var p: Dictionary = gen_player(base, rp["role"])
-			for k in ["nick", "aim", "iq", "tw", "age", "photo"]:
+			for k in ["nick", "aim", "iq", "tw", "age", "photo", "country"]:
 				if rp.has(k):
 					p[k] = rp[k]
 			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
@@ -355,6 +383,8 @@ func phase_name() -> String:
 	return tr("Межсезонье")
 
 func player_match() -> Dictionary:
+	if schedule.size() < 7:
+		return {}
 	if week <= 7:
 		for pair in schedule[week - 1]:
 			if pair.has(team_name):

@@ -67,6 +67,31 @@ func btn(t: String, cb: Callable, color: Color = Color.WHITE) -> Button:
 	b.pressed.connect(cb)
 	return b
 
+## Компактная кнопка для таблиц.
+func small_btn(t: String, cb: Callable, color: Color = Color.WHITE) -> Button:
+	var b := btn(t, cb, color)
+	b.add_theme_font_size_override("font_size", 12)
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var base: StyleBox = get_tree().root.theme.get_stylebox(st, "Button") if get_tree().root.theme else null
+		if base is StyleBoxFlat:
+			var c: StyleBoxFlat = base.duplicate()
+			c.content_margin_left = 8; c.content_margin_right = 8
+			c.content_margin_top = 4; c.content_margin_bottom = 4
+			b.add_theme_stylebox_override(st, c)
+	return b
+
+## Кнопка-иконка (Material Icons) с подсказкой.
+func icon_btn(icon: String, tip: String, cb: Callable) -> Button:
+	var b := small_btn("", cb)
+	b.tooltip_text = tip
+	b.custom_minimum_size = Vector2(30, 28)
+	var ic := UITheme.icon(icon, 18)
+	b.add_child(ic)
+	ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ic.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return b
+
 func vbox(sep: int = 8) -> VBoxContainer:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", sep)
@@ -129,7 +154,7 @@ func player_photo(pl: Dictionary) -> String:
 		if d:
 			for f in d.get_files():
 				var n: String = f.trim_suffix(".import")
-				if n.ends_with(".png") and not _player_pool.has("res://assets/players/" + n):
+				if (n.ends_with(".png") or n.ends_with(".jpg")) and not _player_pool.has("res://assets/players/" + n):
 					_player_pool.append("res://assets/players/" + n)
 			_player_pool.sort()
 	if _player_pool.is_empty():
@@ -850,6 +875,7 @@ func _preview_roster(t: Dictionary) -> Array:
 	var base: float = float(t.get("base", 45))
 	var res: Array = []
 	var used: Array = []
+	var pool: Array = gs.photo_pool().duplicate()
 	for r in gs.ROLES:
 		var nick := ""
 		while nick == "" or used.has(nick):
@@ -858,8 +884,12 @@ func _preview_roster(t: Dictionary) -> Array:
 			else:
 				nick = gs.NICK_B[rng.randi() % gs.NICK_B.size()].to_lower() + str(rng.randi_range(1, 99))
 		used.append(nick)
+		var photo := ""
+		if not pool.is_empty():
+			photo = pool[rng.randi() % pool.size()]
+			pool.erase(photo)
 		res.append({"nick": nick, "role": r, "aim": int(base + rng.randf_range(-7, 9)), "iq": int(base + rng.randf_range(-9, 7)),
-			"tw": int(base + rng.randf_range(-8, 8)), "age": rng.randi_range(17, 26), "photo": "", "country": t.get("country", "ru")})
+			"tw": int(base + rng.randf_range(-8, 8)), "age": rng.randi_range(17, 26), "photo": photo, "country": t.get("country", "ru")})
 	return res
 
 func _ts_filtered() -> Array:
@@ -1827,7 +1857,7 @@ func team_icon(name: String, sz: int) -> Control:
 
 func _nav_btn(key: String, text: String, icon: String) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(196, 36)
+	b.custom_minimum_size = Vector2(184, 36)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.text = "          " + text
 	b.add_theme_font_size_override("font_size", 15)
@@ -1905,18 +1935,18 @@ func build_game() -> void:
 	top.add_child(th)
 	th.add_child(text_btn("<", func(): _hist_move(-1), 24))
 	th.add_child(text_btn(">", func(): _hist_move(1), 24))
-	title_label = label("", 24, Color.WHITE)
+	title_label = label("", 22, Color.WHITE)
 	th.add_child(title_label)
 	th.add_child(spacer())
-	top_label = label("", 13, C_DIM)
+	top_label = label("", 12, C_DIM)
 	top_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	top_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	th.add_child(top_label)
-	date_label = label("", 13, Color.WHITE)
+	date_label = label("", 12, Color.WHITE)
 	date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	date_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	th.add_child(date_label)
-	cont_btn = _outline_btn(tr("ПРОДОЛЖИТЬ") + "  >", func(): on_continue(), C_GOOD, 16)
+	cont_btn = _outline_btn(tr("ПРОДОЛЖИТЬ") + "  >", func(): on_continue(), C_GOOD, 14)
 	th.add_child(cont_btn)
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1984,6 +2014,10 @@ func refresh_top() -> void:
 func show_screen(name: String, push: bool = true) -> void:
 	if busy:
 		return
+	if content == null or not is_instance_valid(content):
+		build_game()
+		if name == "dashboard":
+			return
 	current = name
 	in_match = false
 	if push:
@@ -2385,10 +2419,10 @@ func screen_squad() -> void:
 			stc = C_BAD
 		r.add_child(cell(st, 96, stc))
 		var idx: int = i
-		r.add_child(btn(tr("Вверх"), func(): gs.move_player(idx, -1); show_screen("squad")))
-		r.add_child(btn(tr("Вниз"), func(): gs.move_player(idx, 1); show_screen("squad")))
-		r.add_child(btn(tr("Продать"), func(): gs.sell_player(idx); show_screen("squad")))
-		r.add_child(btn(tr("Отчислить"), func(): gs.release_player(idx); show_screen("squad"), C_BAD))
+		r.add_child(icon_btn("arrow_upward", tr("Вверх"), func(): gs.move_player(idx, -1); show_screen("squad")))
+		r.add_child(icon_btn("arrow_downward", tr("Вниз"), func(): gs.move_player(idx, 1); show_screen("squad")))
+		r.add_child(small_btn(tr("Продать"), func(): gs.sell_player(idx); show_screen("squad")))
+		r.add_child(small_btn(tr("Отчислить"), func(): gs.release_player(idx); show_screen("squad"), C_BAD))
 		v.add_child(r)
 	content.add_child(p)
 	var roles: Array = []
@@ -2492,7 +2526,7 @@ func screen_transfers() -> void:
 		r.add_child(cell("$" + str(fee), 90, C_GOOD if gs.money >= fee else C_BAD))
 		r.add_child(cell("$" + str(pl["salary"]), 80, C_DIM))
 		var idx: int = i
-		var b := btn(tr("Подписать"), func():
+		var b := small_btn(tr("Подписать"), func():
 			var err: String = gs.sign_player(idx)
 			if err != "":
 				gs.add_news(err)
