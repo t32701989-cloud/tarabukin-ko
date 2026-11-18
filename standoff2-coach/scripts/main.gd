@@ -758,7 +758,7 @@ func _org_create() -> void:
 		return
 	var inv: Dictionary = INVEST[int(org["invest"])]
 	var desc: String = str(org["desc"]).strip_edges()
-	start_career({"name": nm, "tag": tag, "color": TEAM_COLORS[int(org["color"])][0], "diff": 2, "base": inv["base"],
+	start_career({"name": nm, "tag": tag, "country": str(org["country"]), "color": TEAM_COLORS[int(org["color"])][0], "diff": 2, "base": inv["base"],
 		"money": inv["money"], "rep": 5.0, "logo": str(org["logo"]), "desc": desc if desc != "" else tr("Новая организация."),
 		"staff": inv["staff"], "empty_roster": not bool(org["fill"]), "custom": true})
 
@@ -1095,7 +1095,129 @@ func _ts_detail(t: Dictionary) -> Control:
 	outer.add_child(br)
 	return p
 
+# ------------------------------------------------------------ договор
+
+var contract_team: Dictionary = {}
+var contract_opts := {"fire": true, "country_only": false}
+
 func start_career(team: Dictionary) -> void:
+	contract_team = team
+	contract_opts = {"fire": true, "country_only": false}
+	show_contract()
+
+func show_contract() -> void:
+	var t: Dictionary = contract_team
+	var custom: bool = bool(t.get("custom", false))
+	_clear_root()
+	_dark_bg()
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(cc)
+	var paper := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("f3f1ea")
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 34; sb.content_margin_right = 34
+	sb.content_margin_top = 22; sb.content_margin_bottom = 18
+	sb.shadow_color = Color(0, 0, 0, 0.6)
+	sb.shadow_size = 18
+	paper.add_theme_stylebox_override("panel", sb)
+	paper.custom_minimum_size = Vector2(760, 0)
+	cc.add_child(paper)
+	var v := vbox(5)
+	paper.add_child(v)
+	var ink := Color("2b2f38")
+	var dim := Color("5a606b")
+	var h1 := label(tr("УЧРЕДИТЕЛЬНЫЙ ДОГОВОР") if custom else tr("КОНТРАКТ МЕНЕДЖЕРА КОМАНДЫ"), 22, ink)
+	h1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(h1)
+	var h2 := label(tr("киберспортивной организации «%s»") % t["name"], 13, dim)
+	h2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(h2)
+	var who: String = "%s \"%s\" %s" % [cr.get("name", ""), cr.get("nick", ""), cr.get("last", "")]
+	var paras: Array = []
+	if custom:
+		paras = [
+			[tr("Стороны"), tr("%s (далее — «Основатель») учреждает киберспортивную организацию «%s» [%s] (далее — «Клуб») на условиях, изложенных ниже.") % [who, t["name"], t["tag"]]],
+			[tr("Задачи Клуба"), tr("Выступление в лигах Standoff 2, развитие игроков и рост репутации организации.")],
+			[tr("Полномочия Основателя"), tr("Основатель самостоятельно формирует состав, нанимает персонал, ведёт переговоры со спонсорами и распоряжается бюджетом Клуба.")],
+			[tr("Финансы"), tr("Стартовый капитал Клуба составляет %s. Зарплаты игрокам и персоналу выплачиваются еженедельно из бюджета Клуба.") % money_fmt(int(t["money"]))],
+		]
+	else:
+		paras = [
+			[tr("Стороны"), tr("Организация «%s» (далее — «Клуб») назначает %s (далее — «Менеджер») на должность главного менеджера команды по Standoff 2.") % [t["name"], who]],
+			[tr("Обязанности Менеджера"), tr("Руководить тренировками и тактикой, формировать состав, проводить трансферы и добиваться целей, поставленных советом директоров.")],
+			[tr("Цели сезона"), tr("Совет директоров ожидает место не ниже %d в лиге «%s».") % [[4, 6, 8][int(t.get("tier", 0))], tr(gs.TIERS[int(t.get("tier", 0))])]],
+			[tr("Финансы"), tr("Менеджер распоряжается бюджетом Клуба в размере %s и отвечает за выплату зарплат игрокам и персоналу.") % money_fmt(int(t["money"]))],
+		]
+	for p in paras:
+		v.add_child(label(p[0] + ":", 13, ink))
+		v.add_child(wrap_label(p[1], 12, dim, 690))
+	var sep := ColorRect.new()
+	sep.color = Color(0, 0, 0, 0.12)
+	sep.custom_minimum_size = Vector2(0, 1)
+	v.add_child(sep)
+	v.add_child(label(tr("ДОПОЛНИТЕЛЬНЫЕ УСЛОВИЯ"), 13, dim))
+	for o in [["fire", tr("Менеджер может быть уволен советом директоров")],
+			["country_only", tr("Только игроки из страны организации") + " (" + tr(_country_name(str(t.get("country", "ru")))) + ")"]]:
+		var cb := CheckBox.new()
+		cb.text = o[1]
+		cb.button_pressed = bool(contract_opts[o[0]])
+		cb.add_theme_color_override("font_color", ink)
+		cb.add_theme_color_override("font_hover_color", Color.BLACK)
+		cb.add_theme_color_override("font_pressed_color", ink)
+		cb.add_theme_color_override("font_hover_pressed_color", Color.BLACK)
+		var key: String = o[0]
+		cb.toggled.connect(func(on): contract_opts[key] = on)
+		v.add_child(cb)
+	var bottom := hbox(16)
+	var dv := vbox(0)
+	dv.add_child(label(tr("Дата:"), 12, dim))
+	var now := Time.get_date_dict_from_system()
+	dv.add_child(label("%02d.%02d.%d" % [now["day"], now["month"], now["year"]], 15, ink))
+	dv.size_flags_vertical = Control.SIZE_SHRINK_END
+	bottom.add_child(dv)
+	bottom.add_child(spacer())
+	var sv := vbox(2)
+	var sig := preload("res://scripts/signature.gd").new()
+	sig.custom_minimum_size = Vector2(300, 80)
+	sv.add_child(sig)
+	var sh := hbox(8)
+	sh.add_child(label(tr("Поставьте подпись здесь"), 13, ink))
+	sh.add_child(spacer())
+	var clr := btn(tr("Очистить"), func(): sig.clear_sig())
+	sh.add_child(clr)
+	sv.add_child(sh)
+	bottom.add_child(sv)
+	v.add_child(bottom)
+	# кнопки под листом
+	var bar := hbox(10)
+	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_left = 24; bar.offset_right = -24; bar.offset_top = -70; bar.offset_bottom = -18
+	add_child(bar)
+	bar.add_child(_outline_btn("<  " + tr("НАЗАД"), func():
+		if custom: show_org_creator()
+		else: show_team_select(), Color("e0453a"), 16))
+	bar.add_child(spacer())
+	var go := _outline_btn(tr("ПРОДОЛЖИТЬ") + "  >", func(): _finish_contract(), C_GOOD, 18)
+	go.disabled = true
+	bar.add_child(go)
+	sig.changed.connect(func(): go.disabled = not sig.has_signature())
+
+func _country_name(code: String) -> String:
+	for c in Teams.COUNTRY_LIST:
+		if c[0] == code:
+			return c[1]
+	return "Другая"
+
+func _finish_contract() -> void:
+	var team: Dictionary = contract_team.duplicate()
+	team["can_be_fired"] = bool(contract_opts["fire"])
+	team["country_only"] = bool(contract_opts["country_only"])
+	_start_career_now(team)
+
+func _start_career_now(team: Dictionary) -> void:
+
 	if not team.has("roster") and not bool(team.get("custom", false)):
 		team = team.duplicate()
 		team["roster"] = _preview_roster(team)
@@ -1776,6 +1898,7 @@ func screen_squad() -> void:
 		var r := hbox(4)
 		var starter: bool = lineup_ids.has(pl["id"])
 		r.add_child(portrait(pl, 34))
+		r.add_child(_flag(str(pl.get("country", "xx")), 20))
 		r.add_child(cell(pl["nick"], 108, C_ACC if starter else C_DIM))
 		r.add_child(cell(pl["role"], 78))
 		r.add_child(cell(str(pl["age"]), 36, C_DIM))
@@ -1886,6 +2009,7 @@ func screen_transfers() -> void:
 		var pl: Dictionary = gs.market[i]
 		var r := hbox(4)
 		r.add_child(portrait(pl, 34))
+		r.add_child(_flag(str(pl.get("country", "xx")), 20))
 		r.add_child(cell(pl["nick"], 130, C_ACC))
 		r.add_child(cell(pl["role"], 80))
 		r.add_child(cell(str(pl["age"]), 40, C_DIM))

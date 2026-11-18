@@ -80,6 +80,9 @@ var team_color: String = "ffb23e"
 var team_logo: String = ""
 var team_desc: String = ""
 var staff_count: int = 0
+var team_country: String = "ru"
+var can_be_fired: bool = true
+var country_only: bool = false
 var staff_coach: String = ""
 var staff_photo: String = ""
 
@@ -113,11 +116,18 @@ func gen_player(base: float, role: String = "") -> Dictionary:
 	var pot: int = clampi(int(base + randf_range(4, 26) - maxf(0.0, float(age - 22)) * 3.0), int(base) + 2, 99)
 	if role == "":
 		role = ROLES[randi() % ROLES.size()]
-	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": ""}
+	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": "", "country": _rand_country()}
 	next_id += 1
 	var o: int = ovr(p)
 	p["salary"] = int(300 + (o - 30) * 32)
 	return p
+
+const PLAYER_COUNTRIES := ["ru", "ru", "ru", "ua", "by", "kz", "kz", "uz", "kg", "am", "ge", "az", "md", "pl", "de", "us"]
+
+func _rand_country() -> String:
+	if country_only:
+		return team_country
+	return PLAYER_COUNTRIES[randi() % PLAYER_COUNTRIES.size()]
 
 func fee(p: Dictionary) -> int:
 	var o: int = ovr(p)
@@ -206,6 +216,9 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	team_logo = str(team.get("logo", ""))
 	team_desc = str(team.get("desc", ""))
 	staff_count = int(team.get("staff", 0))
+	team_country = str(team.get("country", coach.get("country_code", "ru")))
+	can_be_fired = bool(team.get("can_be_fired", true))
+	country_only = bool(team.get("country_only", false))
 	var staff: Dictionary = team.get("coach", {})
 	staff_coach = str(staff.get("name", ""))
 	staff_photo = str(staff.get("photo", ""))
@@ -565,6 +578,8 @@ func _weekly_event() -> void:
 			add_news(tr("Видео с хайлайтами команды стало вирусным: +2 репутации."))
 
 func _check_fired() -> void:
+	if not can_be_fired:
+		return
 	if money < -40000:
 		game_over = tr("Команда обанкротилась. Совет директоров вас уволил.")
 		add_news(game_over)
@@ -599,7 +614,7 @@ func _end_season() -> void:
 		bad_seasons += 1
 		add_news(tr("Совет директоров недоволен результатом (цель: топ-%d).") % goal)
 		rep = maxf(0.0, rep - 4.0)
-		if bad_seasons >= 2:
+		if bad_seasons >= 2 and can_be_fired:
 			game_over = tr("Два неудачных сезона подряд. Совет директоров вас уволил.")
 	else:
 		bad_seasons = 0
@@ -699,7 +714,7 @@ func to_dict() -> Dictionary:
 		"coach_age": coach_age, "coach_nick": coach_nick, "coach_gender": coach_gender, "coach_country_code": coach_country_code,
 		"coach_birth": coach_birth, "coach_attrs": coach_attrs, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
 		"photo_path": photo_path, "team_tag": team_tag, "team_color": team_color,
-		"team_logo": team_logo, "team_desc": team_desc, "staff_count": staff_count, "staff_coach": staff_coach, "staff_photo": staff_photo,
+		"team_logo": team_logo, "team_desc": team_desc, "staff_count": staff_count, "team_country": team_country, "can_be_fired": can_be_fired, "country_only": country_only, "staff_coach": staff_coach, "staff_photo": staff_photo,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -760,6 +775,9 @@ func from_dict(d: Dictionary) -> void:
 	team_logo = str(d.get("team_logo", ""))
 	team_desc = str(d.get("team_desc", ""))
 	staff_count = int(d.get("staff_count", 0))
+	team_country = str(d.get("team_country", "ru"))
+	can_be_fired = bool(d.get("can_be_fired", true))
+	country_only = bool(d.get("country_only", false))
 	staff_coach = str(d.get("staff_coach", ""))
 	staff_photo = str(d.get("staff_photo", ""))
 	changed.emit()
