@@ -1822,7 +1822,7 @@ const NAV := [
 	[], ["finance", "Финансы", "payments"], ["coach", "Профиль", "account_circle"], [], ["system", "Настройки", "settings"],
 ]
 const SCREEN_TITLES := {"dashboard": "Главная", "mail": "Почта", "squad": "Состав", "staff": "Штат", "training": "Тренировка",
-	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч"}
+	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч", "player": "Игрок"}
 const WEEKDAYS := ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]
 const MONTHS_SHORT := ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля", "авг.", "сент.", "окт.", "нояб.", "дек."]
 
@@ -2040,6 +2040,7 @@ func show_screen(name: String, push: bool = true) -> void:
 		"league": screen_league()
 		"stats": screen_stats()
 		"finance": screen_finance()
+		"player": screen_player()
 		"coach": screen_coach()
 		"system": screen_system()
 		_: screen_dashboard()
@@ -2259,6 +2260,98 @@ func screen_dashboard() -> void:
 			sep.custom_minimum_size = Vector2(0, 1)
 			rv2.add_child(sep)
 
+# ------------------------------------------------------------ профиль игрока
+
+var viewed_player: Dictionary = {}
+
+func _nick_link(pl: Dictionary, w: int, col: Color) -> Button:
+	var b := Button.new()
+	b.text = str(pl["nick"])
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.custom_minimum_size = Vector2(w, 0)
+	b.clip_text = true
+	b.add_theme_color_override("font_color", col)
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_font_size_override("font_size", 14)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		b.add_theme_stylebox_override(st, _flat_style())
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var ref: Dictionary = pl
+	b.pressed.connect(func(): viewed_player = ref; show_screen("player"))
+	return b
+
+func _attr_color(v: float) -> Color:
+	if v < 8.0: return Color("ff5a3c")
+	if v < 13.0: return Color("ffb23e")
+	return Color("7ddf5a")
+
+func screen_player() -> void:
+	var pl: Dictionary = viewed_player
+	if pl.is_empty():
+		screen_squad()
+		return
+	gs.ensure_attrs(pl)
+	# шапка
+	var hc := _card()
+	content.add_child(hc)
+	var hh := hbox(18)
+	hc.add_child(hh)
+	hh.add_child(_circle(player_photo(pl), 110, Color(gs.team_color)))
+	var hv := vbox(4)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var nr := hbox(10)
+	nr.add_child(_flag(str(pl.get("country", "xx")), 30))
+	nr.add_child(label(str(pl["nick"]), 30, Color.WHITE))
+	hv.add_child(nr)
+	var r2 := hbox(14)
+	r2.add_child(_stars(_player_stars(pl), 18))
+	r2.add_child(label(tr(pl["role"]), 15, C_ACC))
+	r2.add_child(label(tr("%d лет") % int(pl["age"]), 15, C_DIM))
+	hv.add_child(r2)
+	var r3 := hbox(18)
+	r3.add_child(label(tr("ОБЩ") + " %d" % gs.ovr(pl), 15, stat_color(gs.ovr(pl))))
+	r3.add_child(label(tr("Форма") + " %d%%" % int(pl["form"]), 15, C_GOOD if int(pl["form"]) >= 70 else C_ACC))
+	r3.add_child(label(tr("Зарплата") + " $%d" % int(pl["salary"]), 15, C_DIM))
+	r3.add_child(label(tr("Потенциал") + " ~%d" % int(pl.get("pot_est", pl["pot"])), 15, C_DIM))
+	hv.add_child(r3)
+	hh.add_child(hv)
+	var back := small_btn("<  " + tr("Назад"), func(): _hist_move(-1))
+	back.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	hh.add_child(back)
+	# характеристики
+	var ab := _block(tr("Характеристики"))
+	content.add_child(ab)
+	var ac := _card()
+	ab.add_child(ac)
+	var cols := hbox(14)
+	ac.add_child(cols)
+	for grp in [[tr("ТЕХНИЧЕСКИЕ"), gs.ATTR_TECH], [tr("МЕНТАЛЬНЫЕ"), gs.ATTR_MENTAL], [tr("ФИЗИЧЕСКИЕ"), gs.ATTR_PHYS]]:
+		var cv := vbox(3)
+		cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var head := PanelContainer.new()
+		var hs := StyleBoxFlat.new()
+		hs.bg_color = Color(1, 1, 1, 0.06)
+		hs.set_content_margin_all(8)
+		head.add_theme_stylebox_override("panel", hs)
+		head.add_child(label(grp[0], 15, Color.WHITE))
+		cv.add_child(head)
+		for a in grp[1]:
+			var v: float = float(pl["attrs"].get(a[0], 0))
+			var row := PanelContainer.new()
+			var rs := StyleBoxFlat.new()
+			rs.bg_color = Color(1, 1, 1, 0.025)
+			rs.content_margin_left = 10; rs.content_margin_right = 10
+			rs.content_margin_top = 6; rs.content_margin_bottom = 6
+			row.add_theme_stylebox_override("panel", rs)
+			var rh := hbox(6)
+			row.add_child(rh)
+			var nl := label(tr(a[1]), 15, Color("e9edf3"))
+			nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			rh.add_child(nl)
+			rh.add_child(label("%.2f" % v, 16, _attr_color(v)))
+			cv.add_child(row)
+		cols.add_child(cv)
+
 # ------------------------------------------------------------ почта / штат / статистика / финансы
 
 func screen_mail() -> void:
@@ -2402,7 +2495,7 @@ func screen_squad() -> void:
 		var starter: bool = lineup_ids.has(pl["id"])
 		r.add_child(portrait(pl, 34))
 		r.add_child(_flag(str(pl.get("country", "xx")), 20))
-		r.add_child(cell(pl["nick"], 108, C_ACC if starter else C_DIM))
+		r.add_child(_nick_link(pl, 108, C_ACC if starter else C_DIM))
 		r.add_child(cell(pl["role"], 78))
 		r.add_child(cell(str(pl["age"]), 36, C_DIM))
 		r.add_child(cell(str(pl["aim"]), 40, stat_color(pl["aim"])))
@@ -2513,7 +2606,7 @@ func screen_transfers() -> void:
 		var r := hbox(4)
 		r.add_child(portrait(pl, 34))
 		r.add_child(_flag(str(pl.get("country", "xx")), 20))
-		r.add_child(cell(pl["nick"], 130, C_ACC))
+		r.add_child(_nick_link(pl, 130, C_ACC))
 		r.add_child(cell(pl["role"], 80))
 		r.add_child(cell(str(pl["age"]), 40, C_DIM))
 		r.add_child(cell(str(pl["aim"]), 44, stat_color(pl["aim"])))

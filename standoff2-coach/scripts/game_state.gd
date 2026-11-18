@@ -88,6 +88,73 @@ var staff_photo: String = ""
 
 # ---------------------------------------------------------------- игроки
 
+## Характеристики игрока (шкала 0..20). Группы: технические, ментальные, физические.
+const ATTR_TECH := [["skill", "Навык"], ["awp", "AWP"], ["rifle", "Винтовка"], ["pistol", "Пистолет"], ["nades", "Гранаты"], ["creativity", "Креативность"], ["clutch", "Клатч"], ["tactics", "Тактика"]]
+const ATTR_MENTAL := [["leader", "Лидер"], ["teamwork", "Командная работа"], ["morale", "Мораль"], ["conflict", "Конфликтность"], ["productivity", "Продуктивность"], ["stress", "Стрессоустойчивость"], ["loyalty", "Лояльность"]]
+const ATTR_PHYS := [["reaction", "Реакция"], ["perception", "Восприятие"], ["immunity", "Иммунитет"], ["strength", "Сила"], ["stamina", "Выносливость"]]
+const ROLE_BIAS := {
+	"Снайпер": {"awp": 4.0, "rifle": -1.5, "reaction": 1.0, "perception": 1.0},
+	"Энтри": {"rifle": 2.0, "reaction": 2.0, "skill": 1.0, "awp": -3.0},
+	"Капитан": {"leader": 5.0, "tactics": 3.0, "teamwork": 1.0, "awp": -3.0},
+	"Саппорт": {"nades": 3.0, "teamwork": 2.0, "awp": -3.0},
+	"Лурк": {"clutch": 3.0, "creativity": 2.0, "awp": -2.0},
+}
+const ATTR_GROUP := {
+	"aim": ["skill", "awp", "rifle", "pistol", "reaction"],
+	"iq": ["tactics", "creativity", "clutch", "nades", "productivity", "perception"],
+	"tw": ["teamwork", "leader", "morale", "stress", "loyalty"],
+}
+
+static func all_attr_keys() -> Array:
+	var r: Array = []
+	for grp in [ATTR_TECH, ATTR_MENTAL, ATTR_PHYS]:
+		for a in grp:
+			r.append(a[0])
+	return r
+
+## Создать характеристики из уровней aim/iq/tw (0..100) с учётом роли.
+func make_attrs(aim: float, iq: float, tw: float, role: String, seed_s: String = "") -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	if seed_s != "":
+		rng.seed = hash(seed_s)
+	else:
+		rng.randomize()
+	var a := {}
+	var lv := {"aim": aim / 5.0, "iq": iq / 5.0, "tw": tw / 5.0}
+	for k in all_attr_keys():
+		var base: float = (lv["aim"] + lv["iq"] + lv["tw"]) / 3.0
+		for grp in ATTR_GROUP:
+			if ATTR_GROUP[grp].has(k):
+				base = lv[grp]
+		var v: float = base + rng.randf_range(-2.2, 2.2) + float(ROLE_BIAS.get(role, {}).get(k, 0.0))
+		a[k] = snappedf(clampf(v, 1.0, 20.0), 0.01)
+	return a
+
+## Пересчитать aim/iq/tw (0..100) из характеристик.
+func derive(p: Dictionary) -> void:
+	var a: Dictionary = p["attrs"]
+	var gun: float = float(a["awp"]) if p.get("role", "") == "Снайпер" else float(a["rifle"])
+	var aim: float = (float(a["skill"]) * 2 + gun * 2 + float(a["pistol"]) * 0.5 + float(a["reaction"]) * 1.5 + float(a["perception"])) / 7.0
+	var iq: float = (float(a["tactics"]) * 2 + float(a["creativity"]) + float(a["clutch"]) + float(a["nades"]) + float(a["productivity"]) + float(a["stress"])) / 7.0
+	var tw: float = (float(a["teamwork"]) * 2 + float(a["leader"]) + float(a["morale"]) + float(a["loyalty"]) * 0.5 + float(a["stamina"]) * 0.5 + float(a["conflict"]) * 0.5) / 5.5
+	p["aim"] = clampi(int(round(aim * 5.0)), 5, 99)
+	p["iq"] = clampi(int(round(iq * 5.0)), 5, 99)
+	p["tw"] = clampi(int(round(tw * 5.0)), 5, 99)
+
+func ensure_attrs(p: Dictionary) -> void:
+	if not p.has("attrs") or (p["attrs"] as Dictionary).is_empty():
+		p["attrs"] = make_attrs(float(p["aim"]), float(p["iq"]), float(p["tw"]), str(p.get("role", "")), str(p.get("nick", "")))
+	derive(p)
+
+## Изменить группу характеристик (aim/iq/tw или "all") на delta (в шкале 0..20).
+func bump(p: Dictionary, grp: String, delta: float) -> void:
+	ensure_attrs(p)
+	var keys: Array = all_attr_keys() if grp == "all" else ATTR_GROUP[grp]
+	for k in keys:
+		var d: float = delta * randf_range(0.6, 1.4)
+		p["attrs"][k] = snappedf(clampf(float(p["attrs"][k]) + d, 1.0, 20.0), 0.01)
+	derive(p)
+
 func ovr(p: Dictionary) -> int:
 	return int(round(float(p["aim"]) * 0.42 + float(p["iq"]) * 0.30 + float(p["tw"]) * 0.28))
 
@@ -118,6 +185,8 @@ func gen_player(base: float, role: String = "") -> Dictionary:
 		role = ROLES[randi() % ROLES.size()]
 	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": free_photo(), "country": _rand_country()}
 	next_id += 1
+	p["attrs"] = make_attrs(aim, iq, tw, role)
+	derive(p)
 	var o: int = ovr(p)
 	p["salary"] = int(300 + (o - 30) * 32)
 	return p
@@ -308,6 +377,10 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 			for k in ["nick", "aim", "iq", "tw", "age", "photo", "country"]:
 				if rp.has(k):
 					p[k] = rp[k]
+			if not rp.has("country"):
+				p["country"] = team_country
+			p["attrs"] = make_attrs(float(p["aim"]), float(p["iq"]), float(p["tw"]), str(p["role"]), str(p["nick"]))
+			derive(p)
 			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
 			p["salary"] = int(300 + (ovr(p) - 30) * 32)
 			players.append(p)
@@ -558,13 +631,13 @@ func _apply_training() -> void:
 		var gain: float = g * age_k * randf_range(0.4, 1.1) * (1.0 + float(tact) * 0.03)
 		match train_focus:
 			"aim":
-				p["aim"] = mini(99, int(p["aim"]) + int(round(gain * 1.6)))
+				bump(p, "aim", gain * 1.6 / 5.0)
 				p["form"] = int(p["form"]) - 4
 			"iq":
-				p["iq"] = mini(99, int(p["iq"]) + int(round(gain * 1.6)))
+				bump(p, "iq", gain * 1.6 / 5.0)
 				p["form"] = int(p["form"]) - 4
 			"tw":
-				p["tw"] = mini(99, int(p["tw"]) + int(round(gain * 1.6)))
+				bump(p, "tw", gain * 1.6 / 5.0)
 				p["form"] = int(p["form"]) - 3
 			"maps":
 				p["form"] = int(p["form"]) - 3
@@ -590,7 +663,7 @@ func _weekly_event() -> void:
 	var p: Dictionary = players[randi() % players.size()]
 	match randi() % 5:
 		0:
-			p["tw"] = maxi(20, int(p["tw"]) - 2)
+			bump(p, "tw", -0.4)
 			p["form"] = maxi(20, int(p["form"]) - 8)
 			add_news(tr("Конфликт в команде: %s поссорился с партнёрами (-сыгранность).") % p["nick"])
 		1:
@@ -598,7 +671,7 @@ func _weekly_event() -> void:
 			money += b
 			add_news(tr("Новый спонсорский контракт: +$%d.") % b)
 		2:
-			p["aim"] = mini(99, int(p["aim"]) + 2)
+			bump(p, "aim", 0.4)
 			add_news(tr("%s провёл отличную серию на стриме и поверил в себя (+аим).") % p["nick"])
 		3:
 			p["form"] = maxi(20, int(p["form"]) - 15)
@@ -653,11 +726,9 @@ func _end_season() -> void:
 		p["age"] += 1
 		var o: int = ovr(p)
 		if int(p["age"]) <= 24 and o < int(p["pot"]):
-			for k in ["aim", "iq", "tw"]:
-				p[k] = mini(99, int(p[k]) + randi_range(1, 4))
+			bump(p, "all", randf_range(0.2, 0.8))
 		elif int(p["age"]) >= 29:
-			for k in ["aim", "iq", "tw"]:
-				p[k] = maxi(25, int(p[k]) - randi_range(0, 3))
+			bump(p, "all", -randf_range(0.0, 0.6))
 		p["salary"] = int(300 + (ovr(p) - 30) * 32)
 		p["form"] = 80
 	# переход между дивизионами
@@ -825,6 +896,12 @@ func _fix_players(arr: Array) -> Array:
 			lk[k] = int(src[k])
 		q["look"] = lk
 		q["photo"] = str(q.get("photo", ""))
+		var at := {}
+		var srcat: Dictionary = q.get("attrs", {})
+		for k in srcat:
+			at[k] = float(srcat[k])
+		q["attrs"] = at
+		ensure_attrs(q)
 		res.append(q)
 	return res
 
