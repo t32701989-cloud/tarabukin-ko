@@ -90,7 +90,300 @@ func cell(t: String, w: int, color: Color = Color.WHITE, size: int = 14) -> Labe
 
 # ------------------------------------------------------------ главное меню
 
-const VERSION := "v0.2"
+const VERSION := "v0.3"
+const Avatar := preload("res://scripts/avatar.gd")
+const Teams := preload("res://scripts/teams.gd")
+const TMP_PHOTO := "user://coach_photo_new.png"
+var photo_tex: Texture2D = null
+var cr: Dictionary = {}            # данные мастера создания карьеры
+var cr_photo: Texture2D = null
+
+func make_avatar(cfg: Dictionary, sz: int, tex: Texture2D = null) -> Control:
+	var a = Avatar.new()
+	a.custom_minimum_size = Vector2(sz, sz)
+	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	a.set_cfg(cfg)
+	if tex != null:
+		a.set_photo(tex)
+	return a
+
+func wrap_label(t: String, size: int, color: Color, w: int) -> Label:
+	var l := label(t, size, color)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(w, 0)
+	return l
+
+# ------------------------------------------------------------ мастер: менеджер
+
+func _wizard_root(step: String) -> VBoxContainer:
+	_clear_root()
+	var root := vbox(14)
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = 36; root.offset_top = 24; root.offset_right = -36; root.offset_bottom = -20
+	add_child(root)
+	var h := hbox(14)
+	h.add_child(label("НОВАЯ КАРЬЕРА", 28, C_ACC))
+	h.add_child(label(step, 18, C_DIM))
+	h.get_child(1).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	root.add_child(h)
+	return root
+
+func show_creator() -> void:
+	if cr.is_empty():
+		cr = {"name": "Алексей", "age": 32, "country": "Россия", "bg": "pro", "avatar": Avatar.random_cfg(), "photo": "", "variants": [], "err": ""}
+		cr_photo = null
+	if cr["variants"].is_empty():
+		for i in 6:
+			cr["variants"].append(Avatar.random_cfg())
+	var root := _wizard_root("Шаг 1 из 2 · Создание менеджера")
+	var body := hbox(18)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(body)
+
+	# --- внешность
+	var lp := panel(C_PANEL, 16)
+	var lv := vbox(10)
+	lp.add_child(lv)
+	body.add_child(lp)
+	var top := hbox(16)
+	lv.add_child(top)
+	top.add_child(make_avatar(cr["avatar"], 190, cr_photo))
+	var tb := vbox(8)
+	top.add_child(tb)
+	tb.add_child(label("Внешность", 18, C_ACC))
+	tb.add_child(btn("Случайная внешность", func():
+		cr["avatar"] = Avatar.random_cfg(); show_creator()))
+	tb.add_child(btn("Загрузить своё фото...", func(): open_photo_dialog()))
+	if cr_photo != null:
+		tb.add_child(btn("Убрать фото", func():
+			cr_photo = null; cr["photo"] = ""; show_creator(), C_BAD))
+		tb.add_child(wrap_label("Используется загруженное фото.", 13, C_GOOD, 200))
+	else:
+		tb.add_child(wrap_label("PNG / JPG / WEBP, фото обрежется до квадрата.", 13, C_DIM, 200))
+	if str(cr.get("err", "")) != "":
+		tb.add_child(wrap_label(cr["err"], 13, C_BAD, 200))
+	lv.add_child(label("Варианты внешности — нажми, чтобы выбрать:", 14, C_DIM))
+	var grid := hbox(6)
+	for vcfg in cr["variants"]:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(66, 66)
+		var av := make_avatar(vcfg, 58)
+		av.position = Vector2(4, 4)
+		b.add_child(av)
+		var c: Dictionary = vcfg
+		b.pressed.connect(func():
+			cr["avatar"] = c.duplicate(); cr_photo = null; cr["photo"] = ""; show_creator())
+		grid.add_child(b)
+	lv.add_child(grid)
+	lv.add_child(btn("Ещё варианты", func():
+		cr["variants"] = []; show_creator()))
+	# редактор частей
+	var parts := GridContainer.new()
+	parts.columns = 2
+	parts.add_theme_constant_override("h_separation", 22)
+	parts.add_theme_constant_override("v_separation", 4)
+	for part in Avatar.PARTS:
+		var key: String = part[0]
+		var cnt: int = part[2]
+		var row := hbox(4)
+		row.add_child(cell(part[1], 92, C_DIM, 13))
+		row.add_child(btn("<", func():
+			cr["avatar"][key] = (int(cr["avatar"].get(key, 0)) - 1 + cnt) % cnt; show_creator()))
+		var val := cell(Avatar.part_value_name(key, int(cr["avatar"].get(key, 0))), 96, Color.WHITE, 13)
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_child(val)
+		row.add_child(btn(">", func():
+			cr["avatar"][key] = (int(cr["avatar"].get(key, 0)) + 1) % cnt; show_creator()))
+		parts.add_child(row)
+	lv.add_child(parts)
+
+	# --- анкета
+	var rp := panel(C_PANEL, 16)
+	rp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var rv := vbox(8)
+	rp.add_child(rv)
+	body.add_child(rp)
+	rv.add_child(label("Анкета менеджера", 18, C_ACC))
+	rv.add_child(label("Имя", 13, C_DIM))
+	var name_edit := LineEdit.new()
+	name_edit.text = cr["name"]
+	name_edit.max_length = 24
+	name_edit.placeholder_text = "Имя менеджера"
+	name_edit.text_changed.connect(func(t): cr["name"] = t)
+	rv.add_child(name_edit)
+	var r2 := hbox(16)
+	var agev := vbox(4)
+	agev.add_child(label("Возраст", 13, C_DIM))
+	var age := SpinBox.new()
+	age.min_value = 21
+	age.max_value = 65
+	age.value = cr["age"]
+	age.value_changed.connect(func(v): cr["age"] = int(v))
+	agev.add_child(age)
+	r2.add_child(agev)
+	var cv := vbox(4)
+	cv.add_child(label("Страна", 13, C_DIM))
+	var co := OptionButton.new()
+	for c2 in Teams.COUNTRIES:
+		co.add_item(c2)
+	co.selected = maxi(0, Teams.COUNTRIES.find(cr["country"]))
+	co.item_selected.connect(func(i): cr["country"] = Teams.COUNTRIES[i])
+	cv.add_child(co)
+	r2.add_child(cv)
+	rv.add_child(r2)
+	rv.add_child(label("Предыстория (бонус на старте)", 13, C_DIM))
+	var bgrid := GridContainer.new()
+	bgrid.columns = 2
+	bgrid.add_theme_constant_override("h_separation", 8)
+	bgrid.add_theme_constant_override("v_separation", 8)
+	for b2 in Teams.BACKGROUNDS:
+		var id: String = b2["id"]
+		var sel: bool = cr["bg"] == id
+		var bp := panel(Color("3a2f1c") if sel else Color("262a33"), 10)
+		bp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var bb := vbox(2)
+		bp.add_child(bb)
+		bb.add_child(label(("> " if sel else "") + b2["name"], 15, C_ACC if sel else Color.WHITE))
+		bb.add_child(label(b2["desc"], 12, C_DIM))
+		var hit := Button.new()
+		hit.flat = true
+		hit.set_anchors_preset(Control.PRESET_FULL_RECT)
+		hit.pressed.connect(func(): cr["bg"] = id; show_creator())
+		bp.add_child(hit)
+		bgrid.add_child(bp)
+	rv.add_child(bgrid)
+
+	var bottom := hbox(12)
+	bottom.add_child(btn("Назад в меню", func(): cr = {}; show_menu(), C_DIM))
+	bottom.add_child(spacer())
+	if gs.has_save():
+		bottom.add_child(label("Текущее сохранение будет перезаписано", 13, C_BAD))
+	bottom.add_child(menu_btn("Далее: выбор команды", func():
+		if str(cr["name"]).strip_edges() == "":
+			cr["err"] = "Введите имя менеджера."
+			show_creator()
+			return
+		cr["err"] = ""
+		show_team_select(), true))
+	root.add_child(bottom)
+
+func open_photo_dialog() -> void:
+	var fd := FileDialog.new()
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	fd.access = FileDialog.ACCESS_FILESYSTEM
+	fd.filters = PackedStringArray(["*.png, *.jpg, *.jpeg, *.webp ; Изображения"])
+	fd.title = "Выберите фото менеджера"
+	fd.use_native_dialog = true
+	fd.size = Vector2i(900, 560)
+	add_child(fd)
+	fd.file_selected.connect(func(path):
+		apply_photo(path)
+		fd.queue_free())
+	fd.canceled.connect(func(): fd.queue_free())
+	fd.popup_centered()
+
+func apply_photo(path: String) -> void:
+	var img := Image.load_from_file(path)
+	if img == null or img.is_empty():
+		cr["err"] = "Не удалось открыть изображение."
+		show_creator()
+		return
+	var s: int = mini(img.get_width(), img.get_height())
+	img = img.get_region(Rect2i((img.get_width() - s) / 2, (img.get_height() - s) / 2, s, s))
+	img.resize(256, 256, Image.INTERPOLATE_LANCZOS)
+	img.save_png(TMP_PHOTO)
+	cr_photo = ImageTexture.create_from_image(img)
+	cr["photo"] = TMP_PHOTO
+	cr["err"] = ""
+	show_creator()
+
+# ------------------------------------------------------------ мастер: команда
+
+func show_team_select() -> void:
+	var root := _wizard_root("Шаг 2 из 2 · Выбор команды")
+	var info := hbox(12)
+	info.add_child(make_avatar(cr["avatar"], 44, cr_photo))
+	info.add_child(label("%s, %d лет · выберите клуб, который возглавите" % [cr["name"], cr["age"]], 16, C_DIM))
+	info.get_child(1).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	root.add_child(info)
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(sc)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	sc.add_child(grid)
+	for t in Teams.START_TEAMS:
+		grid.add_child(team_card(t))
+	# своя команда
+	var cp := panel(C_PANEL, 14)
+	cp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var cv := vbox(6)
+	cp.add_child(cv)
+	cv.add_child(label("СВОЯ КОМАНДА", 18, C_ACC))
+	cv.add_child(label("Сложно", 13, C_BAD))
+	var ne := LineEdit.new()
+	ne.placeholder_text = "Название"
+	ne.max_length = 24
+	cv.add_child(ne)
+	var te := LineEdit.new()
+	te.placeholder_text = "Тег (до 4 букв)"
+	te.max_length = 4
+	cv.add_child(te)
+	cv.add_child(wrap_label("Создайте организацию с нуля: скромный бюджет и молодой состав.", 12, C_DIM, 230))
+	var err := label("", 12, C_BAD)
+	cv.add_child(err)
+	cv.add_child(btn("Создать и начать", func():
+		var n: String = ne.text.strip_edges()
+		if n == "":
+			err.text = "Введите название команды."
+			return
+		var tag: String = te.text.strip_edges().to_upper()
+		if tag == "": tag = n.substr(0, 3).to_upper()
+		start_career({"name": n, "tag": tag, "color": "ffffff", "diff": 2, "base": 43.0, "money": 60000, "rep": 10.0}), C_GOOD))
+	grid.add_child(cp)
+	var bottom := hbox(12)
+	bottom.add_child(btn("Назад к менеджеру", func(): show_creator(), C_DIM))
+	root.add_child(bottom)
+
+func team_card(t: Dictionary) -> Control:
+	var p := panel(C_PANEL, 14)
+	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var v := vbox(5)
+	p.add_child(v)
+	var h := hbox(10)
+	var badge := panel(Color(t["color"]).darkened(0.55), 8)
+	badge.add_child(label(t["tag"], 16, Color(t["color"])))
+	h.add_child(badge)
+	var d: int = int(t["diff"])
+	var dl := label(Teams.DIFF_NAMES[d], 13, Color(Teams.DIFF_COLORS[d]))
+	dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(dl)
+	v.add_child(h)
+	v.add_child(label(t["name"], 18))
+	v.add_child(label("Уровень состава: ~%d" % int(t["base"]), 13, C_DIM))
+	v.add_child(label("Бюджет: %s" % money_fmt(int(t["money"])), 13, C_DIM))
+	v.add_child(label("Репутация: %d" % int(t["rep"]), 13, C_DIM))
+	v.add_child(wrap_label(t["desc"], 12, C_DIM, 230))
+	var f := Control.new()
+	f.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(f)
+	var team: Dictionary = t
+	v.add_child(btn("Выбрать", func(): start_career(team), C_GOOD))
+	return p
+
+func start_career(team: Dictionary) -> void:
+	var photo := ""
+	if str(cr.get("photo", "")) != "" and FileAccess.file_exists(TMP_PHOTO):
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(TMP_PHOTO), ProjectSettings.globalize_path(gs.PHOTO_PATH))
+		photo = gs.PHOTO_PATH
+	gs.new_game({"name": cr["name"], "age": cr["age"], "country": cr["country"], "bg": cr["bg"], "avatar": cr["avatar"], "photo": photo}, team)
+	cr = {}
+	cr_photo = null
+	build_game()
 var menu_right: VBoxContainer
 
 func _clear_root() -> void:
@@ -200,8 +493,18 @@ func menu_page(page: String) -> void:
 			if gs.has_save():
 				var d = _peek_save()
 				if d is Dictionary:
-					v.add_child(label(str(d.get("team_name", "")), 22))
-					v.add_child(label("Тренер: %s" % d.get("coach_name", ""), 15, C_DIM))
+					var hr := hbox(14)
+					var tex: Texture2D = null
+					var pp: String = str(d.get("photo_path", ""))
+					if pp != "" and FileAccess.file_exists(pp):
+						var im := Image.load_from_file(pp)
+						if im: tex = ImageTexture.create_from_image(im)
+					hr.add_child(make_avatar(d.get("avatar", {}), 72, tex))
+					var hv := vbox(2)
+					hv.add_child(label(str(d.get("team_name", "")), 22))
+					hv.add_child(label("Менеджер: %s" % d.get("coach_name", ""), 15, C_DIM))
+					hr.add_child(hv)
+					v.add_child(hr)
 					v.add_child(label("Сезон %d · неделя %d/10 · %s" % [int(d.get("season", 1)), int(d.get("week", 1)), gs.TIERS[int(d.get("tier", 0))]], 15, C_DIM))
 					v.add_child(label("Деньги: %s · Репутация: %d · Титулов: %d" % [money_fmt(int(d.get("money", 0))), int(d.get("rep", 0)), int(d.get("titles", 0))], 15, C_DIM))
 					if str(d.get("game_over", "")) != "":
@@ -210,28 +513,7 @@ func menu_page(page: String) -> void:
 				v.add_child(label("Возьми под крыло команду новичков из Открытой лиги,\nпрокачай игроков, выстрой тактику и доведи их\nдо титула Мировой серии.", 16, C_DIM))
 				v.add_child(menu_btn("Начать карьеру", func(): menu_page("new"), true))
 		"new":
-			var v := _menu_card("Новая карьера")
-			if gs.has_save():
-				v.add_child(label("Внимание: текущее сохранение будет перезаписано.", 14, C_BAD))
-			v.add_child(label("Имя тренера", 14, C_DIM))
-			var coach := LineEdit.new()
-			coach.text = "Алексей"
-			coach.max_length = 24
-			coach.custom_minimum_size = Vector2(380, 40)
-			v.add_child(coach)
-			v.add_child(label("Название команды", 14, C_DIM))
-			var team := LineEdit.new()
-			team.text = "Tarabukin Esports"
-			team.max_length = 24
-			team.custom_minimum_size = Vector2(380, 40)
-			v.add_child(team)
-			v.add_child(label("Старт: Открытая лига, $80 000, состав из 6 молодых игроков.", 14, C_DIM))
-			var row := hbox(10)
-			row.add_child(menu_btn("Начать", func():
-				gs.new_game(coach.text, team.text)
-				build_game(), true))
-			v.add_child(row)
-			v.add_child(btn("Назад", func(): menu_page("home"), C_DIM))
+			show_creator()
 		"settings":
 			var v := _menu_card("Настройки")
 			build_settings(v, func(): menu_page("settings"))
@@ -328,9 +610,18 @@ func build_game() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 12; root.offset_top = 12; root.offset_right = -12; root.offset_bottom = -12
 	add_child(root)
-	var top := panel(C_PANEL, 10)
+	var top := panel(C_PANEL, 8)
+	var th := hbox(12)
+	top.add_child(th)
+	photo_tex = gs.load_photo()
+	th.add_child(make_avatar(gs.avatar, 38, photo_tex))
+	var badge := label(gs.team_tag, 16, Color(gs.team_color))
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	th.add_child(badge)
 	top_label = label("", 17, Color.WHITE)
-	top.add_child(top_label)
+	top_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	top_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	th.add_child(top_label)
 	root.add_child(top)
 	var body := hbox(10)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -674,7 +965,21 @@ func screen_league() -> void:
 # ------------------------------------------------------------ тренер
 
 func screen_coach() -> void:
-	content.add_child(title("Профиль тренера: %s" % gs.coach_name))
+	content.add_child(title("Профиль менеджера"))
+	var pr := panel()
+	var ph := hbox(18)
+	pr.add_child(ph)
+	ph.add_child(make_avatar(gs.avatar, 140, photo_tex))
+	var pv := vbox(4)
+	ph.add_child(pv)
+	pv.add_child(label(gs.coach_name, 26))
+	pv.add_child(label("%d лет · %s" % [gs.coach_age, gs.coach_country], 15, C_DIM))
+	var bgname := ""
+	for b in Teams.BACKGROUNDS:
+		if b["id"] == gs.coach_bg: bgname = b["name"]
+	pv.add_child(label("Предыстория: " + bgname, 15, C_DIM))
+	pv.add_child(label("Команда: %s [%s]" % [gs.team_name, gs.team_tag], 15, Color(gs.team_color)))
+	content.add_child(pr)
 	content.add_child(label("Очки навыков: %d (дают победы, плей-офф и титулы)" % gs.coach_pts, 16, C_GOOD))
 	var p := panel()
 	var v := vbox(8)
