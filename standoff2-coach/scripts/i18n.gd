@@ -4,6 +4,20 @@ extends Node
 const LANGS := {"ru": "Русский", "en": "English"}
 
 const EN := {
+	"ЛЕГКО": "EASY",
+	"НОРМАЛЬНО": "NORMAL",
+	"СЛОЖНО": "HARD",
+	"ВЫБРАТЬ КОМАНДУ": "CHOOSE TEAM",
+	"Поиск команды...": "Search team...",
+	"Все страны": "All countries",
+	"Ничего не найдено.": "Nothing found.",
+	"СЛОЖНОСТЬ:": "DIFFICULTY:",
+	"ОБЩИЙ БЮДЖЕТ:": "TOTAL BUDGET:",
+	"ПЕРСОНАЛ КОМАНДЫ": "TEAM STAFF",
+	"НЕТ ПЕРСОНАЛА": "NO STAFF",
+	"МОЛОДЫЕ ИГРОКИ": "YOUNG PLAYERS",
+	"НЕТ АКАДЕМИИ": "NO ACADEMY",
+	"ПОДПИСАТЬ КОМАНДУ": "SIGN TEAM",
 	"Оранжевый": "Orange",
 	"Красный": "Red",
 	"Розовый": "Pink",

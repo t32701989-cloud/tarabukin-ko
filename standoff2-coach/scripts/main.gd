@@ -111,10 +111,7 @@ func pic(path: String, sz: int) -> TextureRect:
 
 ## Портрет игрока: фото, если есть, иначе нарисованное лицо.
 func portrait(pl: Dictionary, sz: int) -> Control:
-	var ph: String = str(pl.get("photo", ""))
-	if ph != "" and tex(ph) != null:
-		return make_avatar({}, sz, tex(ph))
-	return make_avatar(pl.get("look", {}), sz)
+	return _circle(str(pl.get("photo", "")), sz, Color(1, 1, 1, 0.5))
 
 func cell(t: String, w: int, color: Color = Color.WHITE, size: int = 14) -> Label:
 	var l := label(t, size, color)
@@ -797,101 +794,311 @@ func apply_photo(path: String) -> void:
 
 # ------------------------------------------------------------ мастер: команда
 
-func show_team_select() -> void:
-	var root := _wizard_root(tr("Шаг 2 из 2 · Выбор команды"))
-	var info := hbox(12)
-	var it := TextureRect.new()
-	it.texture = _cr_portrait_tex()
-	it.custom_minimum_size = Vector2(48, 48)
-	it.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	it.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	info.add_child(it)
-	info.add_child(label(tr("%s, %d лет · выберите клуб, который возглавите") % ["%s \"%s\" %s" % [cr["name"], cr["nick"], cr["last"]], _cr_age()], 16, C_DIM))
-	info.get_child(1).size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	root.add_child(info)
-	var sc := ScrollContainer.new()
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(sc)
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	sc.add_child(grid)
-	for t in Teams.START_TEAMS:
-		grid.add_child(team_card(t))
-	# своя команда
-	var cp := panel(C_PANEL, 14)
-	cp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var cv := vbox(6)
-	cp.add_child(cv)
-	cv.add_child(label(tr("СВОЯ КОМАНДА"), 18, C_ACC))
-	cv.add_child(label(tr("Сложно"), 13, C_BAD))
-	var ne := LineEdit.new()
-	ne.placeholder_text = tr("Название")
-	ne.max_length = 24
-	cv.add_child(ne)
-	var te := LineEdit.new()
-	te.placeholder_text = tr("Тег (до 4 букв)")
-	te.max_length = 4
-	cv.add_child(te)
-	cv.add_child(wrap_label(tr("Создайте организацию с нуля: скромный бюджет и молодой состав."), 12, C_DIM, 230))
-	var err := label("", 12, C_BAD)
-	cv.add_child(err)
-	cv.add_child(btn(tr("Создать и начать"), func():
-		var n: String = ne.text.strip_edges()
-		if n == "":
-			err.text = tr("Введите название команды.")
-			return
-		var tag: String = te.text.strip_edges().to_upper()
-		if tag == "": tag = n.substr(0, 3).to_upper()
-		start_career({"name": n, "tag": tag, "color": "ffffff", "diff": 2, "base": 43.0, "money": 60000, "rep": 10.0}), C_GOOD))
-	grid.add_child(cp)
-	var bottom := hbox(12)
-	bottom.add_child(btn(tr("Назад"), func(): show_org_choice(), C_DIM))
-	root.add_child(bottom)
+var ts_query: String = ""
+var ts_country: String = ""
+var ts_page: int = 0
+var ts_sel: int = 0
+const TS_PER_PAGE := 6
+const DIFF_TEXT := ["ЛЕГКО", "НОРМАЛЬНО", "СЛОЖНО"]
 
-func team_card(t: Dictionary) -> Control:
-	var p := panel(C_PANEL, 14)
-	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var v := vbox(5)
-	p.add_child(v)
-	var h := hbox(10)
-	if tex(str(t.get("logo", ""))) != null:
-		h.add_child(pic(t["logo"], 44))
-	else:
-		var badge := panel(Color(t["color"]).darkened(0.55), 8)
-		badge.add_child(label(t["tag"], 16, Color(t["color"])))
-		h.add_child(badge)
+func _team_stars(t: Dictionary) -> float:
+	return clampf((float(t.get("base", 45)) - 34.0) / 5.0 + float(t.get("tier", 0)) * 0.6, 0.5, 5.0)
+
+func _player_stars(p: Dictionary) -> float:
+	var o: float = float(p.get("aim", 50)) * 0.42 + float(p.get("iq", 50)) * 0.3 + float(p.get("tw", 50)) * 0.28
+	return clampf((o - 35.0) / 6.0, 0.5, 5.0)
+
+## Детерминированный состав для команд без реального ростера (одинаковый в превью и в игре).
+func _preview_roster(t: Dictionary) -> Array:
+	if t.has("roster"):
+		return t["roster"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(str(t["name"]))
+	var base: float = float(t.get("base", 45))
+	var res: Array = []
+	var used: Array = []
+	for r in gs.ROLES:
+		var nick := ""
+		while nick == "" or used.has(nick):
+			if rng.randf() < 0.6:
+				nick = gs.NICK_A[rng.randi() % gs.NICK_A.size()] + gs.NICK_B[rng.randi() % gs.NICK_B.size()]
+			else:
+				nick = gs.NICK_B[rng.randi() % gs.NICK_B.size()].to_lower() + str(rng.randi_range(1, 99))
+		used.append(nick)
+		res.append({"nick": nick, "role": r, "aim": int(base + rng.randf_range(-7, 9)), "iq": int(base + rng.randf_range(-9, 7)),
+			"tw": int(base + rng.randf_range(-8, 8)), "age": rng.randi_range(17, 26), "photo": "", "country": t.get("country", "ru")})
+	return res
+
+func _ts_filtered() -> Array:
+	var res: Array = []
+	for i in Teams.START_TEAMS.size():
+		var t: Dictionary = Teams.START_TEAMS[i]
+		if ts_query != "" and str(t["name"]).to_lower().find(ts_query.to_lower()) < 0 and str(t["tag"]).to_lower().find(ts_query.to_lower()) < 0:
+			continue
+		if ts_country != "" and str(t.get("country", "")) != ts_country:
+			continue
+		res.append(i)
+	return res
+
+func _flag(code: String, w: int = 24) -> TextureRect:
+	var r := pic("res://assets/flags/%s.png" % code, w)
+	r.custom_minimum_size = Vector2(w, w * 2 / 3)
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return r
+
+func _stars(v: float, sz: float = 16.0) -> Control:
+	return preload("res://scripts/stars.gd").new().setup(v, sz)
+
+func _circle(path: String, sz: float, ring: Color = Color(1, 1, 1, 0.85)) -> Control:
+	var t: Texture2D = tex(path) if path != "" else null
+	if t == null:
+		t = tex("res://assets/ui/silhouette.png")
+	return preload("res://scripts/circle_pic.gd").new().setup(t, sz, ring)
+
+func _team_logo_box(t: Dictionary, sz: int) -> Control:
+	var lp: String = str(t.get("logo", ""))
+	if tex(lp) != null:
+		var r := pic(lp, sz)
+		r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		return r
+	return _save_icon({"team_tag": t["tag"], "team_color": t["color"]}, sz)
+
+func show_team_select() -> void:
+	_clear_root()
+	_dark_bg()
+	var idxs: Array = _ts_filtered()
+	if not idxs.has(ts_sel) and not idxs.is_empty():
+		ts_sel = idxs[0]
+	# ---- список слева
+	var lp := panel(Color(0.085, 0.095, 0.12, 0.97), 18)
+	lp.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	lp.offset_right = 400
+	add_child(lp)
+	var lv := vbox(10)
+	lp.add_child(lv)
+	var tt := label(tr("ВЫБРАТЬ КОМАНДУ"), 28, Color.WHITE)
+	tt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lv.add_child(tt)
+	var sr := hbox(6)
+	var search := LineEdit.new()
+	search.placeholder_text = tr("Поиск команды...")
+	search.text = ts_query
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	search.text_submitted.connect(func(t): ts_query = t; ts_page = 0; show_team_select())
+	search.text_changed.connect(func(t):
+		ts_query = t; ts_page = 0
+		_ts_refresh_later())
+	sr.add_child(search)
+	var cf := OptionButton.new()
+	cf.add_item(tr("Все страны"))
+	var codes: Array = [""]
+	for c in Teams.COUNTRY_LIST:
+		var ft: Texture2D = tex("res://assets/flags/%s.png" % c[0])
+		if ft != null: cf.add_icon_item(ft, tr(c[1]))
+		else: cf.add_item(tr(c[1]))
+		codes.append(c[0])
+	cf.selected = maxi(0, codes.find(ts_country))
+	cf.item_selected.connect(func(i): ts_country = codes[i]; ts_page = 0; show_team_select())
+	sr.add_child(cf)
+	lv.add_child(sr)
+	var list := vbox(8)
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	lv.add_child(list)
+	var pages: int = maxi(1, int(ceil(float(idxs.size()) / TS_PER_PAGE)))
+	ts_page = clampi(ts_page, 0, pages - 1)
+	var from: int = ts_page * TS_PER_PAGE
+	var to: int = mini(idxs.size(), from + TS_PER_PAGE)
+	if idxs.is_empty():
+		list.add_child(label(tr("Ничего не найдено."), 15, C_DIM))
+	for k in range(from, to):
+		list.add_child(_ts_row(int(idxs[k])))
+	var pr := hbox(10)
+	pr.alignment = BoxContainer.ALIGNMENT_CENTER
+	var pb := btn("<", func(): ts_page -= 1; show_team_select())
+	pb.disabled = ts_page == 0
+	pr.add_child(pb)
+	pr.add_child(label(str(ts_page + 1), 16))
+	var nb := btn(">", func(): ts_page += 1; show_team_select())
+	nb.disabled = ts_page >= pages - 1
+	pr.add_child(nb)
+	pr.add_child(spacer())
+	pr.add_child(label("(%d - %d) %d" % [from + 1 if to > 0 else 0, to, idxs.size()], 13, C_DIM))
+	lv.add_child(pr)
+	lv.add_child(_outline_btn("<  " + tr("НАЗАД"), func(): show_org_choice(), Color("e0453a"), 16))
+	# ---- карточка справа
+	if not idxs.is_empty():
+		var rp := Control.new()
+		rp.set_anchors_preset(Control.PRESET_FULL_RECT)
+		rp.offset_left = 430
+		rp.offset_right = -30
+		rp.offset_top = 40
+		rp.offset_bottom = -40
+		add_child(rp)
+		rp.add_child(_ts_detail(Teams.START_TEAMS[ts_sel]))
+
+var _ts_timer: SceneTreeTimer
+
+func _ts_refresh_later() -> void:
+	# поиск без потери фокуса: обновляем список после паузы ввода
+	var t := get_tree().create_timer(0.5)
+	_ts_timer = t
+	await t.timeout
+	if _ts_timer == t and top_label == null:
+		show_team_select()
+		for c in get_children():
+			var le := _find_line_edit(c)
+			if le != null:
+				le.grab_focus()
+				le.caret_column = le.text.length()
+				break
+
+func _find_line_edit(n: Node) -> LineEdit:
+	if n is LineEdit:
+		return n
+	for c in n.get_children():
+		var r := _find_line_edit(c)
+		if r != null:
+			return r
+	return null
+
+func _ts_row(i: int) -> Control:
+	var t: Dictionary = Teams.START_TEAMS[i]
+	var sel: bool = i == ts_sel
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("3f8f3a") if sel else Color("1f232b")
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(8)
+	card.add_theme_stylebox_override("panel", sb)
+	var h := hbox(12)
+	card.add_child(h)
+	h.add_child(_team_logo_box(t, 50))
+	var v := vbox(2)
+	var nr := hbox(8)
+	nr.add_child(_flag(str(t.get("country", "xx"))))
+	nr.add_child(label(str(t["name"]).to_upper(), 19, Color.WHITE))
+	v.add_child(nr)
+	var sr := hbox(8)
+	sr.add_child(_stars(_team_stars(t), 15))
+	sr.add_child(label(tr("СЛОЖНОСТЬ:"), 11, Color("d6dbe3")))
 	var d: int = int(t["diff"])
-	var dl := label(Teams.DIFF_NAMES[d], 13, Color(Teams.DIFF_COLORS[d]))
-	dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	h.add_child(dl)
-	v.add_child(h)
-	v.add_child(label(t["name"], 18))
-	v.add_child(label(tr("Лига: %s") % tr(gs.TIERS[int(t.get("tier", 0))]), 13, C_ACC if int(t.get("tier", 0)) > 0 else C_DIM))
-	v.add_child(label(tr("Уровень состава: ~%d") % int(t["base"]), 13, C_DIM))
-	var roster: Array = t.get("roster", [])
-	if not roster.is_empty():
-		var faces := hbox(3)
-		for rp in roster:
-			faces.add_child(portrait(rp, 40))
-		v.add_child(faces)
-		v.add_child(wrap_label(", ".join(roster.map(func(x): return x["nick"])), 12, Color.WHITE, 230))
+	sr.add_child(label(tr(DIFF_TEXT[d]), 11, Color(Teams.DIFF_COLORS[d])))
+	v.add_child(sr)
+	h.add_child(v)
+	var hit := Button.new()
+	hit.flat = true
+	for st in ["normal", "hover", "pressed", "focus"]:
+		hit.add_theme_stylebox_override(st, _flat_style())
+	if not sel:
+		hit.mouse_entered.connect(func(): sb.bg_color = Color("2a303c"))
+		hit.mouse_exited.connect(func(): sb.bg_color = Color("1f232b"))
+	hit.pressed.connect(func(): ts_sel = i; show_team_select())
+	card.add_child(hit)
+	_ignore_mouse(h)
+	return card
+
+func _ts_detail(t: Dictionary) -> Control:
+	var p := panel(Color(0.09, 0.1, 0.13, 0.96), 22)
+	p.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
+	sb.set_border_width_all(2)
+	sb.border_color = Color(1, 1, 1, 0.35)
+	var outer := vbox(10)
+	p.add_child(outer)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(sc)
+	var v := vbox(14)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(v)
+	# шапка
+	var head := hbox(18)
+	var lb := panel(Color(t["color"]).darkened(0.55), 8)
+	lb.add_child(_team_logo_box(t, 110))
+	head.add_child(lb)
+	var hv := vbox(6)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hv.add_child(label(str(t["name"]).to_upper(), 30, Color.WHITE))
+	var r1 := hbox(14)
+	r1.add_child(_stars(_team_stars(t), 20))
+	r1.add_child(label(tr("ОБЩИЙ БЮДЖЕТ:"), 14, Color("d6dbe3")))
+	r1.add_child(label(money_fmt(int(t["money"])), 14, Color("f5c518")))
+	r1.add_child(label(tr("СЛОЖНОСТЬ:"), 14, Color("d6dbe3")))
+	var d: int = int(t["diff"])
+	r1.add_child(label(tr(DIFF_TEXT[d]), 14, Color(Teams.DIFF_COLORS[d])))
+	hv.add_child(r1)
+	var r2 := hbox(12)
+	r2.add_child(_flag(str(t.get("country", "xx")), 36))
+	r2.add_child(wrap_label(tr(t["desc"]) + "  " + tr("Лига: %s") % tr(gs.TIERS[int(t.get("tier", 0))]), 13, Color("c9ced8"), 520))
+	hv.add_child(r2)
+	head.add_child(hv)
+	v.add_child(head)
+	# состав
+	var sep := ColorRect.new()
+	sep.color = Color(1, 1, 1, 0.08)
+	sep.custom_minimum_size = Vector2(0, 2)
+	v.add_child(sep)
+	var roster := hbox(18)
+	roster.alignment = BoxContainer.ALIGNMENT_CENTER
+	for pl in _preview_roster(t):
+		var pv := vbox(3)
+		var c := _circle(str(pl.get("photo", "")), 104)
+		c.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		pv.add_child(c)
+		var nr := hbox(5)
+		nr.alignment = BoxContainer.ALIGNMENT_CENTER
+		nr.add_child(_flag(str(pl.get("country", t.get("country", "xx"))), 20))
+		nr.add_child(label(str(pl["nick"]), 15, Color.WHITE))
+		pv.add_child(nr)
+		var st := _stars(_player_stars(pl), 15)
+		st.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		pv.add_child(st)
+		var rl := label(tr(pl["role"]), 13, Color("d6dbe3"))
+		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pv.add_child(rl)
+		roster.add_child(pv)
+	v.add_child(roster)
+	# персонал
+	v.add_child(label(tr("ПЕРСОНАЛ КОМАНДЫ"), 15, Color("d6dbe3")))
+	var staff := hbox(14)
 	if t.has("coach"):
-		v.add_child(label(tr("Тренер: %s") % t["coach"]["name"], 12, C_DIM))
-	v.add_child(label(tr("Бюджет: %s") % money_fmt(int(t["money"])), 13, C_DIM))
-	v.add_child(label(tr("Репутация: %d") % int(t["rep"]), 13, C_DIM))
-	v.add_child(wrap_label(t["desc"], 12, C_DIM, 230))
-	var f := Control.new()
-	f.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(f)
+		var sv := vbox(2)
+		var c2 := _circle(str(t["coach"]["photo"]), 64)
+		c2.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		sv.add_child(c2)
+		var cl := label(str(t["coach"]["name"]), 13, Color.WHITE)
+		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sv.add_child(cl)
+		var rl2 := label(tr("Тренер"), 11, C_DIM)
+		rl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sv.add_child(rl2)
+		staff.add_child(sv)
+	else:
+		staff.add_child(label(tr("НЕТ ПЕРСОНАЛА"), 14, C_DIM))
+	v.add_child(staff)
+	# молодые игроки
+	v.add_child(label(tr("МОЛОДЫЕ ИГРОКИ"), 15, Color("d6dbe3")))
+	var ac := hbox(14)
+	for i in 5:
+		var e := preload("res://scripts/circle_pic.gd").new().setup(null, 56, Color(1, 1, 1, 0.12))
+		ac.add_child(e)
+	ac.add_child(label(tr("НЕТ АКАДЕМИИ"), 15, C_DIM))
+	v.add_child(ac)
+	var br := hbox(10)
+	br.add_child(spacer())
+	if cr_slot > 0 and gs.read_slot(cr_slot) != null:
+		br.add_child(label(tr("Карьера в слоте %d будет заменена") % cr_slot, 13, C_BAD))
 	var team: Dictionary = t
-	v.add_child(btn(tr("Выбрать"), func(): start_career(team), C_GOOD))
+	br.add_child(_outline_btn(tr("ПОДПИСАТЬ КОМАНДУ") + "  >", func(): start_career(team), C_GOOD, 18))
+	outer.add_child(br)
 	return p
 
 func start_career(team: Dictionary) -> void:
+	if not team.has("roster") and not bool(team.get("custom", false)):
+		team = team.duplicate()
+		team["roster"] = _preview_roster(team)
 	var photo := ""
 	gs.slot = cr_slot if cr_slot > 0 else gs.free_slot()
 	gs.delete_slot(gs.slot)
@@ -1053,7 +1260,6 @@ func show_menu() -> void:
 	var fill := Control.new()
 	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(fill)
-	left.add_child(label(tr("%s · Godot 4.2 · фан-проект, не связан с разработчиками Standoff 2") % VERSION, 12, Color("5b6270")))
 	# правая панель для подстраниц
 	menu_right = Control.new()
 	menu_right.set_anchors_preset(Control.PRESET_FULL_RECT)
