@@ -4,6 +4,17 @@ extends RefCounted
 ## base — средний уровень стартового состава, money — стартовый бюджет, rep — репутация.
 
 const START_TEAMS := [
+	{"name": "Virtus.pro", "tag": "VP", "color": "ff5500", "diff": 1, "base": 60.0, "money": 220000, "rep": 60.0, "tier": 1,
+		"logo": "res://assets/teams/vp/logo.png",
+		"coach": {"name": "inverness", "photo": "res://assets/teams/vp/inverness.jpg"},
+		"desc": "Топ-организация. Стартует в Про-лиге, большой бюджет и высокие ожидания.",
+		"roster": [
+			{"nick": "Lunax", "role": "Капитан", "aim": 60, "iq": 66, "tw": 63, "age": 21, "photo": "res://assets/teams/vp/lunax.jpg"},
+			{"nick": "reason", "role": "Снайпер", "aim": 66, "iq": 59, "tw": 60, "age": 20, "photo": "res://assets/teams/vp/reason.jpg"},
+			{"nick": "chipaa", "role": "Энтри", "aim": 64, "iq": 57, "tw": 60, "age": 18, "photo": "res://assets/teams/vp/chipaa.jpg"},
+			{"nick": "Arventy", "role": "Саппорт", "aim": 58, "iq": 62, "tw": 64, "age": 19, "photo": "res://assets/teams/vp/arventy.jpg"},
+			{"nick": "Hi-Lo", "role": "Лурк", "aim": 62, "iq": 61, "tw": 59, "age": 20, "photo": "res://assets/teams/vp/hi-lo.jpg"},
+		]},
 	{"name": "Tarabukin Esports", "tag": "TBK", "color": "ffb23e", "diff": 1, "base": 46.0, "money": 80000, "rep": 20.0,
 		"desc": "Молодой проект с амбициями и нормальным бюджетом."},
 	{"name": "Nova Squad", "tag": "NOVA", "color": "5aa9ff", "diff": 0, "base": 52.0, "money": 120000, "rep": 30.0,

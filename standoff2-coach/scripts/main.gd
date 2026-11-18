@@ -83,6 +83,35 @@ func stat_color(v: int) -> Color:
 func money_fmt(v: int) -> String:
 	return ("-" if v < 0 else "") + "$" + str(abs(v))
 
+var _tex_cache: Dictionary = {}
+
+func tex(path: String) -> Texture2D:
+	if path == "":
+		return null
+	if _tex_cache.has(path):
+		return _tex_cache[path]
+	var t: Texture2D = null
+	if ResourceLoader.exists(path):
+		t = load(path)
+	_tex_cache[path] = t
+	return t
+
+func pic(path: String, sz: int) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = tex(path)
+	r.custom_minimum_size = Vector2(sz, sz)
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+## Портрет игрока: фото, если есть, иначе нарисованное лицо.
+func portrait(pl: Dictionary, sz: int) -> Control:
+	var ph: String = str(pl.get("photo", ""))
+	if ph != "" and tex(ph) != null:
+		return make_avatar({}, sz, tex(ph))
+	return make_avatar(pl.get("look", {}), sz)
+
 func cell(t: String, w: int, color: Color = Color.WHITE, size: int = 14) -> Label:
 	var l := label(t, size, color)
 	l.custom_minimum_size = Vector2(w, 0)
@@ -355,16 +384,29 @@ func team_card(t: Dictionary) -> Control:
 	var v := vbox(5)
 	p.add_child(v)
 	var h := hbox(10)
-	var badge := panel(Color(t["color"]).darkened(0.55), 8)
-	badge.add_child(label(t["tag"], 16, Color(t["color"])))
-	h.add_child(badge)
+	if tex(str(t.get("logo", ""))) != null:
+		h.add_child(pic(t["logo"], 44))
+	else:
+		var badge := panel(Color(t["color"]).darkened(0.55), 8)
+		badge.add_child(label(t["tag"], 16, Color(t["color"])))
+		h.add_child(badge)
 	var d: int = int(t["diff"])
 	var dl := label(Teams.DIFF_NAMES[d], 13, Color(Teams.DIFF_COLORS[d]))
 	dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(dl)
 	v.add_child(h)
 	v.add_child(label(t["name"], 18))
+	v.add_child(label("Лига: %s" % gs.TIERS[int(t.get("tier", 0))], 13, C_ACC if int(t.get("tier", 0)) > 0 else C_DIM))
 	v.add_child(label("Уровень состава: ~%d" % int(t["base"]), 13, C_DIM))
+	var roster: Array = t.get("roster", [])
+	if not roster.is_empty():
+		var faces := hbox(3)
+		for rp in roster:
+			faces.add_child(portrait(rp, 40))
+		v.add_child(faces)
+		v.add_child(wrap_label(", ".join(roster.map(func(x): return x["nick"])), 12, Color.WHITE, 230))
+	if t.has("coach"):
+		v.add_child(label("Тренер: %s" % t["coach"]["name"], 12, C_DIM))
 	v.add_child(label("Бюджет: %s" % money_fmt(int(t["money"])), 13, C_DIM))
 	v.add_child(label("Репутация: %d" % int(t["rep"]), 13, C_DIM))
 	v.add_child(wrap_label(t["desc"], 12, C_DIM, 230))
@@ -615,6 +657,8 @@ func build_game() -> void:
 	top.add_child(th)
 	photo_tex = gs.load_photo()
 	th.add_child(make_avatar(gs.avatar, 38, photo_tex))
+	if tex(gs.team_logo) != null:
+		th.add_child(pic(gs.team_logo, 38))
 	var badge := label(gs.team_tag, 16, Color(gs.team_color))
 	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	th.add_child(badge)
@@ -780,11 +824,21 @@ func on_finish_week() -> void:
 
 func screen_squad() -> void:
 	content.add_child(title("Состав (первые 5 здоровых игроков выходят на карту)"))
+	if gs.staff_coach != "":
+		var sp := panel()
+		var sh := hbox(12)
+		sp.add_child(sh)
+		sh.add_child(portrait({"photo": gs.staff_photo}, 56))
+		var sv := vbox(2)
+		sv.add_child(label("Тренер состава: " + gs.staff_coach, 17))
+		sv.add_child(label("Работает в вашем штабе: +1.5 к силе команды", 13, C_DIM))
+		sh.add_child(sv)
+		content.add_child(sp)
 	var p := panel()
 	var v := vbox(5)
 	p.add_child(v)
 	var h := hbox(4)
-	for e in [["Ник", 130], ["Роль", 80], ["Воз", 40], ["Аим", 44], ["ИИ", 44], ["Сыг", 44], ["ОБЩ", 48], ["Форма", 60], ["Зарплата", 80], ["Статус", 110]]:
+	for e in [["", 34], ["Ник", 108], ["Роль", 78], ["Воз", 36], ["Аим", 40], ["ИИ", 40], ["Сыг", 40], ["ОБЩ", 44], ["Форма", 56], ["Зарплата", 70], ["Статус", 96]]:
 		h.add_child(cell(e[0], e[1], C_DIM, 13))
 	v.add_child(h)
 	var lineup_ids: Array = []
@@ -794,22 +848,23 @@ func screen_squad() -> void:
 		var pl: Dictionary = gs.players[i]
 		var r := hbox(4)
 		var starter: bool = lineup_ids.has(pl["id"])
-		r.add_child(cell(pl["nick"], 130, C_ACC if starter else C_DIM))
-		r.add_child(cell(pl["role"], 80))
-		r.add_child(cell(str(pl["age"]), 40, C_DIM))
-		r.add_child(cell(str(pl["aim"]), 44, stat_color(pl["aim"])))
-		r.add_child(cell(str(pl["iq"]), 44, stat_color(pl["iq"])))
-		r.add_child(cell(str(pl["tw"]), 44, stat_color(pl["tw"])))
-		r.add_child(cell(str(gs.ovr(pl)), 48, stat_color(gs.ovr(pl))))
+		r.add_child(portrait(pl, 34))
+		r.add_child(cell(pl["nick"], 108, C_ACC if starter else C_DIM))
+		r.add_child(cell(pl["role"], 78))
+		r.add_child(cell(str(pl["age"]), 36, C_DIM))
+		r.add_child(cell(str(pl["aim"]), 40, stat_color(pl["aim"])))
+		r.add_child(cell(str(pl["iq"]), 40, stat_color(pl["iq"])))
+		r.add_child(cell(str(pl["tw"]), 40, stat_color(pl["tw"])))
+		r.add_child(cell(str(gs.ovr(pl)), 44, stat_color(gs.ovr(pl))))
 		var fc: Color = C_GOOD if pl["form"] >= 70 else (C_ACC if pl["form"] >= 45 else C_BAD)
-		r.add_child(cell(str(pl["form"]) + "%", 60, fc))
-		r.add_child(cell("$" + str(pl["salary"]), 80, C_DIM))
+		r.add_child(cell(str(pl["form"]) + "%", 56, fc))
+		r.add_child(cell("$" + str(pl["salary"]), 70, C_DIM))
 		var st := "Основа" if starter else "Скамейка"
 		var stc: Color = C_GOOD if starter else C_DIM
 		if pl["inj"] > 0:
 			st = "Травма %dн" % pl["inj"]
 			stc = C_BAD
-		r.add_child(cell(st, 110, stc))
+		r.add_child(cell(st, 96, stc))
 		var idx: int = i
 		r.add_child(btn("Вверх", func(): gs.move_player(idx, -1); show_screen("squad")))
 		r.add_child(btn("Вниз", func(): gs.move_player(idx, 1); show_screen("squad")))
@@ -897,12 +952,13 @@ func screen_transfers() -> void:
 	var v := vbox(5)
 	p.add_child(v)
 	var h := hbox(4)
-	for e in [["Ник", 130], ["Роль", 80], ["Воз", 40], ["Аим", 44], ["ИИ", 44], ["Сыг", 44], ["ОБЩ", 48], ["Потенциал", 80], ["Цена", 90], ["Зарплата", 80]]:
+	for e in [["", 34], ["Ник", 130], ["Роль", 80], ["Воз", 40], ["Аим", 44], ["ИИ", 44], ["Сыг", 44], ["ОБЩ", 48], ["Потенциал", 80], ["Цена", 90], ["Зарплата", 80]]:
 		h.add_child(cell(e[0], e[1], C_DIM, 13))
 	v.add_child(h)
 	for i in gs.market.size():
 		var pl: Dictionary = gs.market[i]
 		var r := hbox(4)
+		r.add_child(portrait(pl, 34))
 		r.add_child(cell(pl["nick"], 130, C_ACC))
 		r.add_child(cell(pl["role"], 80))
 		r.add_child(cell(str(pl["age"]), 40, C_DIM))

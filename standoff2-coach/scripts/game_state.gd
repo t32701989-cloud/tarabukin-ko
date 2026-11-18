@@ -2,6 +2,7 @@ extends Node
 ## Глобальное состояние карьеры тренера: команда, лига, финансы, трансферы, сохранения.
 
 const MatchSim := preload("res://scripts/match_sim.gd")
+const Avatar := preload("res://scripts/avatar.gd")
 const SAVE_PATH := "user://coach_save.json"
 
 const ROLES := ["Капитан", "Снайпер", "Энтри", "Саппорт", "Лурк"]
@@ -71,6 +72,9 @@ var avatar: Dictionary = {}
 var photo_path: String = ""
 var team_tag: String = ""
 var team_color: String = "ffb23e"
+var team_logo: String = ""
+var staff_coach: String = ""
+var staff_photo: String = ""
 
 # ---------------------------------------------------------------- игроки
 
@@ -102,7 +106,7 @@ func gen_player(base: float, role: String = "") -> Dictionary:
 	var pot: int = clampi(int(base + randf_range(4, 26) - maxf(0.0, float(age - 22)) * 3.0), int(base) + 2, 99)
 	if role == "":
 		role = ROLES[randi() % ROLES.size()]
-	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0}
+	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": ""}
 	next_id += 1
 	var o: int = ovr(p)
 	p["salary"] = int(300 + (o - 30) * 32)
@@ -145,6 +149,8 @@ func team_power(st: String, map_name: String) -> Dictionary:
 	if roles.has("Лурк"): bonus += 1.0
 	if roles.size() >= 5: bonus += 2.0
 	bonus += float(coach_skill["tactics"]) * 0.7
+	if staff_coach != "":
+		bonus += 1.5
 	bonus += (float(map_skill.get(map_name, 40)) - 40.0) / 8.0
 	var a: float = s + bonus
 	var d: float = s + bonus
@@ -184,12 +190,16 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	photo_path = str(coach.get("photo", ""))
 	team_tag = str(team.get("tag", team_name.substr(0, 3).to_upper()))
 	team_color = str(team.get("color", "ffb23e"))
+	team_logo = str(team.get("logo", ""))
+	var staff: Dictionary = team.get("coach", {})
+	staff_coach = str(staff.get("name", ""))
+	staff_photo = str(staff.get("photo", ""))
 	active = true
 	game_over = ""
 	legend = false
 	season = 1
 	week = 1
-	tier = 0
+	tier = int(team.get("tier", 0))
 	money = int(team.get("money", 80000))
 	rep = float(team.get("rep", 20.0))
 	coach_pts = 1
@@ -221,14 +231,27 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	for m in MAPS:
 		map_skill[m] = randi_range(32, 52)
 	train_map = MAPS[0]
-	for r in ROLES:
-		players.append(gen_player(base, r))
+	var roster: Array = team.get("roster", [])
+	if roster.is_empty():
+		for r in ROLES:
+			players.append(gen_player(base, r))
+		for p in players:
+			p["age"] = randi_range(17, 23)
+	else:
+		for rp in roster:
+			var p: Dictionary = gen_player(base, rp["role"])
+			for k in ["nick", "aim", "iq", "tw", "age", "photo"]:
+				if rp.has(k):
+					p[k] = rp[k]
+			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
+			p["salary"] = int(300 + (ovr(p) - 30) * 32)
+			players.append(p)
 	players.append(gen_player(base - 4.0))
-	for p in players:
-		p["age"] = randi_range(17, 23)
 	_start_league()
 	_refresh_market(12)
-	add_news("%s (%d лет, %s) принимает команду «%s». Цель совета директоров: топ-4 в Открытой лиге." % [coach_name, coach_age, coach_country, team_name])
+	add_news("%s (%d лет, %s) принимает команду «%s». Цель совета директоров: топ-%d в лиге «%s»." % [coach_name, coach_age, coach_country, team_name, [4, 6, 8][tier], TIERS[tier]])
+	if staff_coach != "":
+		add_news("В тренерском штабе остаётся %s (+1.5 к силе команды)." % staff_coach)
 	save()
 	changed.emit()
 
@@ -642,6 +665,7 @@ func to_dict() -> Dictionary:
 		"history": history, "titles": titles, "bad_seasons": bad_seasons, "next_id": next_id,
 		"coach_age": coach_age, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
 		"photo_path": photo_path, "team_tag": team_tag, "team_color": team_color,
+		"team_logo": team_logo, "staff_coach": staff_coach, "staff_photo": staff_photo,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -691,6 +715,9 @@ func from_dict(d: Dictionary) -> void:
 	photo_path = str(d.get("photo_path", ""))
 	team_tag = str(d.get("team_tag", team_name.substr(0, 3).to_upper()))
 	team_color = str(d.get("team_color", "ffb23e"))
+	team_logo = str(d.get("team_logo", ""))
+	staff_coach = str(d.get("staff_coach", ""))
+	staff_photo = str(d.get("staff_photo", ""))
 	changed.emit()
 
 func _fix_players(arr: Array) -> Array:
@@ -700,6 +727,12 @@ func _fix_players(arr: Array) -> Array:
 		for k in ["id", "aim", "iq", "tw", "form", "age", "pot", "inj", "salary", "matches", "pot_est"]:
 			if q.has(k):
 				q[k] = int(q[k])
+		var lk: Dictionary = {}
+		var src: Dictionary = q.get("look", {})
+		for k in src:
+			lk[k] = int(src[k])
+		q["look"] = lk
+		q["photo"] = str(q.get("photo", ""))
 		res.append(q)
 	return res
 
