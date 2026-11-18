@@ -246,7 +246,8 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
 			p["salary"] = int(300 + (ovr(p) - 30) * 32)
 			players.append(p)
-	players.append(gen_player(base - 4.0))
+	if roster.is_empty():
+		players.append(gen_player(base - 4.0))
 	_start_league()
 	_refresh_market(12)
 	add_news(tr("%s (%d лет, %s) принимает команду «%s». Цель совета директоров: топ-%d в лиге «%s».") % [coach_name, coach_age, tr(coach_country), team_name, [4, 6, 8][tier], tr(TIERS[tier])])
