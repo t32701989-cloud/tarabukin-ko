@@ -301,14 +301,25 @@ func opp_strength(team: String) -> float:
 
 var rankoff: Dictionary = {}     # команда -> очки (Эло)
 
+## Стартовые очки Rankoff: у реальных команд — из базы, у остальных — по силе (ниже топа).
+func _base_rank(n: String) -> float:
+	for rt in load("res://scripts/teams.gd").START_TEAMS:
+		if rt["name"] == n and rt.has("rankoff"):
+			return float(rt["rankoff"])
+	if strengths.has(n):
+		return clampf(float(strengths[n]) * 11.0 - 50.0, 150.0, 880.0)
+	return 200.0 + float(abs(hash(n)) % 600)
+
 func _init_rankoff() -> void:
 	rankoff = {}
 	for n in AI_TEAMS:
-		var h: int = abs(hash(n))
-		rankoff[n] = 1350.0 + float(h % 500)
+		rankoff[n] = _base_rank(n)
+	for rt in load("res://scripts/teams.gd").START_TEAMS:
+		rankoff[rt["name"]] = _base_rank(rt["name"])
 	for n in strengths:
-		rankoff[n] = 600.0 + float(strengths[n]) * 14.0
-	rankoff[team_name] = 600.0 + team_power("balanced", MAPS[0])["base"] * 14.0
+		rankoff[n] = _base_rank(n)
+	if not rankoff.has(team_name):
+		rankoff[team_name] = clampf(team_power("balanced", MAPS[0])["base"] * 11.0 - 50.0, 150.0, 880.0)
 
 func rankoff_update(a: String, b: String, a_won: bool, k: float = 28.0) -> void:
 	if rankoff.is_empty():
@@ -324,7 +335,7 @@ func rankoff_list() -> Array:
 	if rankoff.is_empty():
 		_init_rankoff()
 	if not rankoff.has(team_name):
-		rankoff[team_name] = 600.0 + team_power("balanced", MAPS[0])["base"] * 14.0
+		rankoff[team_name] = _base_rank(team_name) if _base_rank(team_name) > 0.0 else 500.0
 	var arr: Array = rankoff.keys()
 	arr.sort_custom(func(x, y): return float(rankoff[x]) > float(rankoff[y]))
 	return arr
@@ -816,7 +827,7 @@ func _start_next_season() -> void:
 	_start_league()
 	for n in strengths:
 		if not rankoff.has(n):
-			rankoff[n] = 600.0 + float(strengths[n]) * 14.0
+			rankoff[n] = _base_rank(n)
 	_refresh_market(12)
 	add_news(tr("Начался сезон %d — %s.") % [season, tr(TIERS[tier])])
 

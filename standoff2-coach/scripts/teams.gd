@@ -4,7 +4,7 @@ extends RefCounted
 ## base — средний уровень стартового состава, money — стартовый бюджет, rep — репутация.
 
 const START_TEAMS := [
-	{"name": "Virtus.pro", "country": "ru", "tag": "VP", "color": "ff5500", "diff": 1, "base": 76.0, "money": 220000, "rep": 60.0, "tier": 1,
+	{"name": "Virtus.pro", "rankoff": 904, "country": "ru", "tag": "VP", "color": "ff5500", "diff": 1, "base": 76.0, "money": 220000, "rep": 60.0, "tier": 1,
 		"logo": "res://assets/teams/vp/logo.png",
 		"coach": {"name": "inverness", "country": "ru", "photo": "res://assets/teams/vp/inverness.png"},
 		"desc": "Топ-организация. Стартует в Про-лиге, большой бюджет и высокие ожидания.",
@@ -15,7 +15,7 @@ const START_TEAMS := [
 			{"nick": "Arventy", "first": "Иван", "last": "Шумкин", "role": "Капитан", "aim": 73, "iq": 84, "tw": 82, "age": 19, "country": "ru", "photo": "res://assets/teams/vp/arventy.png"},
 			{"nick": "Hi-Lo", "first": "Иван", "last": "Сидоренков", "role": "Энтри", "aim": 82, "iq": 71, "tw": 74, "age": 20, "country": "ru", "photo": "res://assets/teams/vp/hi-lo.png"},
 		]},
-	{"name": "Team CyberHero", "country": "ru", "tag": "CH", "color": "7a6a9c", "diff": 1, "base": 72.0, "money": 160000, "rep": 48.0, "tier": 1,
+	{"name": "Team CyberHero", "rankoff": 1037, "country": "ru", "tag": "CH", "color": "7a6a9c", "diff": 1, "base": 72.0, "money": 160000, "rep": 48.0, "tier": 1,
 		"logo": "res://assets/teams/ch/logo.png",
 		"desc": "Амбициозная команда Про-лиги с сильным индивидуальным скиллом.",
 		"roster": [
