@@ -454,12 +454,17 @@ func _start_league() -> void:
 	match_done = false
 	var pool: Array = AI_TEAMS.filter(func(x): return x != team_name)
 	pool.shuffle()
+	# реальные команды из базы — тоже соперники в своей лиге
+	for rt in load("res://scripts/teams.gd").START_TEAMS:
+		if rt["name"] != team_name and int(rt.get("tier", 0)) == tier:
+			pool.erase(rt["name"])
+			pool.push_front(rt["name"])
 	league_teams = [team_name]
 	strengths = {}
 	for i in 7:
 		var n: String = pool[i]
 		league_teams.append(n)
-		strengths[n] = 38.0 + float(tier) * 15.0 + minf(8.0, float(season - 1) * 1.5) + randf_range(-1, 13)
+		strengths[n] = _real_strength(n) if _real_strength(n) > 0.0 else 38.0 + float(tier) * 15.0 + minf(8.0, float(season - 1) * 1.5) + randf_range(-1, 13)
 	standings = {}
 	for t in league_teams:
 		standings[t] = {"w": 0, "l": 0, "rd": 0}
@@ -467,6 +472,12 @@ func _start_league() -> void:
 	order.shuffle()
 	schedule = _make_schedule(order)
 	playoff = {"semis": [], "sf": {}, "final": [], "champion": ""}
+
+func _real_strength(n: String) -> float:
+	for rt in load("res://scripts/teams.gd").START_TEAMS:
+		if rt["name"] == n:
+			return float(rt["base"]) - 4.0
+	return 0.0
 
 func _make_schedule(teams: Array) -> Array:
 	var t: Array = teams.duplicate()

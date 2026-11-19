@@ -6,14 +6,24 @@ extends RefCounted
 const START_TEAMS := [
 	{"name": "Virtus.pro", "country": "ru", "tag": "VP", "color": "ff5500", "diff": 1, "base": 76.0, "money": 220000, "rep": 60.0, "tier": 1,
 		"logo": "res://assets/teams/vp/logo.png",
-		"coach": {"name": "inverness", "photo": "res://assets/teams/vp/inverness.png"},
+		"coach": {"name": "inverness", "country": "ru", "photo": "res://assets/teams/vp/inverness.png"},
 		"desc": "Топ-организация. Стартует в Про-лиге, большой бюджет и высокие ожидания.",
 		"roster": [
-			{"nick": "Lunax", "first": "Никита", "last": "Макаров", "role": "Саппорт", "aim": 74, "iq": 78, "tw": 82, "age": 21, "photo": "res://assets/teams/vp/lunax.png"},
-			{"nick": "reason", "first": "Самир", "last": "Курбанов", "role": "Снайпер", "aim": 84, "iq": 74, "tw": 75, "age": 20, "photo": "res://assets/teams/vp/reason.png"},
-			{"nick": "chipaa", "first": "Александр", "last": "Калинченков", "role": "Лурк", "aim": 80, "iq": 76, "tw": 72, "age": 18, "photo": "res://assets/teams/vp/chipaa.png"},
-			{"nick": "Arventy", "first": "Иван", "last": "Шумкин", "role": "Капитан", "aim": 73, "iq": 84, "tw": 82, "age": 19, "photo": "res://assets/teams/vp/arventy.png"},
-			{"nick": "Hi-Lo", "first": "Иван", "last": "Сидоренков", "role": "Энтри", "aim": 82, "iq": 71, "tw": 74, "age": 20, "photo": "res://assets/teams/vp/hi-lo.png"},
+			{"nick": "Lunax", "first": "Никита", "last": "Макаров", "role": "Саппорт", "aim": 74, "iq": 78, "tw": 82, "age": 21, "country": "ru", "photo": "res://assets/teams/vp/lunax.png"},
+			{"nick": "reason", "first": "Самир", "last": "Курбанов", "role": "Снайпер", "aim": 84, "iq": 74, "tw": 75, "age": 20, "country": "ru", "photo": "res://assets/teams/vp/reason.png"},
+			{"nick": "chipaa", "first": "Александр", "last": "Калинченков", "role": "Лурк", "aim": 80, "iq": 76, "tw": 72, "age": 18, "country": "ru", "photo": "res://assets/teams/vp/chipaa.png"},
+			{"nick": "Arventy", "first": "Иван", "last": "Шумкин", "role": "Капитан", "aim": 73, "iq": 84, "tw": 82, "age": 19, "country": "ru", "photo": "res://assets/teams/vp/arventy.png"},
+			{"nick": "Hi-Lo", "first": "Иван", "last": "Сидоренков", "role": "Энтри", "aim": 82, "iq": 71, "tw": 74, "age": 20, "country": "ru", "photo": "res://assets/teams/vp/hi-lo.png"},
+		]},
+	{"name": "Team CyberHero", "country": "ru", "tag": "CH", "color": "7a6a9c", "diff": 1, "base": 72.0, "money": 160000, "rep": 48.0, "tier": 1,
+		"logo": "res://assets/teams/ch/logo.png",
+		"desc": "Амбициозная команда Про-лиги с сильным индивидуальным скиллом.",
+		"roster": [
+			{"nick": "fLACSYS", "first": "Денис", "last": "Егоров", "role": "Энтри", "aim": 80, "iq": 70, "tw": 72, "age": 20, "country": "ru", "photo": "res://assets/teams/ch/flacsys.png"},
+			{"nick": "Nekr0", "first": "Егор", "last": "Шаров", "role": "Капитан", "aim": 70, "iq": 81, "tw": 79, "age": 21, "country": "ru", "photo": "res://assets/teams/ch/nekr0.png"},
+			{"nick": "cxtleta", "first": "Павел", "last": "Сергаков", "role": "Лурк", "aim": 77, "iq": 74, "tw": 70, "age": 19, "country": "ru", "photo": "res://assets/teams/ch/cxtleta.png"},
+			{"nick": "scndoom", "first": "Константин", "last": "Ли", "role": "Саппорт", "aim": 71, "iq": 75, "tw": 79, "age": 20, "country": "kr", "photo": "res://assets/teams/ch/scndoom.png"},
+			{"nick": "enough", "first": "Ранис", "last": "Биккулов", "role": "Снайпер", "aim": 81, "iq": 71, "tw": 71, "age": 19, "country": "ru", "photo": "res://assets/teams/ch/enough.png"},
 		]},
 ]
 
@@ -36,7 +46,7 @@ const COUNTRIES := ["Россия", "Украина", "Беларусь", "Ка�
 const COUNTRY_LIST := [
 	["ru", "Россия"], ["ua", "Украина"], ["by", "Беларусь"], ["kz", "Казахстан"], ["uz", "Узбекистан"],
 	["kg", "Кыргызстан"], ["tj", "Таджикистан"], ["am", "Армения"], ["ge", "Грузия"], ["az", "Азербайджан"],
-	["md", "Молдова"], ["pl", "Польша"], ["de", "Германия"], ["us", "США"], ["xx", "Другая"],
+	["md", "Молдова"], ["kr", "Южная Корея"], ["pl", "Польша"], ["de", "Германия"], ["us", "США"], ["xx", "Другая"],
 ]
 
 ## Качества менеджера парами (левое / правое), 0..20 каждое, общий пул очков.
