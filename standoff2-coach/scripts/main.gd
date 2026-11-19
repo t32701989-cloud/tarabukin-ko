@@ -1741,7 +1741,7 @@ const TUTORIAL := [
 	["Добро пожаловать", "Вы — менеджер киберспортивной команды по Standoff 2. Цель — пройти путь от Открытой лиги до титула Мировой серии."],
 	["Неделя", "Каждую неделю выберите фокус тренировок и стиль игры, сыграйте матч недели и нажмите «Завершить неделю»."],
 	["Матч", "Перед матчем выберите карту — команда сильнее там, где выше мастерство. За карту доступно 2 тайм-аута: смена стиля и бонус на 3 раунда."],
-	["Состав", "На карту выходят первые 5 здоровых игроков. Полный набор ролей (Капитан, Снайпер, Энтри, Саппорт, Лурк) даёт бонус к силе."],
+	["Состав", "На карту выходят первые 5 здоровых игроков. Роли: Рифлер, Снайпер, Саппорт, Люркер, 2-й снайпер. Капитан (IGL) назначается в составе."],
 	["Форма", "Тяжёлые тренировки растят навыки, но утомляют. Следите за формой и давайте отдых перед важными матчами."],
 	["Деньги и трансферы", "Спонсоры платят каждую неделю, игроки получают зарплату. Подписывайте свободных агентов и продавайте лишних."],
 	["Сезон", "7 туров лиги, затем плей-офф для топ-4. Топ-2 повышаются в дивизионе, двое последних вылетают."],
@@ -1864,7 +1864,7 @@ const NAV := [
 	[], ["finance", "Финансы", "payments"], ["coach", "Профиль", "account_circle"], [], ["system", "Настройки", "settings"],
 ]
 const SCREEN_TITLES := {"dashboard": "Главная", "mail": "Почта", "squad": "Состав", "staff": "Штат", "training": "Тренировка",
-	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч", "player": "Игрок", "talk": "Разговор", "staff_member": "Персонал команды", "staff_hire": "Найм персонала"}
+	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч", "player": "Профиль игрока", "talk": "Разговор", "staff_member": "Персонал команды", "staff_hire": "Найм персонала"}
 const WEEKDAYS := ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]
 const MONTHS_SHORT := ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля", "авг.", "сент.", "окт.", "нояб.", "дек."]
 
@@ -2342,82 +2342,476 @@ func _attr_color(v: float) -> Color:
 	if v < 13.0: return Color("ffb23e")
 	return Color("7ddf5a")
 
+var player_tab: String = "attrs"
+var cmp_attr: String = "skill"
+var contract_form: bool = false
+var cf_years: int = 2
+var cf_salary: int = 0
+
+const REP_NAMES := ["Новичок", "Перспективный", "Достойный", "Звезда", "Легенда"]
+
+func _role_tags(pl: Dictionary) -> Array:
+	var tags: Array = []
+	if bool(pl.get("captain", false)):
+		tags.append("IGL")
+	var m := {"Рифлер": "RIFLER", "Снайпер": "AWPER", "Саппорт": "SUPPORT", "Лурк": "LURKER", "2-й снайпер": "2ND SNIPER"}
+	tags.append(m.get(str(pl.get("role", "")), "RIFLER"))
+	var r2: String = str(pl.get("role2", ""))
+	if r2 != "" and m.has(r2) and not tags.has(m[r2]):
+		tags.append(m[r2])
+	return tags
+
+func _radar_vals(pl: Dictionary) -> Array:
+	var a: Dictionary = pl["attrs"]
+	var f := func(keys: Array) -> float:
+		var s: float = 0.0
+		for k in keys: s += float(a.get(k, 10))
+		return s / keys.size() / 20.0
+	return [f.call(["perception", "stress", "teamwork", "nades"]), f.call(["skill", "rifle", "awp" if pl["role"] == "Снайпер" else "pistol", "reaction"]),
+		f.call(["leader", "teamwork", "morale"]), f.call(["tactics", "creativity", "nades"]), f.call(["clutch", "stress", "creativity"])]
+
 func screen_player() -> void:
 	var pl: Dictionary = viewed_player
 	if pl.is_empty():
 		screen_squad()
 		return
 	gs.ensure_attrs(pl)
-	# шапка
-	var hc := _card()
-	content.add_child(hc)
-	var hh := hbox(18)
-	hc.add_child(hh)
-	hh.add_child(_circle(player_photo(pl), 110, Color(gs.team_color)))
-	var hv := vbox(4)
-	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var nr := hbox(10)
-	nr.add_child(_flag(str(pl.get("country", "xx")), 30))
-	nr.add_child(label(str(pl["nick"]), 30, Color.WHITE))
-	hv.add_child(nr)
-	var full: String = ("%s %s" % [tr(str(pl.get("first", ""))), tr(str(pl.get("last", "")))]).strip_edges()
-	if full != "":
-		hv.add_child(label(full, 15, Color("c9ced8")))
-	var r2 := hbox(14)
-	r2.add_child(_stars(_player_stars(pl), 18))
-	r2.add_child(label(tr(pl["role"]), 15, C_ACC))
-	r2.add_child(label(tr("%d лет") % int(pl["age"]), 15, C_DIM))
-	hv.add_child(r2)
-	var r3 := hbox(18)
-	r3.add_child(label(tr("Форма") + " %d%%" % int(pl["form"]), 15, C_GOOD if int(pl["form"]) >= 70 else C_ACC))
-	r3.add_child(label(tr("Зарплата") + " $%d" % int(pl["salary"]), 15, C_DIM))
-	r3.add_child(label(tr("Потенциал") + " ~%d" % int(pl.get("pot_est", pl["pot"])), 15, C_DIM))
-	hv.add_child(r3)
-	hh.add_child(hv)
-	var ob := vbox(0)
-	var on := label(str(gs.ovr(pl)), 44, stat_color(gs.ovr(pl)))
-	on.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ob.add_child(on)
-	var ol := label(tr("ОБЩИЙ"), 12, C_DIM)
-	ol.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ob.add_child(ol)
-	hh.add_child(ob)
-	var back := small_btn("<  " + tr("Назад"), func(): _hist_move(-1))
-	back.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	hh.add_child(back)
-	# характеристики
+	gs.init_player_meta(pl)
+	var mine: bool = gs.players.has(pl)
+	var tabs := hbox(18)
+	for tb in [["attrs", tr("Характеристики")], ["contract", tr("Контракт")], ["transfer", tr("Трансфер")], ["stats", tr("Статистика")]]:
+		var key: String = tb[0]
+		tabs.add_child(text_btn(tb[1], func(): player_tab = key; contract_form = false; show_screen("player", false), 16, C_ACC if player_tab == key else Color.WHITE))
+	tabs.add_child(spacer())
+	tabs.add_child(small_btn("<  " + tr("Назад"), func(): _hist_move(-1)))
+	content.add_child(tabs)
+	var cols := hbox(12)
+	content.add_child(cols)
+	cols.add_child(_player_left(pl, mine))
+	var right := vbox(10)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(right)
+	match player_tab:
+		"attrs": _player_attrs(pl, right)
+		"contract": _player_contract(pl, right, mine)
+		"transfer": _player_transfer(pl, right, mine)
+		"stats": _player_stats(pl, right)
+	if title_label != null:
+		title_label.text = tr("Профиль игрока") + " | " + str(pl["nick"])
+
+func _player_left(pl: Dictionary, mine: bool) -> Control:
+	var tc := Color(gs.team_color)
+	var c := _card()
+	c.custom_minimum_size = Vector2(370, 0)
+	var v := vbox(10)
+	c.add_child(v)
+	var top := hbox(12)
+	var ph := Control.new()
+	ph.custom_minimum_size = Vector2(120, 170)
+	ph.clip_contents = true
+	var bgc := ColorRect.new()
+	bgc.color = Color(tc.r, tc.g, tc.b, 0.18)
+	bgc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ph.add_child(bgc)
+	var img := TextureRect.new()
+	img.texture = tex(player_photo(pl))
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	img.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ph.add_child(img)
+	top.add_child(ph)
+	var iv := vbox(5)
+	iv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var full: String = "%s \"%s\" %s" % [tr(str(pl.get("first", ""))), pl["nick"], tr(str(pl.get("last", "")))] if str(pl.get("first", "")) != "" else str(pl["nick"])
+	var nl := label(full, 16, Color.WHITE)
+	nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nl.custom_minimum_size = Vector2(200, 0)
+	iv.add_child(nl)
+	var sr := hbox(8)
+	sr.add_child(_stars(_player_stars(pl), 14))
+	sr.add_child(label(" · ".join(_role_tags(pl)), 12, Color("2fb8e8")))
+	iv.add_child(sr)
+	var tr2 := hbox(6)
+	if mine and tex(gs.team_logo) != null:
+		tr2.add_child(pic(gs.team_logo, 22))
+	tr2.add_child(label(gs.team_name if mine else tr("Свободный агент"), 13, Color.WHITE))
+	iv.add_child(tr2)
+	var cr2 := hbox(6)
+	cr2.add_child(_flag(str(pl.get("country", "xx")), 22))
+	cr2.add_child(label(tr(_country_name(str(pl.get("country", "xx")))), 13, Color.WHITE))
+	iv.add_child(cr2)
+	var bd := hbox(6)
+	var inj: bool = int(pl["inj"]) > 0
+	bd.add_child(_badge(tr("Травма") if inj else tr("Активен"), C_BAD if inj else C_GOOD))
+	var mo: int = int(pl.get("morale", 80))
+	bd.add_child(_badge(tr("Счастлив") if mo >= 70 else (tr("Спокоен") if mo >= 45 else tr("Недоволен")), C_GOOD if mo >= 70 else (C_ACC if mo >= 45 else C_BAD)))
+	iv.add_child(bd)
+	var rings := hbox(8)
+	var PR := preload("res://scripts/progress_ring.gd")
+	for e in [[int(pl["form"]), tr("ФОРМА")], [int(pl.get("health", 90)), tr("ЗДОРОВЬЕ")], [int(pl.get("pr", 60)), "PR"]]:
+		rings.add_child(PR.new().setup(float(e[0]) / 100.0, 64, _form_col(int(e[0])), e[1], str(e[0])))
+	iv.add_child(rings)
+	top.add_child(iv)
+	v.add_child(top)
+	var sep := ColorRect.new()
+	sep.color = Color(1, 1, 1, 0.08)
+	sep.custom_minimum_size = Vector2(0, 1)
+	v.add_child(sep)
+	var mid := hbox(10)
+	var lv := vbox(6)
+	lv.add_child(_mini_hdr(tr("Роли игрока")))
+	var rr := hbox(6)
+	var r1 := OptionButton.new()
+	for r in gs.ROLES:
+		r1.add_item(tr(r))
+	r1.selected = maxi(0, gs.ROLES.find(pl["role"]))
+	r1.disabled = not mine
+	var ref: Dictionary = pl
+	r1.item_selected.connect(func(i): ref["role"] = gs.ROLES[i]; gs.derive(ref); show_screen("player", false))
+	rr.add_child(r1)
+	var r2 := OptionButton.new()
+	r2.add_item("—")
+	for r in gs.ROLES:
+		r2.add_item(tr(r))
+	r2.selected = maxi(0, gs.ROLES.find(str(pl.get("role2", ""))) + 1)
+	r2.disabled = not mine
+	r2.item_selected.connect(func(i): ref["role2"] = "" if i == 0 else gs.ROLES[i - 1]; show_screen("player", false))
+	rr.add_child(r2)
+	lv.add_child(rr)
+	lv.add_child(_mini_hdr(tr("Потенциал")))
+	lv.add_child(_stars(clampf((float(pl.get("pot_est", pl["pot"])) - 35.0) / 9.0, 0.5, 5.0), 18))
+	lv.add_child(_mini_hdr(tr("Репутация")))
+	var rp: int = clampi(int((gs.ovr(pl) - 45) / 10 + int(pl.get("pr", 60)) / 40), 0, 4)
+	var rb := PanelContainer.new()
+	var rbs := StyleBoxFlat.new()
+	rbs.bg_color = Color(0.2, 0.45, 0.9, 0.55)
+	rbs.set_corner_radius_all(6)
+	rbs.set_content_margin_all(8)
+	rb.add_theme_stylebox_override("panel", rbs)
+	var rh := hbox(8)
+	rh.add_child(UITheme.icon("military_tech", 26, Color("f5c518")))
+	rh.add_child(label(tr(REP_NAMES[rp]), 16, Color.WHITE))
+	rb.add_child(rh)
+	lv.add_child(rb)
+	mid.add_child(lv)
+	mid.add_child(preload("res://scripts/radar.gd").new().setup([tr("ЗАЩИТА"), tr("АТАКА"), tr("ЛИДЕР"), tr("ТАКТИКА"), tr("КЛАТЧ")], _radar_vals(pl), 110))
+	v.add_child(mid)
+	v.add_child(_mini_hdr(tr("Биография")))
+	var b: Array = pl.get("birth", [1, 1, 2000])
+	var months := ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+	v.add_child(label(tr("%d лет (%02d.%02d.%d)") % [int(pl["age"]), int(b[0]), int(b[1]), int(b[2])], 13, Color.WHITE))
+	var bio: String = tr("%s (родился %d %s %d года) — профессиональный игрок в Standoff 2 из страны %s. Основная роль — %s.") % [full, int(b[0]), tr(months[int(b[1]) - 1]), int(b[2]), tr(_country_name(str(pl.get("country", "xx")))), tr(pl["role"])]
+	if mine:
+		bio += " " + tr("Выступает за %s.") % gs.team_name
+	v.add_child(wrap_label(bio, 12, C_DIM, 340))
+	return c
+
+func _attr_name(k: String) -> String:
+	for e in gs.ATTR_TECH + gs.ATTR_MENTAL + gs.ATTR_PHYS:
+		if e[0] == k:
+			return tr(e[1])
+	return k
+
+func _mini_hdr(t: String) -> Control:
+	var h := hbox(5)
+	h.add_child(label("»", 13, C_ACC))
+	h.add_child(label(t, 13, Color.WHITE))
+	return h
+
+func _player_attrs(pl: Dictionary, right: VBoxContainer) -> void:
 	var ab := _block(tr("Характеристики"))
-	content.add_child(ab)
+	right.add_child(ab)
 	var ac := _card()
 	ab.add_child(ac)
-	var cols := hbox(14)
+	var cols := hbox(10)
 	ac.add_child(cols)
 	for grp in [[tr("ТЕХНИЧЕСКИЕ"), gs.ATTR_TECH], [tr("МЕНТАЛЬНЫЕ"), gs.ATTR_MENTAL], [tr("ФИЗИЧЕСКИЕ"), gs.ATTR_PHYS]]:
-		var cv := vbox(3)
+		var cv := vbox(2)
 		cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var head := PanelContainer.new()
 		var hs := StyleBoxFlat.new()
 		hs.bg_color = Color(1, 1, 1, 0.06)
-		hs.set_content_margin_all(8)
+		hs.set_content_margin_all(6)
 		head.add_theme_stylebox_override("panel", hs)
-		head.add_child(label(grp[0], 15, Color.WHITE))
+		head.add_child(label(grp[0], 13, Color.WHITE))
 		cv.add_child(head)
 		for a in grp[1]:
-			var v: float = float(pl["attrs"].get(a[0], 0))
+			var k: String = a[0]
+			var val: float = float(pl["attrs"].get(k, 0))
 			var row := PanelContainer.new()
 			var rs := StyleBoxFlat.new()
-			rs.bg_color = Color(1, 1, 1, 0.025)
-			rs.content_margin_left = 10; rs.content_margin_right = 10
-			rs.content_margin_top = 6; rs.content_margin_bottom = 6
+			rs.bg_color = Color(0.2, 0.45, 0.85, 0.5) if k == cmp_attr else Color(1, 1, 1, 0.025)
+			rs.content_margin_left = 8; rs.content_margin_right = 8; rs.content_margin_top = 4; rs.content_margin_bottom = 4
 			row.add_theme_stylebox_override("panel", rs)
-			var rh := hbox(6)
+			var rh := hbox(4)
 			row.add_child(rh)
-			var nl := label(tr(a[1]), 15, Color("e9edf3"))
+			var nl := label(tr(a[1]), 12, Color("e9edf3"))
 			nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			nl.clip_text = true
+			nl.custom_minimum_size = Vector2(60, 0)
 			rh.add_child(nl)
-			rh.add_child(label("%.2f" % v, 16, _attr_color(v)))
+			rh.add_child(label("%.2f" % val, 13, _attr_color(val)))
+			var hit := Button.new()
+			hit.flat = true
+			for st in ["normal", "hover", "pressed", "focus"]:
+				hit.add_theme_stylebox_override(st, _flat_style())
+			hit.pressed.connect(func(): cmp_attr = k; show_screen("player", false))
+			row.add_child(hit)
+			_ignore_mouse(rh)
 			cv.add_child(row)
 		cols.add_child(cv)
+	var hb := _block(tr("История и сравнение") + " — " + _attr_name(cmp_attr))
+	right.add_child(hb)
+	var hr := hbox(10)
+	hb.add_child(hr)
+	var lc := _card()
+	lc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var vals: Array = []
+	var labs: Array = []
+	for h in pl.get("ahist", []):
+		vals.append(float(h["a"].get(cmp_attr, 0)))
+		labs.append(tr("Н%d") % int(h["w"]))
+	vals.append(float(pl["attrs"].get(cmp_attr, 0)))
+	labs.append(tr("сейчас"))
+	var lcv := vbox(4)
+	lcv.add_child(label(tr("ИСТОРИЯ ИЗМЕНЕНИЯ АТРИБУТА"), 11, C_DIM))
+	lcv.add_child(preload("res://scripts/line_chart.gd").new().setup(vals, labs, 170))
+	lc.add_child(lcv)
+	hr.add_child(lc)
+	var cc := _card()
+	cc.custom_minimum_size = Vector2(220, 0)
+	var cv2 := vbox(4)
+	cc.add_child(cv2)
+	cv2.add_child(label(tr("СРАВНЕНИЕ В КОМАНДЕ"), 11, C_DIM))
+	var arr: Array = gs.players.duplicate() if gs.players.has(pl) else gs.players + [pl]
+	for q in arr:
+		gs.ensure_attrs(q)
+	arr.sort_custom(func(x, y): return float(x["attrs"].get(cmp_attr, 0)) > float(y["attrs"].get(cmp_attr, 0)))
+	for i in arr.size():
+		var q: Dictionary = arr[i]
+		var r := hbox(6)
+		r.add_child(cell(str(i + 1), 18, Color.WHITE, 13))
+		var bar := _bar(float(q["attrs"].get(cmp_attr, 0)), 20.0, C_GOOD if q == pl else Color("2fb8e8"), 60, 16)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(bar)
+		r.add_child(cell(str(q["nick"]), 70, Color.WHITE, 12))
+		r.add_child(cell("%d" % int(float(q["attrs"].get(cmp_attr, 0))), 22, Color.WHITE, 13))
+		cv2.add_child(r)
+	hr.add_child(cc)
+
+func _kv_row(k: String, v: String, col: Color = Color.WHITE) -> Control:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.035)
+	sb.content_margin_left = 10; sb.content_margin_right = 10; sb.content_margin_top = 7; sb.content_margin_bottom = 7
+	p.add_theme_stylebox_override("panel", sb)
+	var h := hbox(6)
+	var kl := label(k, 14, Color("d6dbe3"))
+	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(kl)
+	h.add_child(label(v, 14, col))
+	p.add_child(h)
+	return p
+
+func _season_end_date(s: int) -> String:
+	var start := Time.get_unix_time_from_datetime_dict({"year": 2026, "month": 1, "day": 1, "hour": 12, "minute": 0, "second": 0})
+	var d := Time.get_datetime_dict_from_unix_time(start + ((s - 1) * 52 + 9) * 7 * 86400)
+	return "%02d.%02d.%d" % [d["day"], d["month"], d["year"]]
+
+func _player_contract(pl: Dictionary, right: VBoxContainer, mine: bool) -> void:
+	var cb := _block(tr("Контракт"))
+	right.add_child(cb)
+	var c := _card()
+	cb.add_child(c)
+	var v := vbox(4)
+	c.add_child(v)
+	if not mine:
+		v.add_child(_kv_row(tr("Тип контракта"), tr("Свободный агент"), C_ACC))
+		v.add_child(_kv_row(tr("Ожидаемая зарплата"), "$%d / %s" % [int(pl["salary"]), tr("нед.")]))
+		return
+	var ct: Dictionary = pl.get("contract", {})
+	v.add_child(_kv_row(tr("Тип контракта"), tr("Аренда") if str(ct.get("type", "club")) == "loan" else tr("В клубе")))
+	v.add_child(_kv_row(tr("Зарплата"), "$%d / %s" % [int(pl["salary"]), tr("нед.")], C_GOOD))
+	v.add_child(_kv_row(tr("Последние переговоры"), str(ct.get("signed", "01.01.2026"))))
+	var end_s: int = int(ct.get("end", gs.season + 1))
+	v.add_child(_kv_row(tr("Конец контракта"), _season_end_date(end_s) + "  (" + tr("сезон %d") % end_s + ")", C_BAD if end_s <= gs.season else Color.WHITE))
+	v.add_child(_kv_row(tr("Мораль"), "%d%%" % int(pl.get("morale", 80)), _form_col(int(pl.get("morale", 80)))))
+	var br := hbox(10)
+	var ref: Dictionary = pl
+	br.add_child(btn(tr("Предложить новый контракт"), func():
+		contract_form = true
+		cf_salary = int(ref["salary"])
+		show_screen("player", false), C_GOOD))
+	br.add_child(btn(tr("Удалить из команды"), func():
+		gs.release_player(gs.players.find(ref))
+		viewed_player = {}
+		show_screen("squad"), C_BAD))
+	v.add_child(br)
+	if contract_form:
+		var fc := _card()
+		right.add_child(fc)
+		var fv := vbox(8)
+		fc.add_child(fv)
+		fv.add_child(label(tr("Новый контракт"), 16, Color.WHITE))
+		var r1 := hbox(10)
+		r1.add_child(cell(tr("Срок (сезонов)"), 180, Color("d6dbe3")))
+		var yo := OptionButton.new()
+		for y in [1, 2, 3]:
+			yo.add_item(str(y))
+		yo.selected = cf_years - 1
+		yo.item_selected.connect(func(i): cf_years = i + 1)
+		r1.add_child(yo)
+		fv.add_child(r1)
+		var r2 := hbox(10)
+		r2.add_child(cell(tr("Зарплата в неделю, $"), 180, Color("d6dbe3")))
+		var sp := SpinBox.new()
+		sp.min_value = 100
+		sp.max_value = 20000
+		sp.step = 50
+		sp.value = cf_salary
+		sp.value_changed.connect(func(x): cf_salary = int(x))
+		r2.add_child(sp)
+		fv.add_child(r2)
+		fv.add_child(btn(tr("Отправить предложение"), func():
+			var err: String = gs.offer_contract(ref, cf_years, cf_salary)
+			if err != "":
+				gs.add_news(err)
+				contract_answer = err
+			else:
+				contract_answer = tr("Контракт подписан!")
+				contract_form = false
+			show_screen("player", false), C_GOOD))
+	if contract_answer != "":
+		right.add_child(_alert(contract_answer, contract_answer == tr("Контракт подписан!")))
+		contract_answer = ""
+
+var contract_answer: String = ""
+
+func _player_transfer(pl: Dictionary, right: VBoxContainer, mine: bool) -> void:
+	var tb := _block(tr("Трансфер"))
+	right.add_child(tb)
+	var c := _card()
+	tb.add_child(c)
+	var v := vbox(6)
+	c.add_child(v)
+	var val: int = gs.fee(pl)
+	v.add_child(_kv_row(tr("Рыночная стоимость"), money_fmt(val), C_GOOD))
+	var ref: Dictionary = pl
+	if mine:
+		v.add_child(_kv_row(tr("Сумма продажи (60%)"), money_fmt(int(val * 0.6)), C_ACC))
+		v.add_child(btn(tr("Продать игрока"), func():
+			gs.sell_player(gs.players.find(ref))
+			viewed_player = {}
+			show_screen("squad"), C_BAD))
+	else:
+		var b := btn(tr("Подписать за %s") % money_fmt(val), func():
+			var err: String = gs.sign_player(gs.market.find(ref))
+			if err != "":
+				gs.add_news(err)
+			show_screen("squad"), C_GOOD)
+		b.disabled = gs.money < val
+		v.add_child(b)
+	var hb := _block(tr("Трансферная история"))
+	right.add_child(hb)
+	var hc := _card()
+	hb.add_child(hc)
+	var hv := vbox(4)
+	hc.add_child(hv)
+	var th: Array = pl.get("thist", [])
+	if th.is_empty():
+		hv.add_child(label(tr("Трансферов не было."), 13, C_DIM))
+	for e in th:
+		hv.add_child(_kv_row("%s  ·  %s → %s" % [e.get("date", ""), e.get("from", "—"), e.get("to", "—")], money_fmt(int(e.get("fee", 0))) if int(e.get("fee", 0)) > 0 else tr("свободный агент")))
+
+func _player_stats(pl: Dictionary, right: VBoxContainer) -> void:
+	var mh: Array = pl.get("mh", [])
+	var k := 0; var d := 0; var a := 0; var hs := 0.0; var adr := 0.0; var kast := 0.0; var ir := 0.0
+	for e in mh:
+		k += int(e["k"]); d += int(e["d"]); a += int(e["a"])
+		hs += float(e["hs"]) * int(e["k"]); adr += float(e["adr"]); kast += float(e["kast"]); ir += float(e["ir"])
+	var n: int = mh.size()
+	var top := hbox(10)
+	right.add_child(top)
+	var ob := _block(tr("Обзор"))
+	ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(ob)
+	var oc := _card()
+	ob.add_child(oc)
+	var oh := hbox(10)
+	oc.add_child(oh)
+	var na := tr("Н/Д")
+	var lft := vbox(10)
+	lft.add_child(_stat_tile("ADR", ("%.1f" % (adr / n)) if n > 0 else na, Color.WHITE))
+	lft.add_child(_stat_tile("KAST", ("%d%%" % int(kast / n)) if n > 0 else na, Color.WHITE))
+	oh.add_child(lft)
+	var irv: float = (ir / n) if n > 0 else 0.0
+	var ring := preload("res://scripts/progress_ring.gd").new().setup(clampf(irv / 2.0, 0.0, 1.0), 120, Color("2fd3c8"), "IMPACT RATING", ("%.2f" % irv) if n > 0 else na)
+	oh.add_child(ring)
+	var rgt := vbox(10)
+	rgt.add_child(_stat_tile("KPR", ("%.2f" % (float(k) / maxf(1.0, n * 22.0))) if n > 0 else na, Color.WHITE))
+	rgt.add_child(_stat_tile("K/D", ("%.2f" % (float(k) / maxf(1.0, d))) if n > 0 else na, Color.WHITE))
+	oh.add_child(rgt)
+	var db := _block(tr("Детали"))
+	db.custom_minimum_size = Vector2(220, 0)
+	top.add_child(db)
+	var dc := _card()
+	db.add_child(dc)
+	var dv := vbox(3)
+	dc.add_child(dv)
+	dv.add_child(_kv_row(tr("Сыграно матчей"), str(n)))
+	dv.add_child(_kv_row(tr("Всего убийств"), str(k)))
+	dv.add_child(_kv_row(tr("Хедшоты %"), ("%.1f%%" % (hs / maxf(1.0, k))) if k > 0 else "0%"))
+	dv.add_child(_kv_row(tr("Всего смертей"), str(d)))
+	dv.add_child(_kv_row("K/D", "%.2f" % (float(k) / maxf(1.0, d))))
+	dv.add_child(_kv_row(tr("Всего ассистов"), str(a)))
+	# турниры
+	var tb := _block(tr("История турниров"))
+	right.add_child(tb)
+	var tc := _card()
+	tb.add_child(tc)
+	var tv := vbox(3)
+	tc.add_child(tv)
+	var hh := hbox(6)
+	for e in [[tr("Турнир"), 130], [tr("Сезон"), 50], [tr("Матчи"), 50], ["K", 40], ["D", 40], ["A", 40], ["ADR", 50], ["HS%", 46], ["IR", 44]]:
+		hh.add_child(cell(e[0], e[1], C_ACC, 12))
+	tv.add_child(hh)
+	var agg := {}
+	for e in mh:
+		var key: String = "%s|%d" % [e.get("tour", ""), int(e.get("season", 1))]
+		if not agg.has(key):
+			agg[key] = {"t": e.get("tour", ""), "s": int(e.get("season", 1)), "n": 0, "k": 0, "d": 0, "a": 0, "adr": 0.0, "hs": 0.0, "ir": 0.0}
+		var g: Dictionary = agg[key]
+		g["n"] += 1; g["k"] += int(e["k"]); g["d"] += int(e["d"]); g["a"] += int(e["a"]); g["adr"] += float(e["adr"]); g["hs"] += float(e["hs"]); g["ir"] += float(e["ir"])
+	if agg.is_empty():
+		tv.add_child(label(tr("Нет данных о турнирах"), 14, C_DIM))
+	for key in agg:
+		var g: Dictionary = agg[key]
+		var r := hbox(6)
+		for x in [[str(g["t"]), 130], [str(g["s"]), 50], [str(g["n"]), 50], [str(g["k"]), 40], [str(g["d"]), 40], [str(g["a"]), 40], ["%.1f" % (g["adr"] / g["n"]), 50], ["%d%%" % int(g["hs"] / g["n"]), 46], ["%.2f" % (g["ir"] / g["n"]), 44]]:
+			r.add_child(cell(x[0], x[1], Color.WHITE, 13))
+		tv.add_child(r)
+	# матчи
+	var mb := _block(tr("История матчей"))
+	right.add_child(mb)
+	var mc := _card()
+	mb.add_child(mc)
+	var mv := vbox(3)
+	mc.add_child(mv)
+	var mh2 := hbox(6)
+	for e in [[tr("Счёт"), 46], [tr("Соперник"), 120], ["KAST", 46], ["K", 32], ["D", 32], ["A", 32], ["ADR", 46], ["HS%", 42], ["1vX", 34], ["IR", 40]]:
+		mh2.add_child(cell(e[0], e[1], C_ACC, 12))
+	mv.add_child(mh2)
+	if mh.is_empty():
+		mv.add_child(label(tr("Нет данных о матчах"), 14, C_DIM))
+	for e in mh.slice(0, 10):
+		var r2 := hbox(6)
+		r2.add_child(cell(str(e["score"]), 46, C_GOOD if bool(e["won"]) else C_BAD, 13))
+		var oc2 := cell(str(e["opp"]), 120, Color.WHITE, 13)
+		oc2.clip_text = true
+		r2.add_child(oc2)
+		for x in [["%d%%" % int(e["kast"]), 46], [str(e["k"]), 32], [str(e["d"]), 32], [str(e["a"]), 32], ["%.1f" % float(e["adr"]), 46], ["%d%%" % int(e["hs"]), 42], [str(e["clutch"]), 34], ["%.2f" % float(e["ir"]), 40]]:
+			r2.add_child(cell(x[0], x[1], Color.WHITE, 13))
+		mv.add_child(r2)
 
 func table_header() -> HBoxContainer:
 	var h := hbox(4)
@@ -2812,8 +3206,8 @@ func _player_card(pl: Dictionary, starter: bool, idx: int) -> Control:
 	for m in ["margin_left", "margin_right", "margin_top"]:
 		mt.add_theme_constant_override(m, 8)
 	mt.add_child(tags)
-	for tg in ROLE_TAGS.get(pl["role"], ["RIFLER"]):
-		tags.add_child(label(tg, 11, Color.WHITE))
+	for tg in _role_tags(pl):
+		tags.add_child(label(tg, 11, Color("f5c518") if tg == "IGL" else Color.WHITE))
 	tags.add_child(spacer())
 	if bool(pl.get("captain", false)):
 		tags.add_child(UITheme.icon("military_tech", 18, Color("f5c518")))
@@ -2845,7 +3239,9 @@ func _player_card(pl: Dictionary, starter: bool, idx: int) -> Control:
 	var nb := _nick_link(pl, 0, Color.WHITE)
 	nb.text = full.strip_edges() if str(pl.get("first", "")) != "" else nm
 	nb.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nb.add_theme_font_size_override("font_size", 13)
+	nb.add_theme_font_size_override("font_size", 12)
+	nb.clip_text = true
+	nb.custom_minimum_size = Vector2(60, 0)
 	iv.add_child(nb)
 	var badges := hbox(6)
 	badges.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2860,15 +3256,15 @@ func _player_card(pl: Dictionary, starter: bool, idx: int) -> Control:
 	sr.add_child(spacer())
 	sr.add_child(label(tr("Форма") + " %d%%" % int(pl["form"]), 11, _form_col(int(pl["form"]))))
 	iv.add_child(sr)
-	var ar := hbox(4)
 	var cap := CheckBox.new()
-	cap.text = tr("Капитан")
+	cap.text = tr("Назначить капитаном")
 	cap.add_theme_font_size_override("font_size", 11)
 	cap.button_pressed = bool(pl.get("captain", false))
 	var ref: Dictionary = pl
 	cap.pressed.connect(func(): gs.set_captain(ref); show_screen("squad", false))
-	ar.add_child(cap)
-	ar.add_child(spacer())
+	iv.add_child(cap)
+	var ar := hbox(4)
+	ar.alignment = BoxContainer.ALIGNMENT_CENTER
 	ar.add_child(icon_btn("arrow_back", tr("Левее"), func(): gs.move_player(idx, -1); show_screen("squad", false)))
 	ar.add_child(icon_btn("arrow_forward", tr("Правее"), func(): gs.move_player(idx, 1); show_screen("squad", false)))
 	var mv := icon_btn("south" if starter else "north", tr("В запас") if starter else tr("В основу"), func():
@@ -2920,7 +3316,7 @@ func screen_squad() -> void:
 		bv.add_child(label(e[0], 11, C_DIM))
 		var bh := hbox(6)
 		bh.add_child(label("%d%%" % int(e[1]), 13, Color.WHITE))
-		bh.add_child(_bar(float(e[1]), 100.0, _form_col(int(e[1])), 110))
+		bh.add_child(_bar(float(e[1]), 100.0, _form_col(int(e[1])), 70))
 		bv.add_child(bh)
 		bv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		ih.add_child(bv)
@@ -3166,50 +3562,46 @@ func screen_training() -> void:
 	var tabs := hbox(18)
 	for tb in [["coach", tr("Тренер")], ["maps", tr("Тренировка карт")], ["psych", tr("Психолог")], ["physio", tr("Физиотерапевт")]]:
 		var key: String = tb[0]
-		var need: bool = (key == "psych" and gs.staff_level("psych") == 0) or (key == "physio" and gs.staff_level("physio") == 0) or (key == "coach" and gs.staff_level("coach") == 0 and gs.staff_coach == "")
+		var need: bool = key != "maps" and not gs.group_active(key)
 		var h := hbox(4)
 		h.add_child(text_btn(tb[1], func(): train_tab = key; train_pick = {}; show_screen("training", false), 16, C_ACC if train_tab == key else Color.WHITE))
 		if need:
 			h.add_child(UITheme.icon("error", 16, C_BAD))
 		tabs.add_child(h)
 	content.add_child(tabs)
-	match train_tab:
-		"coach": _train_coach()
-		"maps": _train_maps()
-		"psych": _train_care("psych")
-		"physio": _train_care("physio")
+	if train_tab == "maps":
+		_train_maps()
+	else:
+		_train_group(train_tab)
 
-func _coach_staff() -> Dictionary:
+func _group_staff(grp: String) -> Dictionary:
 	for s in gs.staff_list:
-		if s["role"] == "coach":
+		if s["role"] == grp:
 			return s
 	return {}
 
-func _attr_name(k: String) -> String:
-	for e in gs.ATTR_TECH + gs.ATTR_MENTAL + gs.ATTR_PHYS:
-		if e[0] == k:
-			return tr(e[1])
-	return k
-
-func _train_coach() -> void:
+func _train_group(grp: String) -> void:
 	var row := hbox(12)
 	content.add_child(row)
-	var cs: Dictionary = _coach_staff()
+	var st: Dictionary = _group_staff(grp)
+	var active: bool = gs.group_active(grp)
 	var cc := _card()
-	cc.custom_minimum_size = Vector2(270, 0)
+	cc.custom_minimum_size = Vector2(260, 0)
 	row.add_child(cc)
 	var cv := vbox(6)
 	cc.add_child(cv)
 	var ph := TextureRect.new()
-	ph.texture = tex(str(cs.get("photo", ""))) if not cs.is_empty() else tex("res://assets/ui/silhouette.png")
+	ph.texture = tex(str(st.get("photo", ""))) if not st.is_empty() else tex("res://assets/ui/silhouette.png")
 	ph.custom_minimum_size = Vector2(0, 150)
 	ph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	ph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if st.is_empty():
+		ph.modulate = Color(1, 1, 1, 0.35)
 	cv.add_child(ph)
-	var nl := label(str(cs.get("name", tr("Нет тренера"))), 16, Color.WHITE)
+	var nl := label(str(st.get("name", tr("Вакансия"))), 16, Color.WHITE)
 	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cv.add_child(nl)
-	var rl := label(tr("Тренер"), 12, C_ACC)
+	var rl := label(tr(gs.STAFF_ROLES[grp][0]), 12, C_ACC)
 	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cv.add_child(rl)
 	var head := PanelContainer.new()
@@ -3221,29 +3613,35 @@ func _train_coach() -> void:
 	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_child(hl)
 	cv.add_child(head)
-	for e in gs.STAFF_TECH["coach"]:
-		var v: float = float(cs.get("attrs", {}).get(e[0], 0)) if not cs.is_empty() else 0.0
+	for e in gs.STAFF_TECH[grp]:
+		var v: float = float(st.get("attrs", {}).get(e[0], 0))
 		var r := hbox(4)
 		var al := label(tr(e[1]), 13, Color("d6dbe3"))
 		al.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		r.add_child(al)
-		r.add_child(label("%.2f" % v if not cs.is_empty() else "—", 13, _attr_color(v)))
+		r.add_child(label(("%.2f" % v) if not st.is_empty() else "—", 13, _attr_color(v)))
 		cv.add_child(r)
-	cv.add_child(btn(tr("АВТОРАСПИСАНИЕ"), func(): gs.auto_schedule(); show_screen("training", false), Color("2fb8e8")))
-	cv.add_child(label(tr("Каждый игрок тренирует свою худшую характеристику."), 11, C_DIM))
-	# игроки
+	if not active:
+		cv.add_child(_alert(tr("Нет сотрудника — наймите в «Штате»."), false))
+		cv.add_child(small_btn(tr("Нанять"), func(): staff_hire_role = grp; show_screen("staff_hire"), C_GOOD))
+	var ab := btn(tr("АВТОРАСПИСАНИЕ"), func(): gs.auto_schedule(grp); show_screen("training", false), Color("2fb8e8"))
+	ab.disabled = not active
+	cv.add_child(ab)
+	cv.add_child(label(tr("До %d характеристик на игрока. Авто — 3 худших.") % gs.TRAIN_MAX, 11, C_DIM))
 	var sc := ScrollContainer.new()
 	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	sc.custom_minimum_size = Vector2(0, 520)
+	sc.custom_minimum_size = Vector2(0, 540)
 	row.add_child(sc)
 	var pr := hbox(10)
 	sc.add_child(pr)
 	for p in gs.players:
-		pr.add_child(_train_player_col(p))
+		pr.add_child(_train_player_col(p, grp, active))
 
-func _train_player_col(p: Dictionary) -> Control:
+func _train_player_col(p: Dictionary, grp: String, active: bool) -> Control:
 	gs.ensure_attrs(p)
+	var trn: Dictionary = gs.ptrain(p)
+	var lst: Array = trn[grp]
 	var c := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.08, 0.1, 0.14, 0.95)
@@ -3252,11 +3650,11 @@ func _train_player_col(p: Dictionary) -> Control:
 	sb.set_corner_radius_all(10)
 	sb.set_content_margin_all(10)
 	c.add_theme_stylebox_override("panel", sb)
-	c.custom_minimum_size = Vector2(150, 500)
-	var v := vbox(8)
+	c.custom_minimum_size = Vector2(150, 520)
+	var v := vbox(7)
 	c.add_child(v)
 	var ph := Control.new()
-	ph.custom_minimum_size = Vector2(130, 110)
+	ph.custom_minimum_size = Vector2(130, 100)
 	ph.clip_contents = true
 	var img := TextureRect.new()
 	img.texture = tex(player_photo(p))
@@ -3271,31 +3669,45 @@ func _train_player_col(p: Dictionary) -> Control:
 	var nl := label(str(p["nick"]), 15, Color.WHITE)
 	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(nl)
-	var rl := label(tr(p["role"]), 12, C_ACC)
+	var rl := label(" · ".join(_role_tags(p)), 11, C_ACC)
 	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(rl)
 	var ref: Dictionary = p
-	v.add_child(small_btn(tr("ТРЕНИРОВАТЬ"), func(): train_pick = ref; show_screen("training", false), Color("2fb8e8")))
-	v.add_child(small_btn(tr("ОТЧЁТ"), func(): viewed_player = ref; show_screen("player")))
-	var k: String = str(p.get("train", ""))
-	var circ := preload("res://scripts/progress_ring.gd").new().setup(float(p.get("tprog", 0.0)) / 100.0, 90, Color("2fb8e8"))
+	var tb := small_btn(tr("ТРЕНИРОВАТЬ"), func(): train_pick = {} if train_pick == ref else ref; show_screen("training", false), Color("2fb8e8"))
+	tb.disabled = not active
+	v.add_child(tb)
+	v.add_child(small_btn(tr("ОТЧЁТ"), func(): viewed_player = ref; player_tab = "attrs"; show_screen("player")))
+	var prog: float = float(p.get("tprog", {}).get(grp, 0.0)) if typeof(p.get("tprog")) == TYPE_DICTIONARY else 0.0
+	var circ := preload("res://scripts/progress_ring.gd").new().setup(prog / 100.0, 84, Color("2fb8e8"))
 	circ.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(circ)
-	var tl := label(_attr_name(k) if k != "" else tr("Не выбрано"), 12, Color("d6dbe3"))
-	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(tl)
-	if k != "":
-		var vl := label("%.2f → +1" % float(p["attrs"].get(k, 0)), 11, C_DIM)
-		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		v.add_child(vl)
-		var spd := label(tr("~%d%% в неделю") % int(gs.train_speed(p)), 11, C_DIM)
+	if lst.is_empty():
+		var nl2 := label(tr("Не выбрано"), 12, C_DIM)
+		nl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(nl2)
+	for k in lst:
+		var r := hbox(4)
+		var al := label(_attr_name(k), 12, Color("d6dbe3"))
+		al.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(al)
+		r.add_child(label("%.1f" % float(p["attrs"].get(k, 0)), 12, _attr_color(float(p["attrs"].get(k, 0)))))
+		v.add_child(r)
+	if active:
+		var spd := label(tr("~%d%% в неделю") % int(gs.train_speed(p, grp)), 11, C_DIM)
 		spd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(spd)
 	if not train_pick.is_empty() and train_pick == p:
 		var pick := vbox(2)
-		for e in gs.ATTR_TECH:
-			var ak: String = e[0]
-			pick.add_child(small_btn("%s %.1f" % [tr(e[1]), float(p["attrs"][ak])], func(): ref["train"] = ak; ref["tprog"] = 0.0; train_pick = {}; show_screen("training", false), C_ACC if k == ak else Color.WHITE))
+		pick.add_child(label(tr("Выбрано %d/%d") % [lst.size(), gs.TRAIN_MAX], 11, C_ACC))
+		for k2 in gs.TRAIN_GROUPS[grp]:
+			var ak: String = k2
+			var cb := CheckBox.new()
+			cb.text = "%s %.1f" % [_attr_name(ak), float(p["attrs"].get(ak, 0))]
+			cb.add_theme_font_size_override("font_size", 11)
+			cb.button_pressed = lst.has(ak)
+			cb.disabled = not lst.has(ak) and lst.size() >= gs.TRAIN_MAX
+			cb.pressed.connect(func(): gs.toggle_train(ref, grp, ak); show_screen("training", false))
+			pick.add_child(cb)
 		v.add_child(pick)
 	return c
 
@@ -3332,52 +3744,6 @@ func _train_maps() -> void:
 	for k in gs.STYLES:
 		var key2: String = k
 		sv.add_child(_sel_card(sicons[k], tr(gs.STYLES[k]), tr(gs.STYLE_DESC[k]), gs.style == k, func(): gs.style = key2; show_screen("training", false), Color("5aa9ff")))
-
-func _train_care(role: String) -> void:
-	var lvl: int = gs.staff_level(role)
-	var sname := ""
-	for s in gs.staff_list:
-		if s["role"] == role:
-			sname = s["name"]
-	if lvl == 0:
-		content.add_child(_alert(tr("В штате нет сотрудника «%s». Наймите его в разделе «Штат».") % tr(gs.STAFF_ROLES[role][0]), false))
-	else:
-		content.add_child(_alert(tr("%s проводит сессии: раз в неделю на каждого игрока.") % sname, true))
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	content.add_child(grid)
-	for p in gs.players:
-		var c := _card()
-		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var h := hbox(12)
-		c.add_child(h)
-		h.add_child(portrait(p, 60))
-		var v := vbox(4)
-		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		v.add_child(label(str(p["nick"]), 16, Color.WHITE))
-		var val: int = int(p.get("morale", 80)) if role == "psych" else int(p["form"])
-		var r := hbox(6)
-		r.add_child(label(tr("Мораль") if role == "psych" else tr("Форма"), 11, C_DIM))
-		var b := _bar(float(val), 100.0, _form_col(val), 100, 8)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		r.add_child(b)
-		r.add_child(label("%d%%" % val, 12, _form_col(val)))
-		v.add_child(r)
-		if role == "physio" and int(p["inj"]) > 0:
-			v.add_child(label(tr("Травма: %d нед.") % int(p["inj"]), 12, C_BAD))
-		var ref: Dictionary = p
-		var done: bool = int(p.get("psy_w" if role == "psych" else "phy_w", -1)) == gs.season * 100 + gs.week
-		var sb2 := small_btn(tr("Сессия проведена") if done else (tr("Провести сессию") if role == "psych" else tr("Процедуры")), func():
-			var err: String = gs.psych_session(ref) if role == "psych" else gs.physio_session(ref)
-			if err != "":
-				gs.add_news(err)
-			show_screen("training", false), C_GOOD)
-		sb2.disabled = done or lvl == 0
-		v.add_child(sb2)
-		h.add_child(v)
-		grid.add_child(c)
 
 # ------------------------------------------------------------ трансферы
 

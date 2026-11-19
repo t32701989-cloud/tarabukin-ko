@@ -5,7 +5,8 @@ const MatchSim := preload("res://scripts/match_sim.gd")
 const Avatar := preload("res://scripts/avatar.gd")
 const SAVE_PATH := "user://coach_save.json"
 
-const ROLES := ["Капитан", "Снайпер", "Энтри", "Саппорт", "Лурк"]
+const ROLES := ["Рифлер", "Снайпер", "Саппорт", "Лурк", "2-й снайпер"]
+const ROLE_MIGRATE := {"Капитан": "Рифлер", "Энтри": "Рифлер"}
 const MAPS := ["Sandstone", "Province", "Rust", "Zone 9", "Breeze", "Dune"]
 const TIERS := ["Открытая лига", "Про-лига", "Мировая серия"]
 const STYLES := {"aggro": "Агрессия", "balanced": "Баланс", "defense": "Контроль"}
@@ -100,8 +101,8 @@ const ATTR_MENTAL := [["leader", "Лидер"], ["teamwork", "Командная
 const ATTR_PHYS := [["reaction", "Реакция"], ["perception", "Восприятие"], ["immunity", "Иммунитет"], ["strength", "Сила"], ["stamina", "Выносливость"]]
 const ROLE_BIAS := {
 	"Снайпер": {"awp": 4.0, "rifle": -1.5, "reaction": 1.0, "perception": 1.0},
-	"Энтри": {"rifle": 2.0, "reaction": 2.0, "skill": 1.0, "awp": -3.0},
-	"Капитан": {"leader": 5.0, "tactics": 3.0, "teamwork": 1.0, "awp": -3.0},
+	"Рифлер": {"rifle": 2.0, "reaction": 1.5, "skill": 1.0, "awp": -3.0},
+	"2-й снайпер": {"awp": 2.5, "rifle": 1.0, "perception": 1.0},
 	"Саппорт": {"nades": 3.0, "teamwork": 2.0, "awp": -3.0},
 	"Лурк": {"clutch": 3.0, "creativity": 2.0, "awp": -2.0},
 }
@@ -211,7 +212,27 @@ func gen_player(base: float, role: String = "") -> Dictionary:
 	derive(p)
 	var o: int = ovr(p)
 	p["salary"] = int(300 + (o - 30) * 32)
+	init_player_meta(p)
 	return p
+
+## Контракт, дата рождения, история — для профиля игрока.
+func init_player_meta(p: Dictionary) -> void:
+	if not p.has("role2"):
+		p["role2"] = ""
+	if not p.has("health"):
+		p["health"] = randi_range(80, 100)
+	if not p.has("pr"):
+		p["pr"] = randi_range(40, 90)
+	if not p.has("birth"):
+		p["birth"] = [randi_range(1, 28), randi_range(1, 12), 2026 - int(p["age"])]
+	if not p.has("contract"):
+		p["contract"] = {"type": "club", "end": season + randi_range(1, 3), "signed": "%02d.%02d.%d" % [1, 1, 2026]}
+	if not p.has("thist"):
+		p["thist"] = []
+	if not p.has("mh"):
+		p["mh"] = []
+	if not p.has("ahist"):
+		p["ahist"] = []
 
 var _photo_pool: Array = []
 
@@ -278,12 +299,12 @@ func team_power(st: String, map_name: String) -> Dictionary:
 	if l.size() > 0:
 		s /= float(l.size())
 	var bonus: float = 0.0
-	if roles.has("Капитан"): bonus += 2.5
 	if roles.has("Снайпер"): bonus += 2.0
-	if roles.has("Энтри"): bonus += 1.5
+	if roles.has("Рифлер"): bonus += 1.5
 	if roles.has("Саппорт"): bonus += 1.0
 	if roles.has("Лурк"): bonus += 1.0
-	if roles.size() >= 5: bonus += 2.0
+	if roles.has("2-й снайпер"): bonus += 0.5
+	if roles.size() >= 4: bonus += 1.5
 	bonus += float(coach_skill["tactics"]) * 0.7
 	if staff_coach != "":
 		bonus += 1.5
@@ -536,7 +557,11 @@ func answer_talk(i: int, opt: int) -> void:
 	if eff.has("train"):
 		for p in players:
 			if p["nick"] == eff["train"][0]:
-				p["train"] = eff["train"][1]
+				var lst: Array = ptrain(p)["coach"]
+				if not lst.has(eff["train"][1]):
+					if lst.size() >= TRAIN_MAX:
+						lst.pop_front()
+					lst.append(eff["train"][1])
 	rep = clampf(rep + float(eff.get("rep", 0)), 0.0, 100.0)
 	money += int(eff.get("money", 0))
 	mail.push_front({"from": coach_name, "to": t2["who"], "subject": tr("Ответ: %s") % t2["who"], "body": str(o["t"]), "season": season, "week": week, "read": true, "kind": "out"})
@@ -709,12 +734,15 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	else:
 		for rp in roster:
 			var p: Dictionary = gen_player(base, rp["role"])
-			for k in ["nick", "aim", "iq", "tw", "age", "photo", "country", "first", "last"]:
+			for k in ["nick", "aim", "iq", "tw", "age", "photo", "country", "first", "last", "role2", "captain"]:
 				if rp.has(k):
 					p[k] = rp[k]
 			if not rp.has("country"):
 				p["country"] = team_country
 			p["attrs"] = make_attrs(float(p["aim"]), float(p["iq"]), float(p["tw"]), str(p["role"]), str(p["nick"]))
+			if bool(p.get("captain", false)):
+				p["attrs"]["leader"] = minf(20.0, float(p["attrs"]["leader"]) + 5.0)
+				p["attrs"]["tactics"] = minf(20.0, float(p["attrs"]["tactics"]) + 3.0)
 			derive(p)
 			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
 			p["salary"] = int(300 + (ovr(p) - 30) * 32)
@@ -882,6 +910,7 @@ func report_match(res: Dictionary) -> void:
 	var won: bool = bool(res["won"])
 	var tier_k: int = tier + 1
 	team_stats["w" if won else "l"] = int(team_stats.get("w" if won else "l", 0)) + 1
+	_match_lines(res, str(m["opp"]))
 	team_stats["mw"] = int(team_stats.get("mw", 0)) + int(res.get("maps_my", 0))
 	team_stats["ml"] = int(team_stats.get("ml", 0)) + int(res.get("maps_opp", 0))
 	team_stats["rw"] = int(team_stats.get("rw", 0)) + int(res.get("my", 0))
@@ -1008,50 +1037,92 @@ func _make_final() -> void:
 
 # ---------------------------------------------------------------- тренировки
 
-## Слабейшая техническая характеристика игрока (для автораспиcания).
-func weakest_attr(p: Dictionary) -> String:
-	ensure_attrs(p)
-	var best := ""
-	var bv: float = 99.0
-	for e in ATTR_TECH:
-		var k: String = e[0]
-		if k == "awp" and p.get("role", "") != "Снайпер":
-			continue
-		if float(p["attrs"][k]) < bv:
-			bv = float(p["attrs"][k])
-			best = k
-	return best
+const TRAIN_GROUPS := {
+	"coach": ["skill", "awp", "rifle", "pistol", "nades", "creativity", "clutch", "tactics"],
+	"psych": ["teamwork", "morale", "conflict", "productivity", "stress", "loyalty"],
+	"physio": ["reaction", "perception", "immunity", "strength", "stamina"],
+}
+const TRAIN_MAX := 3
 
-func auto_schedule() -> void:
-	for p in players:
-		p["train"] = weakest_attr(p)
+func weakest_n(p: Dictionary, keys: Array, n: int) -> Array:
+	ensure_attrs(p)
+	var ks: Array = keys.filter(func(k): return not (k == "awp" and not ["Снайпер", "2-й снайпер"].has(p.get("role", ""))))
+	ks.sort_custom(func(a2, b2): return float(p["attrs"][a2]) < float(p["attrs"][b2]))
+	return ks.slice(0, n)
+
+func weakest_attr(p: Dictionary) -> String:
+	var w: Array = weakest_n(p, TRAIN_GROUPS["coach"], 1)
+	return w[0] if not w.is_empty() else "skill"
+
+func ptrain(p: Dictionary) -> Dictionary:
+	var tr2 = p.get("train", {})
+	if typeof(tr2) != TYPE_DICTIONARY:
+		tr2 = {"coach": [str(tr2)] if str(tr2) != "" else [], "psych": [], "physio": []}
+		p["train"] = tr2
+	for g2 in TRAIN_GROUPS:
+		if not tr2.has(g2):
+			tr2[g2] = []
+	p["train"] = tr2
+	var tp = p.get("tprog", {})
+	if typeof(tp) != TYPE_DICTIONARY:
+		tp = {"coach": float(tp), "psych": 0.0, "physio": 0.0}
+	for g2 in TRAIN_GROUPS:
+		if not tp.has(g2):
+			tp[g2] = 0.0
+	p["tprog"] = tp
+	return p["train"]
+
+func toggle_train(p: Dictionary, grp: String, k: String) -> void:
+	var lst: Array = ptrain(p)[grp]
+	if lst.has(k):
+		lst.erase(k)
+	elif lst.size() < TRAIN_MAX:
+		lst.append(k)
 	changed.emit()
 
-## Скорость тренировки (% прогресса за неделю).
-func train_speed(p: Dictionary) -> float:
+func auto_schedule(grp: String = "coach") -> void:
+	for p in players:
+		ptrain(p)[grp] = weakest_n(p, TRAIN_GROUPS[grp], TRAIN_MAX)
+	changed.emit()
+
+func group_active(grp: String) -> bool:
+	if grp == "coach":
+		return staff_level("coach") > 0 or staff_coach != ""
+	return staff_level(grp) > 0
+
+## Скорость тренировки (% прогресса за неделю) для направления.
+func train_speed(p: Dictionary, grp: String = "coach") -> float:
 	var o: int = ovr(p)
 	var g: float = clampf(float(int(p["pot"]) - o) / 15.0, 0.25, 1.3)
 	var age_k: float = 1.3 if int(p["age"]) <= 20 else (1.0 if int(p["age"]) < 25 else 0.6)
-	var coach_k: float = 1.0 + 0.12 * float(staff_level("coach")) + (0.25 if staff_coach != "" else 0.0) + 0.03 * float(coach_skill["tactics"])
-	return 34.0 * g * age_k * coach_k
+	var lvl: float = float(staff_level(grp))
+	if grp == "coach" and staff_coach != "":
+		lvl = maxf(lvl, 4.0)
+	var k: float = 0.6 + 0.18 * lvl + 0.03 * float(coach_skill["tactics"] if grp == "coach" else coach_skill["motivation"])
+	return 34.0 * g * age_k * k
 
 func _apply_training() -> void:
 	var motiv: int = int(coach_skill["motivation"])
 	for p in players:
 		ensure_attrs(p)
-		var k: String = str(p.get("train", ""))
-		if k == "":
-			k = weakest_attr(p)
-			p["train"] = k
-		if int(p["inj"]) <= 0 and p["attrs"].has(k):
-			p["tprog"] = float(p.get("tprog", 0.0)) + train_speed(p) * randf_range(0.8, 1.2)
-			if float(p["tprog"]) >= 100.0:
-				p["tprog"] = float(p["tprog"]) - 100.0
-				p["attrs"][k] = snappedf(minf(20.0, float(p["attrs"][k]) + randf_range(0.6, 1.1)), 0.01)
+		var trn: Dictionary = ptrain(p)
+		for grp in TRAIN_GROUPS:
+			if not group_active(grp) or trn[grp].is_empty() or int(p["inj"]) > 0:
+				continue
+			p["tprog"][grp] = float(p["tprog"].get(grp, 0.0)) + train_speed(p, grp) * randf_range(0.8, 1.2)
+			if float(p["tprog"][grp]) >= 100.0:
+				p["tprog"][grp] = float(p["tprog"][grp]) - 100.0
+				for k in trn[grp]:
+					p["attrs"][k] = snappedf(minf(20.0, float(p["attrs"][k]) + randf_range(0.3, 0.6)), 0.01)
 				derive(p)
-			p["form"] = int(p["form"]) - 3
-		p["form"] = clampi(int(p["form"]) + 6 + motiv + staff_level("physio"), 20, 100)
+		p["form"] = clampi(int(p["form"]) + 3 + motiv + staff_level("physio"), 20, 100)
 		p["morale"] = clampi(int(p.get("morale", 80)) + 2 + staff_level("psych") + motiv / 2, 10, 100)
+		p["health"] = clampi(int(p.get("health", 90)) + 2 + staff_level("physio") - (10 if int(p["inj"]) > 0 else 0), 10, 100)
+		var ah: Array = p.get("ahist", [])
+		ah.append({"w": week, "s": season, "a": p["attrs"].duplicate()})
+		while ah.size() > 26:
+			ah.pop_front()
+		p["ahist"] = ah
 	if train_map != "":
 		map_skill[train_map] = mini(95, int(map_skill[train_map]) + randi_range(2, 4) + staff_level("analyst") / 2)
 
@@ -1078,6 +1149,50 @@ func physio_session(p: Dictionary) -> String:
 		p["inj"] = int(p["inj"]) - 1
 	changed.emit()
 	return ""
+
+func offer_contract(p: Dictionary, years: int, salary: int) -> String:
+	var want: int = int(300 + (ovr(p) - 30) * 32)
+	var mo: int = int(p.get("morale", 80))
+	if salary < int(want * (0.95 if mo >= 70 else 1.1)):
+		p["morale"] = clampi(mo - 5, 10, 100)
+		return tr("%s отклонил предложение: хочет не меньше $%d в неделю.") % [p["nick"], int(want * (0.95 if mo >= 70 else 1.1))]
+	p["salary"] = salary
+	p["contract"] = {"type": "club", "end": season + years, "signed": game_date_str()}
+	p["morale"] = clampi(mo + 8, 10, 100)
+	add_mail(tr("Отдел кадров"), tr("Новый контракт: %s") % p["nick"], tr("%s подписал новый контракт до конца сезона %d. Зарплата: $%d в неделю.") % [p["nick"], season + years, salary], "good")
+	changed.emit()
+	return ""
+
+func game_date_str() -> String:
+	var start := Time.get_unix_time_from_datetime_dict({"year": 2026, "month": 1, "day": 1, "hour": 12, "minute": 0, "second": 0})
+	var d := Time.get_datetime_dict_from_unix_time(start + ((season - 1) * 52 + (week - 1)) * 7 * 86400)
+	return "%02d.%02d.%d" % [d["day"], d["month"], d["year"]]
+
+## Статистика игроков за матч: если не передана, генерируется по рейтингу.
+func _match_lines(res: Dictionary, opp: String) -> void:
+	var stats: Array = res.get("stats", [])
+	var rounds: int = maxi(1, int(res.get("my", 13)) + int(res.get("opp", 10)))
+	if stats.is_empty():
+		for p in lineup():
+			var kk: int = int(rounds * randf_range(0.45, 0.95) * float(ovr(p)) / 75.0)
+			stats.append({"nick": p["nick"], "k": kk, "d": int(rounds * randf_range(0.5, 0.8))})
+	for s in stats:
+		for p in players:
+			if p["nick"] != s["nick"]:
+				continue
+			var k: int = int(s["k"])
+			var d: int = int(s["d"])
+			var a: int = int(k * randf_range(0.2, 0.5))
+			var line := {"opp": opp, "score": "%d:%d" % [int(res.get("my", 0)), int(res.get("opp", 0))], "won": bool(res["won"]),
+				"k": k, "d": d, "a": a, "adr": snappedf((k * 95.0 + a * 30.0) / rounds * randf_range(0.9, 1.1), 0.1),
+				"hs": randi_range(32, 62), "kast": randi_range(58, 84), "clutch": randi_range(0, 2),
+				"ir": snappedf(clampf(0.55 + (float(k) - d) / rounds * 1.6 + randf_range(-0.08, 0.08), 0.3, 2.2), 0.01), "date": game_date_str(),
+				"tour": tr(TIERS[tier]), "season": season}
+			var mh: Array = p.get("mh", [])
+			mh.push_front(line)
+			while mh.size() > 30:
+				mh.pop_back()
+			p["mh"] = mh
 
 func set_captain(p: Dictionary) -> void:
 	for q in players:
@@ -1384,7 +1499,12 @@ func _fix_players(arr: Array) -> Array:
 		for k in srcat:
 			at[k] = float(srcat[k])
 		q["attrs"] = at
+		if ROLE_MIGRATE.has(str(q.get("role", ""))):
+			if q["role"] == "Капитан":
+				q["captain"] = true
+			q["role"] = ROLE_MIGRATE[q["role"]]
 		ensure_attrs(q)
+		init_player_meta(q)
 		res.append(q)
 	return res
 
