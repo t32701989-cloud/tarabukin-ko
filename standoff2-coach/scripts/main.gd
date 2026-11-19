@@ -3711,44 +3711,140 @@ func _train_player_col(p: Dictionary, grp: String, active: bool) -> Control:
 		v.add_child(pick)
 	return c
 
+func _map_card(mp: String) -> Control:
+	var in_pool: bool = gs.map_pool.has(mp)
+	var picked: bool = gs.map_picks.has(mp)
+	var banned: bool = gs.map_bans.has(mp)
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.07, 0.1, 1)
+	sb.set_corner_radius_all(6)
+	sb.set_border_width_all(3 if picked else 1)
+	sb.border_color = Color("2fb8e8") if picked else (C_BAD if banned else Color(1, 1, 1, 0.1))
+	card.add_theme_stylebox_override("panel", sb)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.custom_minimum_size = Vector2(100, 360)
+	card.clip_contents = true
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(100, 360)
+	card.add_child(holder)
+	var img := TextureRect.new()
+	img.texture = tex("res://assets/maps/%s.jpg" % gs.MAP_FILES[mp])
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	img.set_anchors_preset(Control.PRESET_FULL_RECT)
+	if not in_pool:
+		img.modulate = Color(0.85, 0.3, 0.25, 0.75)
+	elif banned:
+		img.modulate = Color(0.6, 0.45, 0.45)
+	elif not picked:
+		img.modulate = Color(0.75, 0.75, 0.78)
+	holder.add_child(img)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.35)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(shade)
+	var v := vbox(6)
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 6; v.offset_right = -6; v.offset_top = 6; v.offset_bottom = -8
+	holder.add_child(v)
+	if in_pool:
+		var pb := hbox(4)
+		pb.alignment = BoxContainer.ALIGNMENT_CENTER
+		var pk := small_btn("PICK", func(): gs.toggle_pick(mp); show_screen("training", false), Color.BLACK if picked else Color.WHITE)
+		if picked:
+			var s2 := StyleBoxFlat.new(); s2.bg_color = C_GOOD; s2.set_corner_radius_all(4)
+			s2.content_margin_left = 6; s2.content_margin_right = 6; s2.content_margin_top = 2; s2.content_margin_bottom = 2
+			pk.add_theme_stylebox_override("normal", s2)
+		pk.add_theme_font_size_override("font_size", 10)
+		pb.add_child(pk)
+		var bn := small_btn("BAN", func(): gs.toggle_ban(mp); show_screen("training", false), Color.BLACK if banned else Color.WHITE)
+		if banned:
+			var s3 := StyleBoxFlat.new(); s3.bg_color = C_BAD; s3.set_corner_radius_all(4)
+			s3.content_margin_left = 6; s3.content_margin_right = 6; s3.content_margin_top = 2; s3.content_margin_bottom = 2
+			bn.add_theme_stylebox_override("normal", s3)
+		bn.add_theme_font_size_override("font_size", 10)
+		pb.add_child(bn)
+		v.add_child(pb)
+	var nl := label(mp.to_upper(), 15, Color.WHITE)
+	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	nl.add_theme_constant_override("shadow_offset_y", 2)
+	nl.clip_text = true
+	v.add_child(nl)
+	if not in_pool:
+		var ol := label(tr("ВНЕ МАППУЛА"), 11, Color.WHITE)
+		ol.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(ol)
+	var f := Control.new()
+	f.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(f)
+	var sk: int = int(gs.map_skill.get(mp, 50))
+	var ring := preload("res://scripts/progress_ring.gd").new().setup(sk / 100.0, 78, Color("f5c518") if sk < 75 else C_GOOD)
+	ring.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(ring)
+	var gain: int = gs.map_gain() if picked else 0
+	var g1 := label(tr("За неделю: +%d") % gain, 10, C_GOOD if gain > 0 else Color(1, 1, 1, 0.6))
+	g1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(g1)
+	var g2 := label(tr("За месяц: +%d") % (gain * 4), 10, C_GOOD if gain > 0 else Color(1, 1, 1, 0.6))
+	g2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(g2)
+	if picked:
+		var ck := UITheme.icon("check", 22, C_GOOD)
+		ck.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(ck)
+	elif banned:
+		var bk := UITheme.icon("block", 22, C_BAD)
+		bk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(bk)
+	return card
+
 func _train_maps() -> void:
-	var cols := hbox(12)
-	content.add_child(cols)
-	var mb := _block(tr("Пул карт"))
-	mb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cols.add_child(mb)
-	var mc := _card()
-	mb.add_child(mc)
-	var mv := vbox(8)
-	mc.add_child(mv)
-	for mm in gs.MAPS:
-		var r := hbox(10)
-		var sel: bool = gs.train_map == mm
-		var mbn := small_btn(mm, func(): gs.train_map = mm; show_screen("training", false), C_ACC if sel else Color.WHITE)
-		mbn.custom_minimum_size = Vector2(120, 0)
-		r.add_child(mbn)
-		var bar := _bar(float(gs.map_skill[mm]), 100.0, C_ACC if sel else Color("5aa9ff"), 260, 12)
-		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		r.add_child(bar)
-		r.add_child(cell(str(int(gs.map_skill[mm])), 34, Color.WHITE))
-		if sel:
-			r.add_child(UITheme.icon("check_circle", 18, C_ACC))
-		mv.add_child(r)
-	mv.add_child(label(tr("Выбранная карта отрабатывается каждую неделю."), 11, C_DIM))
-	var sb := _block(tr("Стиль игры"))
-	sb.custom_minimum_size = Vector2(340, 0)
-	cols.add_child(sb)
-	var sv := vbox(8)
-	sb.add_child(sv)
-	var sicons := {"aggro": "local_fire_department", "balanced": "balance", "defense": "shield"}
-	for k in gs.STYLES:
-		var key2: String = k
-		sv.add_child(_sel_card(sicons[k], tr(gs.STYLES[k]), tr(gs.STYLE_DESC[k]), gs.style == k, func(): gs.style = key2; show_screen("training", false), Color("5aa9ff")))
+	var hb := _block(tr("Выбор карт для тренировки"))
+	content.add_child(hb)
+	var top := hbox(10)
+	var tv := vbox(2)
+	tv.add_child(label(tr("Выберите три карты (PICK), на которых сосредоточится команда, и до трёх BAN. Можно менять в любой момент."), 13, Color("d6dbe3")))
+	tv.add_child(label(tr("Пики: %s   ·   Баны: %s") % [", ".join(gs.map_picks) if not gs.map_picks.is_empty() else "—", ", ".join(gs.map_bans) if not gs.map_bans.is_empty() else "—"], 13, C_ACC))
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(tv)
+	top.add_child(btn("AUTO", func(): gs.auto_maps(); show_screen("training", false), Color("2fb8e8")))
+	hb.add_child(top)
+	var row := hbox(8)
+	content.add_child(row)
+	var order: Array = gs.MAPS.duplicate()
+	order.sort_custom(func(a, b): return int(gs.map_pool.has(a)) > int(gs.map_pool.has(b)))
+	for mp in order:
+		row.add_child(_map_card(mp))
+	content.add_child(label(tr("Маппул: %d карт. Каждый год (1 января) две наименее игранные карты уходят, две из запаса возвращаются.") % gs.map_pool.size(), 12, C_DIM))
+	var pb := _block(tr("Прогресс"))
+	content.add_child(pb)
+	var pr := hbox(30)
+	pb.add_child(pr)
+	var items: Array = [[gs.team_logo, gs.team_name + " " + tr("Состав"), 2]]
+	var cs: Dictionary = _group_staff("coach")
+	if not cs.is_empty():
+		items.append([str(cs.get("photo", "")), str(cs["name"]), 1])
+	var an: Dictionary = _group_staff("analyst")
+	if not an.is_empty():
+		items.append([str(an.get("photo", "")), str(an["name"]), gs.staff_level("analyst") / 2])
+	for it in items:
+		var h := hbox(8)
+		h.add_child(_circle(str(it[0]), 40))
+		var iv := vbox(0)
+		iv.add_child(label(str(it[1]), 13, Color.WHITE))
+		iv.add_child(label(tr("+%d/неделю") % int(it[2]), 12, C_GOOD))
+		h.add_child(iv)
+		pr.add_child(h)
 
 # ------------------------------------------------------------ трансферы
 
 var tr_role: String = ""
 var tr_sort: String = "ovr"
+
 
 func screen_transfers() -> void:
 	content.add_child(_hdr_card("swap_horiz", tr("Трансферы"), tr("Свободные агенты. Состав: %d/%d · Бюджет: %s") % [gs.players.size(), gs.MAX_ROSTER, money_fmt(gs.money)]))
@@ -4149,9 +4245,14 @@ func show_prematch() -> void:
 	p.add_child(v)
 	v.add_child(label(tr("Выбор карты"), 17, C_ACC))
 	var avail: Array = []
-	for mm in gs.MAPS:
-		if not m["played"].has(mm):
+	var pool_src: Array = gs.playable_maps() if gi == 1 else gs.map_pool
+	for mm in gs.map_picks + pool_src:
+		if not m["played"].has(mm) and not avail.has(mm) and pool_src.has(mm):
 			avail.append(mm)
+	if avail.is_empty():
+		for mm in gs.map_pool:
+			if not m["played"].has(mm):
+				avail.append(mm)
 	var map_ob := OptionButton.new()
 	if gi == 1:
 		for mm in avail:
@@ -4285,6 +4386,7 @@ func finish_map() -> void:
 	var won: bool = sim.winner == 0
 	m["wins"][sim.winner] += 1
 	m["played"].append(m["map"])
+	gs.note_map_played(m["map"])
 	m["total"][0] += sim.score[0]
 	m["total"][1] += sim.score[1]
 	for i in m["stats"].size():

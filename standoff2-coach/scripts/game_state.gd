@@ -7,7 +7,10 @@ const SAVE_PATH := "user://coach_save.json"
 
 const ROLES := ["Рифлер", "Снайпер", "Саппорт", "Лурк", "2-й снайпер"]
 const ROLE_MIGRATE := {"Капитан": "Рифлер", "Энтри": "Рифлер"}
-const MAPS := ["Sandstone", "Province", "Rust", "Zone 9", "Breeze", "Dune"]
+const MAPS := ["Sandstone", "Breeze", "Hanami", "Sakura", "Prison", "Dune", "Rust", "Zone 7", "Province"]
+const MAP_FILES := {"Sandstone": "sandstone", "Breeze": "breeze", "Hanami": "hanami", "Sakura": "sakura", "Prison": "prison", "Dune": "dune", "Rust": "rust", "Zone 7": "zone7", "Province": "province"}
+const POOL_SIZE := 7
+const START_POOL := ["Sandstone", "Breeze", "Hanami", "Sakura", "Province", "Rust", "Dune"]
 const TIERS := ["Открытая лига", "Про-лига", "Мировая серия"]
 const STYLES := {"aggro": "Агрессия", "balanced": "Баланс", "defense": "Контроль"}
 const STYLE_DESC := {
@@ -53,6 +56,10 @@ var map_skill: Dictionary = {}
 var style: String = "balanced"
 var train_focus: String = "aim"
 var train_map: String = "Sandstone"
+var map_pool: Array = []
+var map_picks: Array = []
+var map_bans: Array = []
+var map_usage: Dictionary = {}   # карта -> сколько раз сыграна за год (для ротации)
 var league_teams: Array = []
 var strengths: Dictionary = {}
 var standings: Dictionary = {}
@@ -721,8 +728,11 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	train_focus = "aim"
 	map_skill = {}
 	for m in MAPS:
-		map_skill[m] = randi_range(32, 52)
+		map_skill[m] = randi_range(52, 70)
 	train_map = MAPS[0]
+	map_pool = START_POOL.duplicate()
+	map_usage = {}
+	auto_maps()
 	var roster: Array = team.get("roster", [])
 	if bool(team.get("empty_roster", false)):
 		pass
@@ -1123,8 +1133,68 @@ func _apply_training() -> void:
 		while ah.size() > 26:
 			ah.pop_front()
 		p["ahist"] = ah
-	if train_map != "":
-		map_skill[train_map] = mini(95, int(map_skill[train_map]) + randi_range(2, 4) + staff_level("analyst") / 2)
+	for mp in map_picks:
+		map_skill[mp] = mini(99, int(map_skill.get(mp, 50)) + map_gain())
+	for mp in map_pool:
+		if not map_picks.has(mp) and randf() < 0.3:
+			map_skill[mp] = maxi(20, int(map_skill.get(mp, 50)) - 1)
+
+# ---------------------------------------------------------------- маппул
+
+func map_gain() -> int:
+	return 2 + staff_level("analyst") / 2 + (1 if group_active("coach") else 0)
+
+func toggle_pick(mp: String) -> void:
+	if map_picks.has(mp):
+		map_picks.erase(mp)
+	elif map_picks.size() < 3 and map_pool.has(mp):
+		map_bans.erase(mp)
+		map_picks.append(mp)
+	changed.emit()
+
+func toggle_ban(mp: String) -> void:
+	if map_bans.has(mp):
+		map_bans.erase(mp)
+	elif map_bans.size() < 3 and map_pool.has(mp):
+		map_picks.erase(mp)
+		map_bans.append(mp)
+	changed.emit()
+
+## AUTO: пики — 3 лучшие карты, баны — 3 худшие.
+func auto_maps() -> void:
+	var arr: Array = map_pool.duplicate()
+	arr.sort_custom(func(a, b): return int(map_skill.get(a, 0)) > int(map_skill.get(b, 0)))
+	map_picks = arr.slice(0, 3)
+	map_bans = arr.slice(arr.size() - 3, arr.size())
+	changed.emit()
+
+func note_map_played(mp: String) -> void:
+	map_usage[mp] = int(map_usage.get(mp, 0)) + 1
+
+## Смена маппула раз в год: 2 наименее игранные карты уходят, 2 из запаса возвращаются.
+func rotate_map_pool() -> void:
+	var out_pool: Array = MAPS.filter(func(x): return not map_pool.has(x))
+	if out_pool.is_empty():
+		return
+	var arr: Array = map_pool.duplicate()
+	arr.shuffle()
+	arr.sort_custom(func(a, b): return int(map_usage.get(a, 0)) < int(map_usage.get(b, 0)))
+	var removed: Array = arr.slice(0, mini(2, out_pool.size()))
+	out_pool.shuffle()
+	var added: Array = out_pool.slice(0, removed.size())
+	for r in removed:
+		map_pool.erase(r)
+		map_picks.erase(r)
+		map_bans.erase(r)
+	for a in added:
+		map_pool.append(a)
+	map_usage = {}
+	add_mail(tr("Оргкомитет лиги"), tr("Обновление маппула"), tr("Начался новый год — маппул обновлён.\nУбраны: %s.\nДобавлены: %s.\nКарты, которые хуже всего игрались на турнирах, уходят на доработку.") % [", ".join(removed), ", ".join(added)], "news")
+
+## Пригодные для выбора карты (пул без своих банов).
+func playable_maps() -> Array:
+	var a: Array = map_pool.filter(func(x): return not map_bans.has(x))
+	return a if not a.is_empty() else map_pool.duplicate()
 
 ## Психолог: сессия для игрока (+мораль), раз в неделю на игрока.
 func psych_session(p: Dictionary) -> String:
@@ -1307,6 +1377,7 @@ func _end_season() -> void:
 
 func _start_next_season() -> void:
 	season += 1
+	rotate_map_pool()
 	_start_league()
 	add_mail(tr("Оргкомитет лиги"), tr("Приглашение: %s, сезон %d") % [tr(TIERS[tier]), season], tr("Ваша команда приглашена в турнир «%s». Регулярный сезон: 7 туров, затем плей-офф. Удачи!") % tr(TIERS[tier]), "invite")
 	for n in strengths:
@@ -1377,7 +1448,7 @@ func to_dict() -> Dictionary:
 		"active": active, "game_over": game_over, "legend": legend, "coach_name": coach_name, "team_name": team_name,
 		"season": season, "week": week, "tier": tier, "money": money, "rep": rep, "coach_pts": coach_pts,
 		"coach_skill": coach_skill, "players": players, "market": market, "map_skill": map_skill, "style": style,
-		"train_focus": train_focus, "train_map": train_map, "league_teams": league_teams, "strengths": strengths,
+		"train_focus": train_focus, "train_map": train_map, "map_pool": map_pool, "map_picks": map_picks, "map_bans": map_bans, "map_usage": map_usage, "league_teams": league_teams, "strengths": strengths,
 		"standings": standings, "schedule": schedule, "playoff": playoff, "match_done": match_done, "news": news,
 		"history": history, "titles": titles, "bad_seasons": bad_seasons, "next_id": next_id,
 		"coach_age": coach_age, "coach_nick": coach_nick, "coach_gender": coach_gender, "coach_country_code": coach_country_code,
@@ -1409,6 +1480,17 @@ func from_dict(d: Dictionary) -> void:
 	style = str(d["style"])
 	train_focus = str(d["train_focus"])
 	train_map = str(d["train_map"])
+	for m2 in MAPS:
+		if not map_skill.has(m2):
+			map_skill[m2] = randi_range(50, 65)
+	map_pool = d.get("map_pool", START_POOL.duplicate()).filter(func(x): return MAPS.has(x))
+	if map_pool.size() < POOL_SIZE:
+		map_pool = START_POOL.duplicate()
+	map_picks = d.get("map_picks", []).filter(func(x): return map_pool.has(x))
+	map_bans = d.get("map_bans", []).filter(func(x): return map_pool.has(x))
+	map_usage = d.get("map_usage", {})
+	if map_picks.is_empty():
+		auto_maps()
 	league_teams = d["league_teams"]
 	strengths = d["strengths"]
 	standings = {}

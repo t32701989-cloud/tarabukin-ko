@@ -4,6 +4,17 @@ extends Node
 const LANGS := {"ru": "Русский", "en": "English"}
 
 const EN := {
+	"Выбор карт для тренировки": "Map training selection",
+	"Выберите три карты (PICK), на которых сосредоточится команда, и до трёх BAN. Можно менять в любой момент.": "Pick three maps (PICK) your team will focus on, and up to three BANs. You can change this at any time.",
+	"Пики: %s   ·   Баны: %s": "Picks: %s   ·   Bans: %s",
+	"ВНЕ МАППУЛА": "OUT OF POOL",
+	"За неделю: +%d": "Per week: +%d",
+	"За месяц: +%d": "Per month: +%d",
+	"Маппул: %d карт. Каждый год (1 января) две наименее игранные карты уходят, две из запаса возвращаются.": "Map pool: %d maps. Every year (January 1) the two least-played maps leave and two from the reserve return.",
+	"Прогресс": "Progress",
+	"+%d/неделю": "+%d/week",
+	"Обновление маппула": "Map pool update",
+	"Начался новый год — маппул обновлён.\nУбраны: %s.\nДобавлены: %s.\nКарты, которые хуже всего игрались на турнирах, уходят на доработку.": "A new year has begun — the map pool is updated.\nRemoved: %s.\nAdded: %s.\nThe least-played tournament maps go back for rework.",
 	"Рифлер": "Rifler",
 	"2-й снайпер": "2nd sniper",
 	"Назначить капитаном": "Make captain",
