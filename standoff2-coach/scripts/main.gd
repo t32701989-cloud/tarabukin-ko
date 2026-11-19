@@ -1586,17 +1586,13 @@ func _outline_btn(t: String, cb: Callable, col: Color, size: int = 20) -> Button
 	b.add_theme_color_override("font_color", Color.WHITE)
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
 	b.add_theme_color_override("font_disabled_color", Color("5b6270"))
-	for st in [["normal", 0.18], ["hover", 0.38], ["pressed", 0.5], ["focus", 0.18], ["disabled", 0.05]]:
+	for st in [["normal", 0.85], ["hover", 1.0], ["pressed", 0.7], ["focus", 0.85], ["disabled", 0.15]]:
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(col.r, col.g, col.b, st[1])
-		sb.border_color = col if st[0] != "disabled" else Color("3a3f4a")
-		sb.set_border_width_all(3)
-		sb.set_corner_radius_all(6)
+		sb.bg_color = Color(col.r * 0.75, col.g * 0.75, col.b * 0.75, st[1])
+		sb.set_border_width_all(0)
+		sb.set_corner_radius_all(4)
 		sb.content_margin_left = 26; sb.content_margin_right = 26
 		sb.content_margin_top = 10; sb.content_margin_bottom = 10
-		if st[0] == "hover":
-			sb.shadow_color = Color(col.r, col.g, col.b, 0.45)
-			sb.shadow_size = 10
 		b.add_theme_stylebox_override(st[0], sb)
 	b.pressed.connect(cb)
 	return b
@@ -2123,10 +2119,8 @@ func _block(t: String) -> VBoxContainer:
 func _card() -> PanelContainer:
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.09, 0.12, 0.17, 0.85)
-	sb.border_color = Color(1, 1, 1, 0.08)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(6)
+	sb.bg_color = Color(0.09, 0.12, 0.17, 0.9)
+	sb.set_corner_radius_all(4)
 	sb.set_content_margin_all(12)
 	p.add_theme_stylebox_override("panel", sb)
 	return p
@@ -4327,7 +4321,7 @@ func screen_scouting() -> void:
 	var v := vbox(2)
 	c.add_child(v)
 	var hh := hbox(6)
-	for e in [["", 24], [tr("Ник"), 130], [tr("Роль"), 84], [tr("Возраст"), 50], [tr("Рейтинг"), 80], [tr("Нация"), 40], [tr("Потенциал"), 80], [tr("Истекает"), 80], [tr("Зарплата"), 80], [tr("Трансф. стоимость"), 110], [tr("Команда"), 120]]:
+	for e in [["", 24], [tr("Ник"), 130], [tr("Роль"), 84], [tr("Возраст"), 50], [tr("Рейтинг"), 80], [tr("Нация"), 40], [tr("Потенциал"), 80], [tr("Истекает"), 80], [tr("Зарплата"), 76], [tr("Трансф. стоимость"), 76], [tr("Аренда"), 54], [tr("Команда"), 120]]:
 		hh.add_child(cell(e[0], e[1], C_DIM, 11))
 	v.add_child(hh)
 	if pool.is_empty():
@@ -4384,13 +4378,13 @@ func _scout_row(p: Dictionary, i: int) -> Control:
 	r.add_child(s2)
 	var team: String = str(p.get("team", ""))
 	r.add_child(cell(_season_end_date(int(p.get("contract", {}).get("end", gs.season))) if team != "" else "—", 80, Color.WHITE, 12))
-	r.add_child(cell("$" + _k(int(p["salary"]) * 4) + tr("/мес"), 80, C_GOOD, 12))
-	var price := hbox(4)
-	price.custom_minimum_size = Vector2(110, 0)
-	price.add_child(label("$" + _k(gs.buyout(p)), 13, Color("5aa9ff")))
-	if bool(p.get("loan_ok", false)) and team != "":
-		price.add_child(_badge(tr("аренда"), C_ACC))
-	r.add_child(price)
+	r.add_child(cell("$" + _k(int(p["salary"]) * 4) + tr("/мес"), 76, C_GOOD, 12))
+	r.add_child(cell("$" + _k(gs.buyout(p)), 76, Color("5aa9ff"), 13))
+	if team == "":
+		r.add_child(cell("—", 54, C_DIM, 13))
+	else:
+		var ok: bool = bool(p.get("loan_ok", false))
+		r.add_child(cell(tr("Да") if ok else tr("Нет"), 54, C_GOOD if ok else C_BAD, 13))
 	var tv := hbox(6)
 	tv.custom_minimum_size = Vector2(120, 0)
 	if team != "":

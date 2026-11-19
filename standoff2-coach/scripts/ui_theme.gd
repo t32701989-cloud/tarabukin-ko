@@ -80,11 +80,11 @@ static func build() -> Theme:
 	t.default_font_size = 15
 	var acc := Color("ffb23e")
 	# --- Button
-	var bn := _box(Color("232a36"), Color(1, 1, 1, 0.10), 1, 6, 4)
-	var bh := _box(Color("2e3747"), Color(1, 0.7, 0.24, 0.55), 1, 6, 6)
-	var bp := _box(Color("1b212b"), Color(1, 0.7, 0.24, 0.8), 1, 6, 0)
-	var bd := _box(Color("1a1f28"), Color(1, 1, 1, 0.04), 1, 6, 0)
-	var bf := _box(Color("232a36"), Color(1, 0.7, 0.24, 0.6), 1, 6, 0)
+	var bn := _box(Color("252c38"), Color(0, 0, 0, 0), 0, 4, 0)
+	var bh := _box(Color("313a49"), Color(0, 0, 0, 0), 0, 4, 0)
+	var bp := _box(Color("1c222c"), Color(0, 0, 0, 0), 0, 4, 0)
+	var bd := _box(Color("1b2029"), Color(0, 0, 0, 0), 0, 4, 0)
+	var bf := _box(Color("252c38"), Color(0, 0, 0, 0), 0, 4, 0)
 	for type in ["Button", "OptionButton", "MenuButton"]:
 		t.set_stylebox("normal", type, bn)
 		t.set_stylebox("hover", type, bh)
@@ -109,7 +109,7 @@ static func build() -> Theme:
 		t.set_color("caret_color", type, acc)
 		t.set_color("selection_color", type, Color(1, 0.7, 0.24, 0.35))
 	# --- PopupMenu
-	t.set_stylebox("panel", "PopupMenu", _box(Color("161b24"), Color(1, 1, 1, 0.12), 1, 6, 10, Vector4(6, 6, 6, 6)))
+	t.set_stylebox("panel", "PopupMenu", _box(Color("161b24"), Color(1, 1, 1, 0.1), 1, 4, 0, Vector4(6, 6, 6, 6)))
 	t.set_stylebox("hover", "PopupMenu", _box(Color(1, 0.7, 0.24, 0.22), Color(0, 0, 0, 0), 0, 4))
 	t.set_color("font_color", "PopupMenu", Color("dfe4ec"))
 	t.set_color("font_hover_color", "PopupMenu", Color.WHITE)
@@ -142,8 +142,8 @@ static func build() -> Theme:
 	t.set_icon("grabber_highlight", "HSlider", _knob(acc))
 	# --- Label / Panel
 	t.set_color("font_color", "Label", Color("e9edf3"))
-	t.set_stylebox("panel", "PanelContainer", _box(Color(0.09, 0.12, 0.17, 0.88), Color(1, 1, 1, 0.08), 1, 8, 6))
-	t.set_stylebox("panel", "TooltipPanel", _box(Color("161b24"), Color(1, 1, 1, 0.15), 1, 6, 6))
+	t.set_stylebox("panel", "PanelContainer", _box(Color(0.09, 0.12, 0.17, 0.9), Color(0, 0, 0, 0), 0, 4, 0))
+	t.set_stylebox("panel", "TooltipPanel", _box(Color("161b24"), Color(1, 1, 1, 0.1), 1, 4, 0))
 	return t
 
 static func _check_icon(on: bool, acc: Color) -> ImageTexture:
