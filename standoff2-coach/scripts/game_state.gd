@@ -83,6 +83,7 @@ var staff_count: int = 0
 var staff_list: Array = []        # нанятый персонал
 var staff_market: Array = []      # кандидаты на найм
 var mail: Array = []              # письма
+var talks: Array = []             # разговоры (скаут, тренер, игроки)
 var money_hist: Array = []        # баланс по неделям
 var team_stats: Dictionary = {"w": 0, "l": 0, "mw": 0, "ml": 0, "rw": 0, "rl": 0}
 var team_country: String = "ru"
@@ -204,7 +205,7 @@ func gen_player(base: float, role: String = "") -> Dictionary:
 	var pot: int = clampi(int(base + randf_range(4, 26) - maxf(0.0, float(age - 22)) * 3.0), int(base) + 2, 99)
 	if role == "":
 		role = ROLES[randi() % ROLES.size()]
-	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": free_photo(), "country": _rand_country()}
+	var p := {"id": next_id, "nick": nick, "role": role, "aim": aim, "iq": iq, "tw": tw, "form": 75, "morale": 80, "age": age, "pot": pot, "inj": 0, "salary": 0, "matches": 0, "look": Avatar.random_cfg(), "photo": free_photo(), "country": _rand_country()}
 	next_id += 1
 	p["attrs"] = make_attrs(aim, iq, tw, role)
 	derive(p)
@@ -287,6 +288,14 @@ func team_power(st: String, map_name: String) -> Dictionary:
 	if staff_coach != "":
 		bonus += 1.5
 	bonus += float(staff_level("analyst")) * 0.5
+	var cap: Dictionary = captain()
+	if not cap.is_empty() and l.has(cap):
+		bonus += float(cap.get("attrs", {}).get("leader", 10.0)) / 10.0
+	var mor: float = 0.0
+	for p in l:
+		mor += float(p.get("morale", 80))
+	if l.size() > 0:
+		bonus += (mor / l.size() - 70.0) / 15.0
 	bonus += (float(map_skill.get(map_name, 40)) - 40.0) / 8.0
 	var a: float = s + bonus
 	var d: float = s + bonus
@@ -352,37 +361,88 @@ func _rankoff_drift() -> void:
 # ---------------------------------------------------------------- персонал
 
 const STAFF_ROLES := {
-	"assistant": ["Тренер-ассистент", "Тренировки дают больше прироста (+6% за уровень)"],
-	"analyst": ["Аналитик", "Разбор соперников: +0.5 к силе команды за уровень"],
-	"scout": ["Скаут", "Точнее оценка потенциала и дешевле трансферы"],
-	"physio": ["Физиотерапевт", "Меньше травм, быстрее восстановление формы"],
-	"psych": ["Психолог", "Форма и мораль игроков восстанавливаются быстрее"],
+	"coach": ["Тренер", "Ускоряет тренировки игроков"],
+	"scout": ["Скаут", "Точнее оценка потенциала, дешевле трансферы"],
+	"analyst": ["Аналитик", "Разбор соперников: +0.5 к силе команды за звезду"],
+	"findir": ["Финансовый директор", "+4% к доходу спонсоров за звезду"],
+	"lawyer": ["Юрист", "-3% к зарплатам игроков за звезду"],
+	"event": ["Ивент-менеджер", "Растёт репутация клуба"],
+	"pr": ["PR-менеджер", "+3% к доходу спонсоров и репутация"],
+	"psych": ["Психолог", "Быстрее восстанавливается мораль"],
+	"physio": ["Физиотерапевт", "Меньше травм, быстрее восстанавливается форма"],
 }
-const STAFF_FIRST := ["Алексей", "Дмитрий", "Сергей", "Михаил", "Анна", "Елена", "Ольга", "Игорь", "Олег", "Мария", "Кирилл", "Роман"]
-const STAFF_LAST := ["Волков", "Морозов", "Лебедев", "Соколов", "Попов", "Новиков", "Фёдоров", "Козлов", "Павлов", "Голубев", "Егоров", "Зайцев"]
+const STAFF_TECH := {
+	"coach": [["skill", "Навык"], ["awp", "AWP"], ["rifle", "Винтовка"], ["pistol", "Пистолет"], ["nades", "Гранаты"], ["creativity", "Креативность"], ["clutch", "Клатч"], ["tactics", "Тактика"]],
+	"scout": [["talent", "Поиск талантов"], ["potential", "Оценка потенциала"], ["contacts", "Сеть контактов"]],
+	"analyst": [["demos", "Разбор демо"], ["statistics", "Статистика"], ["tactics", "Тактика"]],
+	"findir": [["budget", "Бюджет"], ["negotiation", "Переговоры"], ["sponsorship", "Спонсорство"]],
+	"lawyer": [["contracts", "Контракты"], ["negotiation", "Переговоры"]],
+	"event": [["events", "Организация мероприятий"], ["media", "Медиа"]],
+	"pr": [["media", "Медиа"], ["social", "Соцсети"], ["sponsorship", "Спонсорство"]],
+	"psych": [["psychology", "Психология"], ["motivation", "Мотивация"]],
+	"physio": [["medicine", "Медицина"], ["recovery", "Восстановление"]],
+}
+const STAFF_MENTAL := [["communication", "Коммуникация"], ["finance", "Фин. грамотность"], ["eventorg", "Организатор мероприятий"], ["morale", "Мораль"], ["conflict", "Конфликтность"], ["productivity", "Продуктивность"], ["loyalty", "Лояльность"], ["stress", "Стрессоустойчивость"]]
+const STAFF_PHYS := [["immunity", "Иммунитет"]]
+const STAFF_FIRST := ["Алексей", "Дмитрий", "Сергей", "Михаил", "Анна", "Елена", "Ольга", "Игорь", "Олег", "Мария", "Кирилл", "Роман", "Виктория", "Артур", "Никита", "Ксения"]
+const STAFF_LAST := ["Волков", "Морозов", "Лебедев", "Соколов", "Попов", "Новиков", "Фёдоров", "Козлов", "Павлов", "Голубев", "Егоров", "Зайцев", "Белов", "Орлов", "Тихонов", "Комаров"]
+const FEMALE_FIRST := ["Анна", "Елена", "Ольга", "Мария", "Виктория", "Ксения"]
+
+## Портреты для персонала: деловые фото (менеджеры), для женщин — женские.
+func _staff_photo(female: bool) -> String:
+	var pool: Array = []
+	for i in range(1, 7):
+		pool.append("res://assets/managers/%s%02d.png" % ["f" if female else "m", i])
+	var used: Array = [photo_path]
+	for s in staff_list + staff_market:
+		used.append(str(s.get("photo", "")))
+	var free: Array = pool.filter(func(x): return not used.has(x))
+	if free.is_empty():
+		free = pool.filter(func(x): return x != photo_path)
+	return free[randi() % free.size()]
+
+func staff_stars(s: Dictionary) -> float:
+	var a: Dictionary = s.get("attrs", {})
+	var keys: Array = STAFF_TECH.get(s["role"], []).map(func(x): return x[0])
+	if keys.is_empty() or a.is_empty():
+		return float(s.get("lvl", 1))
+	var sum: float = 0.0
+	for k in keys:
+		sum += float(a.get(k, 10))
+	return clampf(sum / keys.size() / 4.0, 0.5, 5.0)
+
+func make_staff_attrs(role: String, lvl: float) -> Dictionary:
+	var a := {}
+	var base: float = 4.0 + lvl * 3.0
+	for e in STAFF_TECH.get(role, []):
+		a[e[0]] = snappedf(clampf(base + randf_range(-2.0, 2.0), 1.0, 20.0), 0.01)
+	for e in STAFF_MENTAL + STAFF_PHYS:
+		a[e[0]] = snappedf(clampf(9.0 + lvl + randf_range(-4.0, 5.0), 1.0, 20.0), 0.01)
+	return a
 
 func gen_staff(role: String, lvl: int = -1) -> Dictionary:
 	if lvl < 0:
 		lvl = randi_range(1, 4)
 	var first: String = STAFF_FIRST[randi() % STAFF_FIRST.size()]
 	var last: String = STAFF_LAST[randi() % STAFF_LAST.size()]
-	if ["Анна", "Елена", "Ольга", "Мария"].has(first):
+	var female: bool = FEMALE_FIRST.has(first)
+	if female:
 		last += "а"
-	var pool: Array = photo_pool()
-	return {"role": role, "name": "%s %s" % [first, last], "lvl": lvl, "salary": 250 + lvl * 220, "fee": 1500 * lvl * lvl,
-		"photo": pool[randi() % pool.size()] if not pool.is_empty() else "", "country": _rand_country()}
+	var s := {"role": role, "name": "%s %s" % [first, last], "lvl": lvl, "salary": 250 + lvl * 220, "fee": 1500 * lvl * lvl,
+		"photo": _staff_photo(female), "country": _rand_country(), "attrs": make_staff_attrs(role, float(lvl))}
+	s["lvl"] = int(round(staff_stars(s)))
+	return s
 
 func refresh_staff_market() -> void:
 	staff_market = []
 	for r in STAFF_ROLES:
-		staff_market.append(gen_staff(r))
 		staff_market.append(gen_staff(r))
 
 func staff_level(role: String) -> int:
 	var best: int = 0
 	for s in staff_list:
 		if s["role"] == role:
-			best = maxi(best, int(s["lvl"]))
+			best = maxi(best, int(round(staff_stars(s))))
 	return best
 
 func hire_staff(idx: int) -> String:
@@ -418,13 +478,14 @@ func staff_salaries() -> int:
 	return t2
 
 func weekly_income() -> int:
-	return int(4000 + rep * 70.0 + float(tier) * 3500.0)
+	var k: float = 1.0 + 0.04 * staff_level("findir") + 0.03 * staff_level("pr")
+	return int((4000 + rep * 70.0 + float(tier) * 3500.0) * k)
 
 func player_salaries() -> int:
 	var s: int = 0
 	for p in players:
 		s += int(p["salary"])
-	return s
+	return int(s * (1.0 - 0.03 * staff_level("lawyer")))
 
 func upkeep() -> int:
 	return 800 + tier * 600
@@ -442,6 +503,95 @@ func unread_mail() -> int:
 		if not bool(m["read"]):
 			n += 1
 	return n
+
+# ---------------------------------------------------------------- разговоры
+
+func add_talk(who: String, role: String, photo: String, text: String, options: Array) -> void:
+	talks.push_front({"who": who, "role": role, "photo": photo, "text": text, "options": options, "answer": -1, "season": season, "week": week})
+	while talks.size() > 30:
+		talks.pop_back()
+
+func unread_talks() -> int:
+	var n: int = 0
+	for t2 in talks:
+		if int(t2["answer"]) < 0:
+			n += 1
+	return n
+
+## Ответ в разговоре: эффекты {morale:+n (игрок), form, sign (индекс на рынке), rep, money}
+func answer_talk(i: int, opt: int) -> void:
+	var t2: Dictionary = talks[i]
+	if int(t2["answer"]) >= 0:
+		return
+	t2["answer"] = opt
+	var o: Dictionary = t2["options"][opt]
+	var eff: Dictionary = o.get("eff", {})
+	for p in players:
+		if p["nick"] == t2["who"]:
+			p["morale"] = clampi(int(p.get("morale", 80)) + int(eff.get("morale", 0)), 10, 100)
+			p["salary"] = int(p["salary"]) + int(eff.get("salary", 0))
+	if eff.has("all_morale"):
+		for p in players:
+			p["morale"] = clampi(int(p.get("morale", 80)) + int(eff["all_morale"]), 10, 100)
+	if eff.has("train"):
+		for p in players:
+			if p["nick"] == eff["train"][0]:
+				p["train"] = eff["train"][1]
+	rep = clampf(rep + float(eff.get("rep", 0)), 0.0, 100.0)
+	money += int(eff.get("money", 0))
+	mail.push_front({"from": coach_name, "to": t2["who"], "subject": tr("Ответ: %s") % t2["who"], "body": str(o["t"]), "season": season, "week": week, "read": true, "kind": "out"})
+	changed.emit()
+
+## Генерация писем и разговоров каждую неделю.
+func _weekly_feed() -> void:
+	var others: Array = league_teams.filter(func(x): return x != team_name)
+	# новости киберспорта
+	if randf() < 0.55 and not others.is_empty():
+		var tm: String = others[randi() % others.size()]
+		var news_t: Array = [
+			[tr("%s объявили буткемп перед следующим туром"), tr("Организация %s проведёт недельный буткемп, чтобы подготовиться к следующим матчам. Ожидается, что команда покажет новые тактики.")],
+			[tr("%s показывают лучшую форму сезона"), tr("По данным аналитиков, %s набрали отличную форму и считаются одними из фаворитов недели.")],
+			[tr("%s подписали нового спонсора"), tr("Организация %s объявила о новом спонсорском контракте. Сумма сделки не раскрывается.")],
+		]
+		var n2: Array = news_t[randi() % news_t.size()]
+		add_mail(tr("Новости киберспорта"), n2[0] % tm, n2[1] % tm, "news")
+	# трансферный слух
+	if randf() < 0.35 and not others.is_empty() and not market.is_empty():
+		var p2: Dictionary = market[randi() % market.size()]
+		var tm2: String = others[randi() % others.size()]
+		add_mail(tr("Трансферный рынок"), tr("Слух: %s интересуются %s") % [tm2, p2["nick"]], tr("Источники сообщают, что %s ведут переговоры со свободным агентом %s (%s, ОБЩ %d). Если он нужен вам — поторопитесь в разделе «Трансферы».") % [tm2, p2["nick"], tr(p2["role"]), ovr(p2)], "transfer")
+	# разговоры
+	var r: float = randf()
+	var sc: Array = staff_list.filter(func(x): return x["role"] == "scout")
+	var co: Array = staff_list.filter(func(x): return x["role"] == "coach")
+	if r < 0.3 and not sc.is_empty() and not market.is_empty():
+		var best: Dictionary = market[0]
+		for p3 in market:
+			if ovr(p3) > ovr(best): best = p3
+		var s: Dictionary = sc[0]
+		add_talk(s["name"], tr("Скаут"), s["photo"], tr("Нашёл интересного игрока: %s, %s, ОБЩ %d, потенциал около %d. Цена — %s. Стоит присмотреться?") % [best["nick"], tr(best["role"]), ovr(best), int(best.get("pot_est", best["pot"])), "$%d" % fee(best)],
+			[{"t": tr("Спасибо, посмотрю в трансферах."), "eff": {}}, {"t": tr("Сейчас не до этого."), "eff": {}}])
+	elif r < 0.6 and not co.is_empty() and not players.is_empty():
+		var weak: Dictionary = players[0]
+		for p4 in players:
+			if ovr(p4) < ovr(weak): weak = p4
+		var c: Dictionary = co[0]
+		var wa: String = weakest_attr(weak)
+		var wname: String = ""
+		for e in ATTR_TECH:
+			if e[0] == wa: wname = tr(e[1])
+		add_talk(c["name"], tr("Тренер"), c["photo"], tr("%s проседает в «%s». Предлагаю поставить ему индивидуальную тренировку на это.") % [weak["nick"], wname],
+			[{"t": tr("Согласен, ставь."), "eff": {"train": [weak["nick"], wa]}}, {"t": tr("Пусть тренирует то, что выбрал."), "eff": {}}])
+	elif r < 0.85 and players.size() > 0:
+		var lu: Array = lineup()
+		var bench: Array = players.filter(func(x): return not lu.has(x))
+		var p5: Dictionary = bench[0] if not bench.is_empty() else players[randi() % players.size()]
+		if not bench.is_empty():
+			add_talk(p5["nick"], tr("Игрок"), p5.get("photo", ""), tr("Тренер, я давно не играю в основе. Хочу больше игрового времени, иначе буду думать об уходе."),
+				[{"t": tr("Работай на тренировках — шанс будет."), "eff": {"morale": 5}}, {"t": tr("Сейчас основа сильнее, жди."), "eff": {"morale": -10}}])
+		else:
+			add_talk(p5["nick"], tr("Игрок"), p5.get("photo", ""), tr("Я чувствую, что заслуживаю прибавку к зарплате. Что скажете?"),
+				[{"t": tr("Хорошо, +$200 в неделю."), "eff": {"morale": 12, "salary": 200}}, {"t": tr("Пока рано, докажи в матчах."), "eff": {"morale": -8}}])
 
 # ---------------------------------------------------------------- новости
 
@@ -479,10 +629,23 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	mail = []
 	money_hist = []
 	team_stats = {"w": 0, "l": 0, "mw": 0, "ml": 0, "rw": 0, "rl": 0}
+	talks = []
+	# штат: реальный тренер команды + сгенерированные сотрудники
+	var staff_src: Dictionary = team.get("coach", {})
+	if not staff_src.is_empty():
+		var cs := {"role": "coach", "name": str(staff_src["name"]), "nick": str(staff_src["name"]), "lvl": 4, "salary": 1200, "fee": 0,
+			"photo": str(staff_src.get("photo", "")), "country": str(staff_src.get("country", team.get("country", "ru"))), "attrs": make_staff_attrs("coach", 4.0)}
+		staff_list.append(cs)
 	var roles_k: Array = STAFF_ROLES.keys()
 	roles_k.shuffle()
-	for i in mini(staff_count, roles_k.size()):
-		staff_list.append(gen_staff(roles_k[i], randi_range(1, 3)))
+	var want: int = staff_count
+	if not bool(team.get("custom", false)):
+		want = randi_range(4, 7)   # у реальных команд — случайный штат
+	for r in roles_k:
+		if staff_list.size() >= want + (1 if not staff_src.is_empty() else 0):
+			break
+		if staff_level(r) == 0:
+			staff_list.append(gen_staff(r, randi_range(2, 4)))
 	staff_count = staff_list.size()
 	refresh_staff_market()
 	team_country = str(team.get("country", coach.get("country_code", "ru")))
@@ -563,6 +726,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	_refresh_market(12)
 	add_mail(tr("Совет директоров"), tr("Добро пожаловать в «%s»!") % team_name,
 		tr("Здравствуйте, %s!\n\nСовет директоров рад приветствовать вас на посту главного менеджера.\nЦель на сезон: место не ниже %d в лиге «%s».\nБюджет клуба: $%d.\n\nУдачи, мы верим в вас!") % [coach_name, [4, 6, 8][tier], tr(TIERS[tier]), money], "good")
+	add_mail(tr("Оргкомитет лиги"), tr("Приглашение: %s, сезон %d") % [tr(TIERS[tier]), season], tr("Ваша команда приглашена в турнир «%s». Регулярный сезон: 7 туров, затем плей-офф. Удачи!") % tr(TIERS[tier]), "invite")
 	add_mail(tr("Аналитический отдел"), tr("Как устроена неделя"), tr("1. Выберите фокус тренировок в разделе «Тренировка».\n2. Проверьте состав и форму игроков.\n3. Нажмите «К матчу» и сыграйте матч недели.\n4. Нажмите «Продолжить», чтобы перейти к следующей неделе."))
 	add_news(tr("%s (%d лет, %s) принимает команду «%s». Цель совета директоров: топ-%d в лиге «%s».") % [coach_name, coach_age, tr(coach_country), team_name, [4, 6, 8][tier], tr(TIERS[tier])])
 	if staff_coach != "":
@@ -773,6 +937,7 @@ func finish_week() -> String:
 	_apply_training()
 	var rep_txt: String = _finances()
 	_weekly_event()
+	_weekly_feed()
 	for p in players:
 		if int(p["inj"]) > 0:
 			p["inj"] -= 1
@@ -818,6 +983,8 @@ func _sim_others() -> void:
 
 func _make_playoffs() -> void:
 	var rl: Array = rank_list()
+	if rl.slice(0, mini(4, rl.size())).has(team_name):
+		add_mail(tr("Оргкомитет лиги"), tr("Приглашение в плей-офф"), tr("Поздравляем! %s проходит в плей-офф лиги «%s».") % [team_name, tr(TIERS[tier])], "invite")
 	playoff["sf"] = {}
 	if rl.size() < 4:
 		# мало команд — сразу финал двух лучших на 9-й неделе
@@ -841,31 +1008,88 @@ func _make_final() -> void:
 
 # ---------------------------------------------------------------- тренировки
 
+## Слабейшая техническая характеристика игрока (для автораспиcания).
+func weakest_attr(p: Dictionary) -> String:
+	ensure_attrs(p)
+	var best := ""
+	var bv: float = 99.0
+	for e in ATTR_TECH:
+		var k: String = e[0]
+		if k == "awp" and p.get("role", "") != "Снайпер":
+			continue
+		if float(p["attrs"][k]) < bv:
+			bv = float(p["attrs"][k])
+			best = k
+	return best
+
+func auto_schedule() -> void:
+	for p in players:
+		p["train"] = weakest_attr(p)
+	changed.emit()
+
+## Скорость тренировки (% прогресса за неделю).
+func train_speed(p: Dictionary) -> float:
+	var o: int = ovr(p)
+	var g: float = clampf(float(int(p["pot"]) - o) / 15.0, 0.25, 1.3)
+	var age_k: float = 1.3 if int(p["age"]) <= 20 else (1.0 if int(p["age"]) < 25 else 0.6)
+	var coach_k: float = 1.0 + 0.12 * float(staff_level("coach")) + (0.25 if staff_coach != "" else 0.0) + 0.03 * float(coach_skill["tactics"])
+	return 34.0 * g * age_k * coach_k
+
 func _apply_training() -> void:
-	var tact: int = int(coach_skill["tactics"])
 	var motiv: int = int(coach_skill["motivation"])
 	for p in players:
-		var o: int = ovr(p)
-		var g: float = clampf(float(int(p["pot"]) - o) / 20.0, 0.1, 1.2)
-		var age_k: float = 1.3 if int(p["age"]) <= 20 else (1.0 if int(p["age"]) < 25 else 0.6)
-		var gain: float = g * age_k * randf_range(0.4, 1.1) * (1.0 + float(tact) * 0.03) * (1.0 + 0.06 * float(staff_level("assistant")))
-		match train_focus:
-			"aim":
-				bump(p, "aim", gain * 1.6 / 5.0)
-				p["form"] = int(p["form"]) - 4
-			"iq":
-				bump(p, "iq", gain * 1.6 / 5.0)
-				p["form"] = int(p["form"]) - 4
-			"tw":
-				bump(p, "tw", gain * 1.6 / 5.0)
-				p["form"] = int(p["form"]) - 3
-			"maps":
-				p["form"] = int(p["form"]) - 3
-			"rest":
-				p["form"] = int(p["form"]) + 16
-		p["form"] = clampi(int(p["form"]) + 6 + motiv + staff_level("psych") + staff_level("physio") / 2, 20, 100)
-	if train_focus == "maps":
-		map_skill[train_map] = mini(95, int(map_skill[train_map]) + randi_range(3, 5) + int(coach_skill["tactics"] / 3))
+		ensure_attrs(p)
+		var k: String = str(p.get("train", ""))
+		if k == "":
+			k = weakest_attr(p)
+			p["train"] = k
+		if int(p["inj"]) <= 0 and p["attrs"].has(k):
+			p["tprog"] = float(p.get("tprog", 0.0)) + train_speed(p) * randf_range(0.8, 1.2)
+			if float(p["tprog"]) >= 100.0:
+				p["tprog"] = float(p["tprog"]) - 100.0
+				p["attrs"][k] = snappedf(minf(20.0, float(p["attrs"][k]) + randf_range(0.6, 1.1)), 0.01)
+				derive(p)
+			p["form"] = int(p["form"]) - 3
+		p["form"] = clampi(int(p["form"]) + 6 + motiv + staff_level("physio"), 20, 100)
+		p["morale"] = clampi(int(p.get("morale", 80)) + 2 + staff_level("psych") + motiv / 2, 10, 100)
+	if train_map != "":
+		map_skill[train_map] = mini(95, int(map_skill[train_map]) + randi_range(2, 4) + staff_level("analyst") / 2)
+
+## Психолог: сессия для игрока (+мораль), раз в неделю на игрока.
+func psych_session(p: Dictionary) -> String:
+	if staff_level("psych") <= 0:
+		return tr("Нужен психолог в штате.")
+	if int(p.get("psy_w", -1)) == season * 100 + week:
+		return tr("Сессия с этим игроком уже была на этой неделе.")
+	p["psy_w"] = season * 100 + week
+	p["morale"] = clampi(int(p.get("morale", 80)) + 6 + staff_level("psych") * 3, 10, 100)
+	changed.emit()
+	return ""
+
+## Физиотерапевт: восстановление формы, ускоряет выход из травмы.
+func physio_session(p: Dictionary) -> String:
+	if staff_level("physio") <= 0:
+		return tr("Нужен физиотерапевт в штате.")
+	if int(p.get("phy_w", -1)) == season * 100 + week:
+		return tr("Процедуры с этим игроком уже были на этой неделе.")
+	p["phy_w"] = season * 100 + week
+	p["form"] = clampi(int(p["form"]) + 6 + staff_level("physio") * 3, 20, 100)
+	if int(p["inj"]) > 0 and randf() < 0.25 * staff_level("physio"):
+		p["inj"] = int(p["inj"]) - 1
+	changed.emit()
+	return ""
+
+func set_captain(p: Dictionary) -> void:
+	for q in players:
+		q["captain"] = false
+	p["captain"] = true
+	changed.emit()
+
+func captain() -> Dictionary:
+	for q in players:
+		if bool(q.get("captain", false)):
+			return q
+	return {}
 
 func _finances() -> String:
 	var income: int = weekly_income()
@@ -873,6 +1097,7 @@ func _finances() -> String:
 	var staff: int = upkeep() + staff_salaries()
 	var net: int = income - salaries - staff
 	money += net
+	rep = minf(100.0, rep + 0.08 * staff_level("event") + 0.04 * staff_level("pr"))
 	money_hist.append({"s": season, "w": week, "money": money, "net": net})
 	while money_hist.size() > 30:
 		money_hist.pop_front()
@@ -931,6 +1156,7 @@ func _end_season() -> void:
 		txt += tr(", финалист")
 		rep = minf(100.0, rep + 4.0)
 	history.push_front(txt + tr(" (приз за лигу +$%d)") % prize)
+	add_mail(tr("Оргкомитет лиги"), tr("Итоги турнира: %s") % tr(TIERS[tier]), tr("Чемпион: %s.\nВаше место: %d.") % [str(playoff["champion"]) if str(playoff["champion"]) != "" else rank_list()[0], pos], "result")
 	add_mail(tr("Совет директоров"), tr("Итоги сезона %d") % season, txt + tr(" (приз за лигу +$%d)") % prize, "good" if pos <= [4, 6, 8][tier] else "bad")
 	refresh_staff_market()
 	add_news(txt)
@@ -967,6 +1193,7 @@ func _end_season() -> void:
 func _start_next_season() -> void:
 	season += 1
 	_start_league()
+	add_mail(tr("Оргкомитет лиги"), tr("Приглашение: %s, сезон %d") % [tr(TIERS[tier]), season], tr("Ваша команда приглашена в турнир «%s». Регулярный сезон: 7 туров, затем плей-офф. Удачи!") % tr(TIERS[tier]), "invite")
 	for n in strengths:
 		if not rankoff.has(n):
 			rankoff[n] = _base_rank(n)
@@ -1041,7 +1268,7 @@ func to_dict() -> Dictionary:
 		"coach_age": coach_age, "coach_nick": coach_nick, "coach_gender": coach_gender, "coach_country_code": coach_country_code,
 		"coach_birth": coach_birth, "coach_attrs": coach_attrs, "coach_country": coach_country, "coach_bg": coach_bg, "avatar": avatar,
 		"photo_path": photo_path, "team_tag": team_tag, "team_color": team_color,
-		"team_logo": team_logo, "team_desc": team_desc, "staff_count": staff_count, "staff_list": staff_list, "staff_market": staff_market, "mail": mail, "money_hist": money_hist, "team_stats": team_stats, "team_country": team_country, "rankoff": rankoff, "can_be_fired": can_be_fired, "country_only": country_only, "staff_coach": staff_coach, "staff_photo": staff_photo,
+		"team_logo": team_logo, "team_desc": team_desc, "staff_count": staff_count, "staff_list": staff_list, "staff_market": staff_market, "mail": mail, "talks": talks, "money_hist": money_hist, "team_stats": team_stats, "team_country": team_country, "rankoff": rankoff, "can_be_fired": can_be_fired, "country_only": country_only, "staff_coach": staff_coach, "staff_photo": staff_photo,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -1107,6 +1334,7 @@ func from_dict(d: Dictionary) -> void:
 	if staff_market.is_empty():
 		refresh_staff_market()
 	mail = d.get("mail", [])
+	talks = d.get("talks", [])
 	money_hist = d.get("money_hist", [])
 	team_stats = d.get("team_stats", {"w": 0, "l": 0, "mw": 0, "ml": 0, "rw": 0, "rl": 0})
 	team_country = str(d.get("team_country", "ru"))
@@ -1126,6 +1354,15 @@ func _fix_staff(arr: Array) -> Array:
 		var q: Dictionary = s.duplicate()
 		for k in ["lvl", "salary", "fee"]:
 			q[k] = int(q.get(k, 0))
+		var at := {}
+		var src: Dictionary = q.get("attrs", {})
+		for k in src:
+			at[k] = float(src[k])
+		if at.is_empty():
+			at = make_staff_attrs(str(q.get("role", "coach")), float(q.get("lvl", 2)))
+		q["attrs"] = at
+		if not STAFF_ROLES.has(str(q.get("role", ""))):
+			q["role"] = "coach"
 		res.append(q)
 	return res
 

@@ -908,6 +908,7 @@ func _flag(code: String, w: int = 24) -> TextureRect:
 	r.custom_minimum_size = Vector2(w, w * 2 / 3)
 	r.stretch_mode = TextureRect.STRETCH_SCALE
 	r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	r.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	return r
 
 func _stars(v: float, sz: float = 16.0) -> Control:
@@ -1857,13 +1858,13 @@ var cont_btn: Button
 var nav_btns: Dictionary = {}
 
 const NAV := [
-	["dashboard", "Главная", "home"], ["mail", "Почта", "mail"], [],
+	["dashboard", "Главная", "home"], ["mail", "Почта", "mail"], ["talk", "Разговор", "forum"], [],
 	["squad", "Состав", "groups"], ["staff", "Штат", "badge"], ["training", "Тренировка", "fitness_center"],
 	[], ["transfers", "Трансферы", "swap_horiz"], ["league", "Турниры", "emoji_events"], ["stats", "Статистика", "bar_chart"],
 	[], ["finance", "Финансы", "payments"], ["coach", "Профиль", "account_circle"], [], ["system", "Настройки", "settings"],
 ]
 const SCREEN_TITLES := {"dashboard": "Главная", "mail": "Почта", "squad": "Состав", "staff": "Штат", "training": "Тренировка",
-	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч", "player": "Игрок"}
+	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч", "player": "Игрок", "talk": "Разговор", "staff_member": "Персонал команды", "staff_hire": "Найм персонала"}
 const WEEKDAYS := ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]
 const MONTHS_SHORT := ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля", "авг.", "сент.", "окт.", "нояб.", "дек."]
 
@@ -2047,6 +2048,9 @@ func refresh_top() -> void:
 	if nav_btns.has("mail"):
 		var ub: int = gs.unread_mail()
 		nav_btns["mail"].text = "          " + tr("Почта") + (("  (%d)" % ub) if ub > 0 else "")
+	if nav_btns.has("talk"):
+		var ut: int = gs.unread_talks()
+		nav_btns["talk"].text = "          " + tr("Разговор") + (("  (%d)" % ut) if ut > 0 else "")
 	for k in nav_btns:
 		var b: Button = nav_btns[k]
 		b.add_theme_color_override("font_color", Color.WHITE if k == current else Color("aab2c0"))
@@ -2077,6 +2081,9 @@ func show_screen(name: String, push: bool = true) -> void:
 	match name:
 		"dashboard": screen_dashboard()
 		"mail": screen_mail()
+		"talk": screen_talk()
+		"staff_member": screen_staff_member()
+		"staff_hire": screen_staff_hire()
 		"squad": screen_squad()
 		"staff": screen_staff()
 		"training": screen_training()
@@ -2529,50 +2536,90 @@ func _form_col(f: int) -> Color:
 # ------------------------------------------------------------ почта
 
 var mail_sel: int = 0
+var mail_tab: String = "all"
+
+func _mail_view() -> Array:
+	var res: Array = []
+	for i in gs.mail.size():
+		var k: String = str(gs.mail[i].get("kind", "info"))
+		if mail_tab == "in" and k == "out": continue
+		if mail_tab == "out" and k != "out": continue
+		res.append(i)
+	return res
 
 func screen_mail() -> void:
-	if not gs.mail.is_empty():
-		mail_sel = clampi(mail_sel, 0, gs.mail.size() - 1)
+	var view: Array = _mail_view()
+	if not view.has(mail_sel) and not view.is_empty():
+		mail_sel = view[0]
+	if not gs.mail.is_empty() and mail_sel < gs.mail.size():
 		gs.mail[mail_sel]["read"] = true
-	content.add_child(_hdr_card("mail", tr("Почта"), tr("Писем: %d · непрочитанных: %d") % [gs.mail.size(), gs.unread_mail()]))
-	if gs.mail.is_empty():
+	var bar := hbox(14)
+	for tb in [["all", tr("Все"), ""], ["in", tr("Входящие"), "south"], ["out", tr("Исходящие"), "north"]]:
+		var key: String = tb[0]
+		var b := text_btn(tb[1], func(): mail_tab = key; show_screen("mail", false), 16, C_ACC if mail_tab == key else Color.WHITE)
+		bar.add_child(b)
+	bar.add_child(label("|", 16, C_DIM))
+	bar.add_child(UITheme.icon("drafts", 18, C_DIM))
+	bar.add_child(text_btn(tr("Прочитать все"), func():
+		for ml in gs.mail: ml["read"] = true
+		show_screen("mail", false), 15))
+	bar.add_child(UITheme.icon("delete", 18, C_DIM))
+	bar.add_child(text_btn(tr("Удалить все"), func(): gs.mail.clear(); mail_sel = 0; show_screen("mail", false), 15))
+	bar.add_child(spacer())
+	bar.add_child(label(tr("Писем: %d") % view.size(), 13, C_DIM))
+	content.add_child(bar)
+	if view.is_empty():
 		var c0 := _card()
 		c0.add_child(label(tr("Писем нет."), 14, C_DIM))
 		content.add_child(c0)
 		return
-	mail_sel = clampi(mail_sel, 0, gs.mail.size() - 1)
-	gs.mail[mail_sel]["read"] = true
 	var cols := hbox(12)
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(cols)
 	var lc := _card()
-	lc.custom_minimum_size = Vector2(380, 0)
+	lc.custom_minimum_size = Vector2(380, 520)
 	cols.add_child(lc)
-	var lv := vbox(4)
-	lc.add_child(lv)
-	var kind_col := {"good": C_GOOD, "bad": C_BAD, "info": Color("5aa9ff")}
-	for i in mini(gs.mail.size(), 14):
+	var lsc := ScrollContainer.new()
+	lsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lc.add_child(lsc)
+	var lv := vbox(6)
+	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lsc.add_child(lv)
+	var kind_col := {"good": C_GOOD, "bad": C_BAD, "info": Color("5aa9ff"), "news": Color("b18cff"), "transfer": C_ACC, "invite": Color("2fd3c8"), "result": Color("f5c518"), "out": C_DIM}
+	var kind_icon := {"good": "verified", "bad": "warning", "info": "info", "news": "newspaper", "transfer": "swap_horiz", "invite": "confirmation_number", "result": "emoji_events", "out": "north_east"}
+	for i in view:
 		var ml: Dictionary = gs.mail[i]
+		var k: String = str(ml.get("kind", "info"))
 		var row := PanelContainer.new()
 		var rs := StyleBoxFlat.new()
-		rs.bg_color = Color(0.2, 0.45, 0.85, 0.3) if i == mail_sel else Color(1, 1, 1, 0.03)
+		rs.bg_color = Color(0.2, 0.45, 0.85, 0.28) if i == mail_sel else Color(1, 1, 1, 0.035)
 		rs.border_width_left = 4
-		rs.border_color = kind_col.get(ml.get("kind", "info"), Color("5aa9ff"))
-		rs.set_corner_radius_all(6)
-		rs.set_content_margin_all(8)
+		rs.border_color = kind_col.get(k, Color("5aa9ff"))
+		rs.set_corner_radius_all(8)
+		rs.set_content_margin_all(10)
 		row.add_theme_stylebox_override("panel", rs)
+		var rh := hbox(10)
+		row.add_child(rh)
+		rh.add_child(UITheme.icon(kind_icon.get(k, "mail"), 24, kind_col.get(k, Color("5aa9ff"))))
 		var rv := vbox(1)
+		rv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var top := hbox(6)
-		top.add_child(label(str(ml["from"]), 12, C_DIM))
+		top.add_child(label(str(ml.get("to", ml["from"])) if k == "out" else str(ml["from"]), 13, Color.WHITE))
 		top.add_child(spacer())
-		top.add_child(label(tr("С%d Н%d") % [int(ml["season"]), int(ml["week"])], 11, C_DIM))
+		var age: int = (gs.season * 100 + gs.week) - (int(ml["season"]) * 100 + int(ml["week"]))
+		top.add_child(label(tr("Сегодня") if age == 0 else tr("Нед. %d") % int(ml["week"]), 11, C_DIM))
 		rv.add_child(top)
-		var sl := label(str(ml["subject"]), 14, Color.WHITE if not bool(ml["read"]) else Color("c9ced8"))
+		var sl := label(str(ml["subject"]), 13, kind_col.get(k, Color("5aa9ff")).lightened(0.2))
+		sl.clip_text = true
+		sl.custom_minimum_size = Vector2(280, 0)
 		if not bool(ml["read"]):
 			sl.add_theme_font_override("font", UITheme.bold())
-		sl.clip_text = true
-		sl.custom_minimum_size = Vector2(330, 0)
 		rv.add_child(sl)
-		row.add_child(rv)
+		var pv := label(str(ml["body"]).replace("\n", " "), 11, C_DIM)
+		pv.clip_text = true
+		pv.custom_minimum_size = Vector2(280, 0)
+		rv.add_child(pv)
+		rh.add_child(rv)
 		var hit := Button.new()
 		hit.flat = true
 		for st in ["normal", "hover", "pressed", "focus"]:
@@ -2580,231 +2627,679 @@ func screen_mail() -> void:
 		var idx: int = i
 		hit.pressed.connect(func(): mail_sel = idx; show_screen("mail", false))
 		row.add_child(hit)
-		_ignore_mouse(rv)
+		_ignore_mouse(rh)
 		lv.add_child(row)
 	var ml2: Dictionary = gs.mail[mail_sel]
 	var rc := _card()
 	rc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cols.add_child(rc)
-	var rv2 := vbox(10)
+	var rv2 := vbox(12)
 	rc.add_child(rv2)
-	rv2.add_child(label(str(ml2["subject"]), 20, Color.WHITE))
-	rv2.add_child(label(tr("От: %s · сезон %d, неделя %d") % [ml2["from"], int(ml2["season"]), int(ml2["week"])], 12, C_DIM))
+	var hh := hbox(14)
+	var from: String = str(ml2["from"])
+	var is_board: bool = ["Совет директоров", "Board of directors"].has(from) or from == tr("Совет директоров")
+	if is_board and tex(gs.team_logo) != null:
+		hh.add_child(_circle(gs.team_logo, 70, Color(gs.team_color)))
+	else:
+		var ib := PanelContainer.new()
+		var isb := StyleBoxFlat.new()
+		isb.bg_color = Color(1, 1, 1, 0.06)
+		isb.set_corner_radius_all(35)
+		isb.set_content_margin_all(14)
+		ib.add_theme_stylebox_override("panel", isb)
+		ib.add_child(UITheme.icon(kind_icon.get(str(ml2.get("kind", "info")), "mail"), 40, kind_col.get(str(ml2.get("kind", "info")), Color.WHITE)))
+		hh.add_child(ib)
+	var hv := vbox(2)
+	hv.add_child(label(from, 22, Color.WHITE))
+	var addr := hbox(6)
+	addr.add_child(_flag(gs.team_country, 20))
+	addr.add_child(label("%s@%s.gg" % [_slug(from), gs.team_tag.to_lower()], 13, C_DIM))
+	hv.add_child(addr)
+	hv.add_child(label(str(ml2["subject"]), 14, Color("5aa9ff")))
+	hh.add_child(hv)
+	hh.add_child(spacer())
+	hh.add_child(label(tr("Сезон %d · нед. %d") % [int(ml2["season"]), int(ml2["week"])], 12, C_DIM))
+	rv2.add_child(hh)
 	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.08)
+	sep.color = Color(1, 1, 1, 0.1)
 	sep.custom_minimum_size = Vector2(0, 1)
 	rv2.add_child(sep)
-	rv2.add_child(wrap_label(str(ml2["body"]), 15, Color("d6dbe3"), 560))
+	var greet: String = tr("Уважаемая %s,") if gs.coach_gender == "f" else tr("Уважаемый %s,")
+	if str(ml2.get("kind", "")) != "out":
+		rv2.add_child(label(greet % gs.coach_name, 15, Color("5aa9ff")))
+	rv2.add_child(wrap_label(str(ml2["body"]), 15, Color("e3e7ee"), 560))
+	if str(ml2.get("kind", "")) != "out":
+		var sig := vbox(0)
+		sig.add_child(label(tr("С уважением,"), 14, Color("c9ced8")))
+		sig.add_child(label(from, 14, Color.WHITE))
+		sig.add_child(label(gs.team_name, 13, Color("5aa9ff")))
+		rv2.add_child(sig)
 	refresh_top()
+
+func _slug(s: String) -> String:
+	var map := {"Совет директоров": "board", "Аналитический отдел": "analytics", "Медицинский штаб": "medical", "Отдел кадров": "hr", "Новости киберспорта": "news", "Трансферный рынок": "transfers", "Оргкомитет лиги": "league"}
+	for k in map:
+		if tr(k) == s or k == s:
+			return map[k]
+	return "info"
+
+# ------------------------------------------------------------ разговор
+
+var talk_sel: int = 0
+
+func screen_talk() -> void:
+	if gs.talks.is_empty():
+		content.add_child(_hdr_card("forum", tr("Разговор"), tr("Здесь вам пишут скаут, тренер и игроки.")))
+		var c0 := _card()
+		c0.add_child(label(tr("Пока никто не писал. Сообщения появляются по ходу недель."), 14, C_DIM))
+		content.add_child(c0)
+		return
+	talk_sel = clampi(talk_sel, 0, gs.talks.size() - 1)
+	var cols := hbox(12)
+	content.add_child(cols)
+	var lc := _card()
+	lc.custom_minimum_size = Vector2(330, 520)
+	cols.add_child(lc)
+	var lv := vbox(6)
+	lc.add_child(lv)
+	for i in mini(gs.talks.size(), 10):
+		var t2: Dictionary = gs.talks[i]
+		var row := PanelContainer.new()
+		var rs := StyleBoxFlat.new()
+		rs.bg_color = Color(0.2, 0.45, 0.85, 0.28) if i == talk_sel else Color(1, 1, 1, 0.035)
+		rs.set_corner_radius_all(8)
+		rs.set_content_margin_all(8)
+		row.add_theme_stylebox_override("panel", rs)
+		var rh := hbox(10)
+		row.add_child(rh)
+		rh.add_child(_circle(str(t2.get("photo", "")), 44))
+		var rv := vbox(0)
+		rv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rv.add_child(label(str(t2["who"]), 14, Color.WHITE))
+		rv.add_child(label(str(t2["role"]), 11, C_ACC))
+		var pv := label(str(t2["text"]), 11, C_DIM)
+		pv.clip_text = true
+		pv.custom_minimum_size = Vector2(200, 0)
+		rv.add_child(pv)
+		rh.add_child(rv)
+		if int(t2["answer"]) < 0:
+			rh.add_child(UITheme.icon("fiber_manual_record", 12, C_ACC))
+		var hit := Button.new()
+		hit.flat = true
+		for st in ["normal", "hover", "pressed", "focus"]:
+			hit.add_theme_stylebox_override(st, _flat_style())
+		var idx: int = i
+		hit.pressed.connect(func(): talk_sel = idx; show_screen("talk", false))
+		row.add_child(hit)
+		_ignore_mouse(rh)
+		lv.add_child(row)
+	var t3: Dictionary = gs.talks[talk_sel]
+	var rc := _card()
+	rc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(rc)
+	var cv := vbox(14)
+	rc.add_child(cv)
+	var hh := hbox(12)
+	hh.add_child(_circle(str(t3.get("photo", "")), 60, Color(gs.team_color)))
+	var hv := vbox(0)
+	hv.add_child(label(str(t3["who"]), 20, Color.WHITE))
+	hv.add_child(label(str(t3["role"]) + " · " + gs.team_name, 12, C_ACC))
+	hh.add_child(hv)
+	cv.add_child(hh)
+	cv.add_child(_bubble(str(t3["text"]), false))
+	if int(t3["answer"]) >= 0:
+		cv.add_child(_bubble(str(t3["options"][int(t3["answer"])]["t"]), true))
+	else:
+		cv.add_child(label(tr("Ваш ответ:"), 12, C_DIM))
+		for oi in t3["options"].size():
+			var o: Dictionary = t3["options"][oi]
+			var ti: int = talk_sel
+			var oo: int = oi
+			var b := btn(str(o["t"]), func(): gs.answer_talk(ti, oo); show_screen("talk", false))
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			cv.add_child(b)
+
+func _bubble(t: String, mine: bool) -> Control:
+	var row := hbox(0)
+	if mine:
+		row.add_child(spacer())
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.2, 0.45, 0.85, 0.55) if mine else Color(1, 1, 1, 0.07)
+	sb.set_corner_radius_all(12)
+	sb.set_content_margin_all(12)
+	p.add_theme_stylebox_override("panel", sb)
+	p.add_child(wrap_label(t, 14, Color.WHITE, 440))
+	row.add_child(p)
+	if not mine:
+		row.add_child(spacer())
+	return row
 
 # ------------------------------------------------------------ состав
 
-func screen_squad() -> void:
-	var pw: Dictionary = gs.team_power(gs.style, gs.train_map)
-	content.add_child(_hdr_card("groups", tr("Состав"), tr("На карту выходят первые 5 здоровых игроков. Игроков: %d/%d") % [gs.players.size(), gs.MAX_ROSTER]))
-	var tiles := hbox(10)
-	var avg: float = 0.0
-	var fsum: float = 0.0
+const ROLE_TAGS := {"Капитан": ["IGL", "RIFLER"], "Снайпер": ["AWPER"], "Энтри": ["RIFLER", "ENTRY"], "Саппорт": ["RIFLER", "SUPPORT"], "Лурк": ["RIFLER", "LURKER"]}
+
+func _team_cohesion() -> Dictionary:
+	var f: float = 0.0
+	var mo: float = 0.0
+	var cnt := {}
 	for p in gs.players:
-		avg += gs.ovr(p)
-		fsum += float(p["form"])
+		f += float(p["form"])
+		mo += float(p.get("morale", 80))
+		var c: String = str(p.get("country", "xx"))
+		cnt[c] = int(cnt.get(c, 0)) + 1
 	var n: float = maxf(1.0, gs.players.size())
-	tiles.add_child(_stat_tile(tr("Средний ОБЩ"), "%d" % int(avg / n), stat_color(int(avg / n)), "star"))
-	tiles.add_child(_stat_tile(tr("Средняя форма"), "%d%%" % int(fsum / n), _form_col(int(fsum / n)), "favorite"))
-	tiles.add_child(_stat_tile(tr("Атака"), "%.1f" % pw["atk"], C_ACC, "flash_on"))
-	tiles.add_child(_stat_tile(tr("Защита"), "%.1f" % pw["dfn"], Color("5aa9ff"), "shield"))
-	tiles.add_child(_stat_tile(tr("Зарплаты / нед."), money_fmt(gs.player_salaries()), C_DIM, "payments"))
-	content.add_child(tiles)
-	var c := _card()
-	content.add_child(c)
+	var mx: int = 0
+	for c in cnt:
+		mx = maxi(mx, int(cnt[c]))
+	return {"form": f / n, "morale": mo / n, "lang": 100.0 * float(mx) / n}
+
+func _player_card(pl: Dictionary, starter: bool, idx: int) -> Control:
+	var tc := Color(gs.team_color)
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.1, 0.14, 0.95)
+	sb.border_color = Color(tc.r, tc.g, tc.b, 0.55) if starter else Color(1, 1, 1, 0.08)
+	sb.set_border_width_all(1)
+	sb.border_width_bottom = 4 if starter else 1
+	sb.set_corner_radius_all(10)
+	card.add_theme_stylebox_override("panel", sb)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var v := vbox(4)
-	c.add_child(v)
-	var h := hbox(6)
-	for e in [["", 44], ["", 22], [tr("Игрок"), 160], [tr("Роль"), 90], [tr("Воз"), 36], [tr("ОБЩ"), 44], [tr("Форма"), 130], [tr("Зарплата"), 70], [tr("Статус"), 96]]:
-		h.add_child(cell(e[0], e[1], C_DIM, 12))
-	v.add_child(h)
-	var lineup_ids: Array = []
-	for q in gs.lineup():
-		lineup_ids.append(q["id"])
+	card.add_child(v)
+	var tags := hbox(5)
+	var mt := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_top"]:
+		mt.add_theme_constant_override(m, 8)
+	mt.add_child(tags)
+	for tg in ROLE_TAGS.get(pl["role"], ["RIFLER"]):
+		tags.add_child(label(tg, 11, Color.WHITE))
+	tags.add_child(spacer())
+	if bool(pl.get("captain", false)):
+		tags.add_child(UITheme.icon("military_tech", 18, Color("f5c518")))
+	v.add_child(mt)
+	var ph := Control.new()
+	ph.custom_minimum_size = Vector2(0, 150)
+	ph.clip_contents = true
+	var bgc := ColorRect.new()
+	bgc.color = Color(tc.r, tc.g, tc.b, 0.18)
+	bgc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ph.add_child(bgc)
+	var img := TextureRect.new()
+	img.texture = tex(player_photo(pl))
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	img.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ph.add_child(img)
+	var fl := _flag(str(pl.get("country", "xx")), 26)
+	fl.position = Vector2(8, 6)
+	ph.add_child(fl)
+	v.add_child(ph)
+	var iv := vbox(3)
+	var mi := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_bottom"]:
+		mi.add_theme_constant_override(m, 8)
+	mi.add_child(iv)
+	var nm: String = str(pl["nick"])
+	var full: String = "%s \"%s\" %s" % [tr(str(pl.get("first", ""))), nm, tr(str(pl.get("last", "")))]
+	var nb := _nick_link(pl, 0, Color.WHITE)
+	nb.text = full.strip_edges() if str(pl.get("first", "")) != "" else nm
+	nb.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nb.add_theme_font_size_override("font_size", 13)
+	iv.add_child(nb)
+	var badges := hbox(6)
+	badges.alignment = BoxContainer.ALIGNMENT_CENTER
+	var inj: bool = int(pl["inj"]) > 0
+	badges.add_child(_badge(tr("Травма") if inj else tr("Активен"), C_BAD if inj else C_GOOD))
+	var mo: int = int(pl.get("morale", 80))
+	badges.add_child(_badge(tr("Счастлив") if mo >= 70 else (tr("Спокоен") if mo >= 45 else tr("Недоволен")), C_GOOD if mo >= 70 else (C_ACC if mo >= 45 else C_BAD)))
+	iv.add_child(badges)
+	var sr := hbox(6)
+	sr.add_child(_stars(_player_stars(pl), 12))
+	sr.add_child(label(str(gs.ovr(pl)), 14, stat_color(gs.ovr(pl))))
+	sr.add_child(spacer())
+	sr.add_child(label(tr("Форма") + " %d%%" % int(pl["form"]), 11, _form_col(int(pl["form"]))))
+	iv.add_child(sr)
+	var ar := hbox(4)
+	var cap := CheckBox.new()
+	cap.text = tr("Капитан")
+	cap.add_theme_font_size_override("font_size", 11)
+	cap.button_pressed = bool(pl.get("captain", false))
+	var ref: Dictionary = pl
+	cap.pressed.connect(func(): gs.set_captain(ref); show_screen("squad", false))
+	ar.add_child(cap)
+	ar.add_child(spacer())
+	ar.add_child(icon_btn("arrow_back", tr("Левее"), func(): gs.move_player(idx, -1); show_screen("squad", false)))
+	ar.add_child(icon_btn("arrow_forward", tr("Правее"), func(): gs.move_player(idx, 1); show_screen("squad", false)))
+	var mv := icon_btn("south" if starter else "north", tr("В запас") if starter else tr("В основу"), func():
+		gs.move_player(idx, (5 - idx) if starter else (4 - idx) if idx > 4 else 0)
+		show_screen("squad", false))
+	ar.add_child(mv)
+	iv.add_child(ar)
+	v.add_child(mi)
+	return card
+
+func _badge(t: String, c: Color) -> Control:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(c.r, c.g, c.b, 0.12)
+	sb.border_color = c
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 6; sb.content_margin_right = 6; sb.content_margin_top = 1; sb.content_margin_bottom = 1
+	p.add_theme_stylebox_override("panel", sb)
+	p.add_child(label(t, 11, c))
+	return p
+
+func screen_squad() -> void:
+	var ch: Dictionary = _team_cohesion()
+	var info := _block(tr("Инфо о команде"))
+	content.add_child(info)
+	var ic := _card()
+	info.add_child(ic)
+	var ih := hbox(16)
+	ic.add_child(ih)
+	if tex(gs.team_logo) != null:
+		ih.add_child(pic(gs.team_logo, 70))
+	var iv := vbox(4)
+	var nr := hbox(10)
+	nr.add_child(_flag(gs.team_country, 28))
+	nr.add_child(label(gs.team_name, 26, Color.WHITE))
+	var rl: Array = gs.rankoff_list()
+	nr.add_child(label(tr("#%d мировой рейтинг | %d очков Rankoff") % [rl.find(gs.team_name) + 1, int(gs.rankoff.get(gs.team_name, 0))], 13, C_DIM))
+	iv.add_child(nr)
+	var avg: float = 0.0
+	for p in gs.lineup():
+		avg += gs.ovr(p)
+	avg /= maxf(1.0, gs.lineup().size())
+	iv.add_child(_stars(clampf((avg - 35.0) / 9.0, 0.5, 5.0), 18))
+	ih.add_child(iv)
+	ih.add_child(spacer())
+	for e in [[tr("Физическое состояние"), ch["form"]], [tr("Моральный дух"), ch["morale"]], [tr("Языковая сплочённость"), ch["lang"]]]:
+		var bv := vbox(2)
+		bv.add_child(label(e[0], 11, C_DIM))
+		var bh := hbox(6)
+		bh.add_child(label("%d%%" % int(e[1]), 13, Color.WHITE))
+		bh.add_child(_bar(float(e[1]), 100.0, _form_col(int(e[1])), 110))
+		bv.add_child(bh)
+		bv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ih.add_child(bv)
+	var lu: Array = gs.lineup()
+	var mb := _block(tr("Основной состав"))
+	content.add_child(mb)
+	var mr := hbox(10)
+	mb.add_child(mr)
+	var bench: Array = []
 	for i in gs.players.size():
-		var pl: Dictionary = gs.players[i]
-		var starter: bool = lineup_ids.has(pl["id"])
-		var row := PanelContainer.new()
-		var rs := StyleBoxFlat.new()
-		rs.bg_color = Color(1, 1, 1, 0.045) if starter else Color(1, 1, 1, 0.015)
-		rs.border_width_left = 3
-		rs.border_color = Color(gs.team_color) if starter else Color(1, 1, 1, 0.1)
-		rs.set_corner_radius_all(6)
-		rs.content_margin_left = 6; rs.content_margin_top = 4; rs.content_margin_bottom = 4
-		row.add_theme_stylebox_override("panel", rs)
-		var r := hbox(6)
-		row.add_child(r)
-		r.add_child(portrait(pl, 40))
-		r.add_child(_flag(str(pl.get("country", "xx")), 20))
-		var nv := vbox(0)
-		nv.custom_minimum_size = Vector2(160, 0)
-		nv.add_child(_nick_link(pl, 160, Color.WHITE if starter else Color("c9ced8")))
-		var full: String = ("%s %s" % [tr(str(pl.get("first", ""))), tr(str(pl.get("last", "")))]).strip_edges()
-		if full != "":
-			nv.add_child(label(full, 11, C_DIM))
-		r.add_child(nv)
-		r.add_child(cell(tr(pl["role"]), 90, C_ACC))
-		r.add_child(cell(str(pl["age"]), 36, C_DIM))
-		r.add_child(cell(str(gs.ovr(pl)), 44, stat_color(gs.ovr(pl)), 16))
-		var fh := hbox(6)
-		fh.custom_minimum_size = Vector2(130, 0)
-		fh.add_child(_bar(float(pl["form"]), 100.0, _form_col(int(pl["form"])), 80))
-		fh.add_child(label("%d%%" % int(pl["form"]), 12, _form_col(int(pl["form"]))))
-		r.add_child(fh)
-		r.add_child(cell("$" + str(pl["salary"]), 70, C_DIM))
-		var st := tr("Основа") if starter else tr("Скамейка")
-		var stc: Color = C_GOOD if starter else C_DIM
-		if int(pl["inj"]) > 0:
-			st = tr("Травма %dн") % int(pl["inj"])
-			stc = C_BAD
-		r.add_child(cell(st, 96, stc))
-		r.add_child(spacer())
-		var idx: int = i
-		r.add_child(icon_btn("arrow_upward", tr("Вверх"), func(): gs.move_player(idx, -1); show_screen("squad", false)))
-		r.add_child(icon_btn("arrow_downward", tr("Вниз"), func(): gs.move_player(idx, 1); show_screen("squad", false)))
-		r.add_child(small_btn(tr("Продать"), func(): gs.sell_player(idx); show_screen("squad", false)))
-		r.add_child(small_btn(tr("Отчислить"), func(): gs.release_player(idx); show_screen("squad", false), C_BAD))
-		v.add_child(row)
-	var roles: Array = []
-	for q in gs.lineup():
-		if not roles.has(q["role"]):
-			roles.append(q["role"])
-	var miss: Array = []
-	for rr in gs.ROLES:
-		if not roles.has(rr):
-			miss.append(rr)
-	content.add_child(_alert(tr("Полный набор ролей в основе: бонус +2 к силе!") if miss.is_empty() else tr("Не хватает ролей: %s") % ", ".join(miss.map(func(x): return tr(x))), miss.is_empty()))
+		var p: Dictionary = gs.players[i]
+		if lu.has(p):
+			mr.add_child(_player_card(p, true, i))
+		else:
+			bench.append(i)
+	for k in range(lu.size(), 5):
+		mr.add_child(_empty_slot())
+	var bb := _block(tr("Запасной состав"))
+	content.add_child(bb)
+	var br := hbox(10)
+	bb.add_child(br)
+	for i in bench:
+		br.add_child(_player_card(gs.players[i], false, i))
+	for k in range(bench.size(), 5):
+		br.add_child(_empty_slot())
+
+func _empty_slot() -> Control:
+	var c := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.025)
+	sb.border_color = Color(1, 1, 1, 0.06)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(10)
+	c.add_theme_stylebox_override("panel", sb)
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	c.custom_minimum_size = Vector2(0, 290)
+	return c
 
 # ------------------------------------------------------------ штат
 
+var viewed_staff: Dictionary = {}
+
+func _staff_card(role_t: String, name_t: String, photo: String, country: String, stars: float, active: bool, cb: Callable) -> Control:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.1, 0.14, 0.95)
+	sb.border_color = Color(1, 1, 1, 0.08)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(10)
+	card.add_theme_stylebox_override("panel", sb)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var v := vbox(4)
+	card.add_child(v)
+	var mt := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_top"]:
+		mt.add_theme_constant_override(m, 8)
+	var th := vbox(2)
+	th.add_child(label(role_t.to_upper(), 12, Color.WHITE))
+	if country != "":
+		th.add_child(_flag(country, 24))
+	mt.add_child(th)
+	v.add_child(mt)
+	var ph := Control.new()
+	ph.custom_minimum_size = Vector2(0, 140)
+	ph.clip_contents = true
+	var img := TextureRect.new()
+	img.texture = tex(photo) if photo != "" else tex("res://assets/ui/silhouette.png")
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.set_anchors_preset(Control.PRESET_FULL_RECT)
+	if photo == "":
+		img.modulate = Color(1, 1, 1, 0.35)
+	ph.add_child(img)
+	v.add_child(ph)
+	var mi := MarginContainer.new()
+	for m in ["margin_left", "margin_right", "margin_bottom"]:
+		mi.add_theme_constant_override(m, 8)
+	var iv := vbox(4)
+	mi.add_child(iv)
+	var nl := label(name_t, 14, Color.WHITE)
+	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nl.clip_text = true
+	iv.add_child(nl)
+	if stars > 0:
+		var st := _stars(stars, 13)
+		st.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		iv.add_child(st)
+	var bd := hbox(6)
+	bd.alignment = BoxContainer.ALIGNMENT_CENTER
+	if active:
+		bd.add_child(_badge(tr("Активен"), C_GOOD))
+		bd.add_child(_badge(tr("Счастлив"), C_GOOD))
+	else:
+		bd.add_child(_badge(tr("Вакансия"), C_DIM))
+	iv.add_child(bd)
+	v.add_child(mi)
+	var hit := Button.new()
+	hit.flat = true
+	for st2 in ["normal", "hover", "pressed", "focus"]:
+		hit.add_theme_stylebox_override(st2, _flat_style())
+	hit.mouse_entered.connect(func(): sb.border_color = Color(1, 0.7, 0.24, 0.6))
+	hit.mouse_exited.connect(func(): sb.border_color = Color(1, 1, 1, 0.08))
+	hit.pressed.connect(cb)
+	card.add_child(hit)
+	_ignore_mouse(v)
+	return card
+
 func screen_staff() -> void:
-	content.add_child(_hdr_card("badge", tr("Штат"), tr("Сотрудники усиливают команду. Зарплаты штаба: %s в неделю") % money_fmt(gs.staff_salaries())))
-	var top := hbox(12)
-	content.add_child(top)
-	var mc := _card()
-	mc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(mc)
-	var mh := hbox(14)
-	mc.add_child(mh)
-	mh.add_child(_circle(gs.photo_path, 80, Color(gs.team_color)))
-	var mv := vbox(2)
-	mv.add_child(label("%s%s" % [gs.coach_name, (" \"%s\"" % gs.coach_nick) if gs.coach_nick != "" else ""], 18, Color.WHITE))
-	mv.add_child(label(tr("Главный менеджер"), 13, C_ACC))
-	mv.add_child(label(tr("Тактика %d · Мотивация %d · Скаутинг %d") % [int(gs.coach_skill["tactics"]), int(gs.coach_skill["motivation"]), int(gs.coach_skill["scout"])], 12, C_DIM))
-	mh.add_child(mv)
-	if gs.staff_coach != "":
-		var cc := _card()
-		cc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		top.add_child(cc)
-		var ch := hbox(14)
-		cc.add_child(ch)
-		ch.add_child(_circle(gs.staff_photo, 80))
-		var cv := vbox(2)
-		cv.add_child(label(gs.staff_coach, 18, Color.WHITE))
-		cv.add_child(label(tr("Тренер состава"), 13, C_ACC))
-		cv.add_child(label(tr("+1.5 к силе команды"), 12, C_DIM))
-		ch.add_child(cv)
-	var sb := _block(tr("Персонал"))
+	var sb := _block(tr("Штат"))
 	content.add_child(sb)
 	var grid := GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	sb.add_child(grid)
+	grid.add_child(_staff_card(tr("Генеральный директор"), "%s \"%s\"" % [gs.coach_name, gs.coach_nick] if gs.coach_nick != "" else gs.coach_name, gs.photo_path, gs.coach_country_code, 0.0, true, func(): show_screen("coach")))
 	for role in gs.STAFF_ROLES:
-		var idx: int = -1
-		for i in gs.staff_list.size():
-			if gs.staff_list[i]["role"] == role:
-				idx = i
+		var found: Dictionary = {}
+		for s in gs.staff_list:
+			if s["role"] == role:
+				found = s
+		var role_t: String = tr(gs.STAFF_ROLES[role][0])
+		if not found.is_empty():
+			var ref: Dictionary = found
+			grid.add_child(_staff_card(role_t, str(found["name"]), str(found.get("photo", "")), str(found.get("country", "")), gs.staff_stars(found), true, func(): viewed_staff = ref; show_screen("staff_member")))
+		else:
+			var rk: String = role
+			grid.add_child(_staff_card(role_t, tr("Нанять"), "", "", 0.0, false, func(): staff_hire_role = rk; show_screen("staff_hire")))
+
+var staff_hire_role: String = ""
+
+func screen_staff_hire() -> void:
+	var role: String = staff_hire_role
+	content.add_child(_hdr_card("person_add", tr("Найм: %s") % tr(gs.STAFF_ROLES.get(role, ["?"])[0]), tr(gs.STAFF_ROLES.get(role, ["", ""])[1]), small_btn("<  " + tr("Назад"), func(): _hist_move(-1))))
+	var cands: Array = []
+	for i in gs.staff_market.size():
+		if gs.staff_market[i]["role"] == role:
+			cands.append(i)
+	if cands.is_empty():
+		gs.staff_market.append(gs.gen_staff(role))
+		gs.staff_market.append(gs.gen_staff(role))
+		cands = [gs.staff_market.size() - 2, gs.staff_market.size() - 1]
+	var row := hbox(12)
+	content.add_child(row)
+	for i in cands:
+		var s: Dictionary = gs.staff_market[i]
 		var c := _card()
 		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		c.custom_minimum_size = Vector2(170, 210)
-		var v := vbox(5)
+		var v := vbox(8)
 		c.add_child(v)
-		var rl := label(tr(gs.STAFF_ROLES[role][0]).to_upper(), 12, C_ACC)
-		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		v.add_child(rl)
-		if idx >= 0:
-			var s: Dictionary = gs.staff_list[idx]
-			var pc := _circle(str(s["photo"]), 70)
-			pc.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			v.add_child(pc)
-			var nl := label(tr(str(s["name"]).split(" ")[0]) + " " + tr(str(s["name"]).split(" ")[1]) if str(s["name"]).split(" ").size() > 1 else str(s["name"]), 13, Color.WHITE)
-			nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			v.add_child(nl)
-			var stl := _stars(float(s["lvl"]), 13)
-			stl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			v.add_child(stl)
-			var sl := label("$%d / %s" % [int(s["salary"]), tr("нед.")], 11, C_DIM)
-			sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			v.add_child(sl)
-			var ii: int = idx
-			v.add_child(small_btn(tr("Уволить"), func(): gs.fire_staff(ii); show_screen("staff", false), C_BAD))
-		else:
-			var e := _circle("", 70, Color(1, 1, 1, 0.15))
-			e.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-			v.add_child(e)
-			var vl := label(tr("Вакансия"), 13, C_DIM)
-			vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			v.add_child(vl)
-			var dl := label(tr(gs.STAFF_ROLES[role][1]), 11, C_DIM)
-			dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			dl.custom_minimum_size = Vector2(150, 0)
-			v.add_child(dl)
-		grid.add_child(c)
-	var hb := _block(tr("Кандидаты на найм"))
-	content.add_child(hb)
-	var hc := _card()
-	hb.add_child(hc)
-	var hv := vbox(4)
-	hc.add_child(hv)
-	for i in gs.staff_market.size():
-		var s2: Dictionary = gs.staff_market[i]
-		var r := hbox(10)
-		r.add_child(_circle(str(s2["photo"]), 36))
-		r.add_child(cell(str(s2["name"]), 170, Color.WHITE))
-		r.add_child(cell(tr(gs.STAFF_ROLES[s2["role"]][0]), 160, C_ACC))
-		r.add_child(_stars(float(s2["lvl"]), 13))
-		r.add_child(cell(tr("Подъёмные %s") % money_fmt(int(s2["fee"])), 170, C_GOOD if gs.money >= int(s2["fee"]) else C_BAD, 12))
-		r.add_child(cell("$%d / %s" % [int(s2["salary"]), tr("нед.")], 100, C_DIM, 12))
-		r.add_child(spacer())
-		var ii2: int = i
-		var hire := small_btn(tr("Нанять"), func():
-			var err: String = gs.hire_staff(ii2)
+		var h := hbox(12)
+		h.add_child(_circle(str(s["photo"]), 80))
+		var hv := vbox(2)
+		hv.add_child(label(str(s["name"]), 18, Color.WHITE))
+		hv.add_child(_stars(gs.staff_stars(s), 16))
+		hv.add_child(label(tr("Подъёмные %s · $%d / нед.") % [money_fmt(int(s["fee"])), int(s["salary"])], 12, C_DIM))
+		h.add_child(hv)
+		v.add_child(h)
+		for e in gs.STAFF_TECH.get(role, []):
+			var val: float = float(s["attrs"].get(e[0], 0))
+			var r := hbox(8)
+			r.add_child(cell(tr(e[1]), 170, Color("d6dbe3"), 13))
+			var b := _bar(val, 20.0, _attr_color(val), 120, 8)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			r.add_child(b)
+			r.add_child(cell("%.1f" % val, 40, _attr_color(val), 13))
+			v.add_child(r)
+		var ii: int = i
+		var hb := btn(tr("Нанять"), func():
+			var err: String = gs.hire_staff(ii)
 			if err != "":
 				gs.add_news(err)
-			show_screen("staff", false), C_GOOD)
-		hire.disabled = gs.staff_level(s2["role"]) > 0
-		r.add_child(hire)
-		hv.add_child(r)
+			show_screen("staff"), C_GOOD)
+		hb.disabled = gs.money < int(s["fee"])
+		v.add_child(hb)
+		row.add_child(c)
+
+func screen_staff_member() -> void:
+	var s: Dictionary = viewed_staff
+	if s.is_empty():
+		screen_staff()
+		return
+	var hc := _card()
+	content.add_child(hc)
+	var hh := hbox(18)
+	hc.add_child(hh)
+	hh.add_child(_circle(str(s.get("photo", "")), 110, Color(gs.team_color)))
+	var hv := vbox(4)
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var nr := hbox(10)
+	nr.add_child(_flag(str(s.get("country", "xx")), 28))
+	nr.add_child(label(str(s["name"]), 28, Color.WHITE))
+	hv.add_child(nr)
+	hv.add_child(label(tr(gs.STAFF_ROLES[s["role"]][0]) + " · " + gs.team_name, 15, C_ACC))
+	hv.add_child(_stars(gs.staff_stars(s), 18))
+	hv.add_child(label(tr(gs.STAFF_ROLES[s["role"]][1]), 13, C_DIM))
+	hv.add_child(label(tr("Зарплата") + " $%d / %s" % [int(s["salary"]), tr("нед.")], 13, C_DIM))
+	hh.add_child(hv)
+	var bv := vbox(6)
+	bv.add_child(small_btn("<  " + tr("Назад"), func(): _hist_move(-1)))
+	var idx: int = gs.staff_list.find(s)
+	if idx >= 0:
+		bv.add_child(small_btn(tr("Уволить"), func(): gs.fire_staff(idx); viewed_staff = {}; show_screen("staff"), C_BAD))
+	hh.add_child(bv)
+	var ab := _block(tr("Характеристики"))
+	content.add_child(ab)
+	var ac := _card()
+	ab.add_child(ac)
+	var cols := hbox(14)
+	ac.add_child(cols)
+	for grp in [[tr("ТЕХНИЧЕСКИЕ"), gs.STAFF_TECH.get(s["role"], [])], [tr("МЕНТАЛЬНЫЕ"), gs.STAFF_MENTAL], [tr("ФИЗИЧЕСКИЕ"), gs.STAFF_PHYS]]:
+		var cv := vbox(3)
+		cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var head := PanelContainer.new()
+		var hs := StyleBoxFlat.new()
+		hs.bg_color = Color(1, 1, 1, 0.06)
+		hs.set_content_margin_all(8)
+		head.add_theme_stylebox_override("panel", hs)
+		head.add_child(label(grp[0], 15, Color.WHITE))
+		cv.add_child(head)
+		for a in grp[1]:
+			var v: float = float(s["attrs"].get(a[0], 0))
+			var row := PanelContainer.new()
+			var rs := StyleBoxFlat.new()
+			rs.bg_color = Color(1, 1, 1, 0.025)
+			rs.content_margin_left = 10; rs.content_margin_right = 10; rs.content_margin_top = 6; rs.content_margin_bottom = 6
+			row.add_theme_stylebox_override("panel", rs)
+			var rh := hbox(6)
+			row.add_child(rh)
+			var nl := label(tr(a[1]), 15, Color("e9edf3"))
+			nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			rh.add_child(nl)
+			rh.add_child(label("%.2f" % v, 16, _attr_color(v)))
+			cv.add_child(row)
+		cols.add_child(cv)
 
 # ------------------------------------------------------------ тренировка
 
+var train_tab: String = "coach"
+var train_pick: Dictionary = {}
+
 func screen_training() -> void:
-	content.add_child(_hdr_card("fitness_center", tr("Тренировка"), tr("Фокус недели применяется при нажатии «Продолжить»")))
-	var fb := _block(tr("Фокус тренировок"))
-	content.add_child(fb)
-	var fr := hbox(10)
-	fb.add_child(fr)
-	var icons := {"aim": "gps_fixed", "iq": "psychology", "tw": "diversity_3", "maps": "map", "rest": "hotel"}
-	var desc := {"aim": tr("Навык, оружие, реакция. Утомляет игроков."), "iq": tr("Тактика, креативность, клатч. Утомляет игроков."), "tw": tr("Командная работа, лидерство, мораль. Слегка утомляет."), "maps": tr("Мастерство на выбранной карте."), "rest": tr("Игроки восстанавливают форму (+16%).")}
-	for k in gs.TRAIN:
-		var key: String = k
-		fr.add_child(_sel_card(icons[k], tr(gs.TRAIN[k]), desc[k], gs.train_focus == k, func(): gs.train_focus = key; show_screen("training", false)))
-	var sb := _block(tr("Стиль игры"))
-	content.add_child(sb)
-	var sr := hbox(10)
-	sb.add_child(sr)
-	var sicons := {"aggro": "local_fire_department", "balanced": "balance", "defense": "shield"}
-	for k in gs.STYLES:
-		var key2: String = k
-		sr.add_child(_sel_card(sicons[k], tr(gs.STYLES[k]), tr(gs.STYLE_DESC[k]), gs.style == k, func(): gs.style = key2; show_screen("training", false), Color("5aa9ff")))
+	var tabs := hbox(18)
+	for tb in [["coach", tr("Тренер")], ["maps", tr("Тренировка карт")], ["psych", tr("Психолог")], ["physio", tr("Физиотерапевт")]]:
+		var key: String = tb[0]
+		var need: bool = (key == "psych" and gs.staff_level("psych") == 0) or (key == "physio" and gs.staff_level("physio") == 0) or (key == "coach" and gs.staff_level("coach") == 0 and gs.staff_coach == "")
+		var h := hbox(4)
+		h.add_child(text_btn(tb[1], func(): train_tab = key; train_pick = {}; show_screen("training", false), 16, C_ACC if train_tab == key else Color.WHITE))
+		if need:
+			h.add_child(UITheme.icon("error", 16, C_BAD))
+		tabs.add_child(h)
+	content.add_child(tabs)
+	match train_tab:
+		"coach": _train_coach()
+		"maps": _train_maps()
+		"psych": _train_care("psych")
+		"physio": _train_care("physio")
+
+func _coach_staff() -> Dictionary:
+	for s in gs.staff_list:
+		if s["role"] == "coach":
+			return s
+	return {}
+
+func _attr_name(k: String) -> String:
+	for e in gs.ATTR_TECH + gs.ATTR_MENTAL + gs.ATTR_PHYS:
+		if e[0] == k:
+			return tr(e[1])
+	return k
+
+func _train_coach() -> void:
+	var row := hbox(12)
+	content.add_child(row)
+	var cs: Dictionary = _coach_staff()
+	var cc := _card()
+	cc.custom_minimum_size = Vector2(270, 0)
+	row.add_child(cc)
+	var cv := vbox(6)
+	cc.add_child(cv)
+	var ph := TextureRect.new()
+	ph.texture = tex(str(cs.get("photo", ""))) if not cs.is_empty() else tex("res://assets/ui/silhouette.png")
+	ph.custom_minimum_size = Vector2(0, 150)
+	ph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	cv.add_child(ph)
+	var nl := label(str(cs.get("name", tr("Нет тренера"))), 16, Color.WHITE)
+	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(nl)
+	var rl := label(tr("Тренер"), 12, C_ACC)
+	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(rl)
+	var head := PanelContainer.new()
+	var hs := StyleBoxFlat.new()
+	hs.bg_color = Color(0.2, 0.45, 0.85, 0.45)
+	hs.set_content_margin_all(5)
+	head.add_theme_stylebox_override("panel", hs)
+	var hl := label(tr("ТЕХНИЧЕСКИЕ"), 13, Color.WHITE)
+	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_child(hl)
+	cv.add_child(head)
+	for e in gs.STAFF_TECH["coach"]:
+		var v: float = float(cs.get("attrs", {}).get(e[0], 0)) if not cs.is_empty() else 0.0
+		var r := hbox(4)
+		var al := label(tr(e[1]), 13, Color("d6dbe3"))
+		al.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(al)
+		r.add_child(label("%.2f" % v if not cs.is_empty() else "—", 13, _attr_color(v)))
+		cv.add_child(r)
+	cv.add_child(btn(tr("АВТОРАСПИСАНИЕ"), func(): gs.auto_schedule(); show_screen("training", false), Color("2fb8e8")))
+	cv.add_child(label(tr("Каждый игрок тренирует свою худшую характеристику."), 11, C_DIM))
+	# игроки
+	var sc := ScrollContainer.new()
+	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size = Vector2(0, 520)
+	row.add_child(sc)
+	var pr := hbox(10)
+	sc.add_child(pr)
+	for p in gs.players:
+		pr.add_child(_train_player_col(p))
+
+func _train_player_col(p: Dictionary) -> Control:
+	gs.ensure_attrs(p)
+	var c := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.1, 0.14, 0.95)
+	sb.border_color = Color(1, 1, 1, 0.08)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(10)
+	c.add_theme_stylebox_override("panel", sb)
+	c.custom_minimum_size = Vector2(150, 500)
+	var v := vbox(8)
+	c.add_child(v)
+	var ph := Control.new()
+	ph.custom_minimum_size = Vector2(130, 110)
+	ph.clip_contents = true
+	var img := TextureRect.new()
+	img.texture = tex(player_photo(p))
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	img.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ph.add_child(img)
+	var fl := _flag(str(p.get("country", "xx")), 22)
+	fl.position = Vector2(2, 2)
+	ph.add_child(fl)
+	v.add_child(ph)
+	var nl := label(str(p["nick"]), 15, Color.WHITE)
+	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(nl)
+	var rl := label(tr(p["role"]), 12, C_ACC)
+	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(rl)
+	var ref: Dictionary = p
+	v.add_child(small_btn(tr("ТРЕНИРОВАТЬ"), func(): train_pick = ref; show_screen("training", false), Color("2fb8e8")))
+	v.add_child(small_btn(tr("ОТЧЁТ"), func(): viewed_player = ref; show_screen("player")))
+	var k: String = str(p.get("train", ""))
+	var circ := preload("res://scripts/progress_ring.gd").new().setup(float(p.get("tprog", 0.0)) / 100.0, 90, Color("2fb8e8"))
+	circ.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(circ)
+	var tl := label(_attr_name(k) if k != "" else tr("Не выбрано"), 12, Color("d6dbe3"))
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(tl)
+	if k != "":
+		var vl := label("%.2f → +1" % float(p["attrs"].get(k, 0)), 11, C_DIM)
+		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(vl)
+		var spd := label(tr("~%d%% в неделю") % int(gs.train_speed(p)), 11, C_DIM)
+		spd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(spd)
+	if not train_pick.is_empty() and train_pick == p:
+		var pick := vbox(2)
+		for e in gs.ATTR_TECH:
+			var ak: String = e[0]
+			pick.add_child(small_btn("%s %.1f" % [tr(e[1]), float(p["attrs"][ak])], func(): ref["train"] = ak; ref["tprog"] = 0.0; train_pick = {}; show_screen("training", false), C_ACC if k == ak else Color.WHITE))
+		v.add_child(pick)
+	return c
+
+func _train_maps() -> void:
 	var cols := hbox(12)
 	content.add_child(cols)
 	var mb := _block(tr("Пул карт"))
@@ -2812,36 +3307,77 @@ func screen_training() -> void:
 	cols.add_child(mb)
 	var mc := _card()
 	mb.add_child(mc)
-	var mv := vbox(6)
+	var mv := vbox(8)
 	mc.add_child(mv)
 	for mm in gs.MAPS:
 		var r := hbox(10)
-		var sel: bool = gs.train_focus == "maps" and gs.train_map == mm
-		var mbn := small_btn(mm, func(): gs.train_map = mm; gs.train_focus = "maps"; show_screen("training", false), C_ACC if sel else Color.WHITE)
-		mbn.custom_minimum_size = Vector2(110, 0)
+		var sel: bool = gs.train_map == mm
+		var mbn := small_btn(mm, func(): gs.train_map = mm; show_screen("training", false), C_ACC if sel else Color.WHITE)
+		mbn.custom_minimum_size = Vector2(120, 0)
 		r.add_child(mbn)
-		var bar := _bar(float(gs.map_skill[mm]), 100.0, Color("5aa9ff") if not sel else C_ACC, 220, 10)
+		var bar := _bar(float(gs.map_skill[mm]), 100.0, C_ACC if sel else Color("5aa9ff"), 260, 12)
 		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		r.add_child(bar)
 		r.add_child(cell(str(int(gs.map_skill[mm])), 34, Color.WHITE))
+		if sel:
+			r.add_child(UITheme.icon("check_circle", 18, C_ACC))
 		mv.add_child(r)
-	mv.add_child(label(tr("Нажмите на карту, чтобы отработать её на этой неделе."), 11, C_DIM))
-	var pb := _block(tr("Форма игроков"))
-	pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cols.add_child(pb)
-	var pc := _card()
-	pb.add_child(pc)
-	var pv := vbox(6)
-	pc.add_child(pv)
+	mv.add_child(label(tr("Выбранная карта отрабатывается каждую неделю."), 11, C_DIM))
+	var sb := _block(tr("Стиль игры"))
+	sb.custom_minimum_size = Vector2(340, 0)
+	cols.add_child(sb)
+	var sv := vbox(8)
+	sb.add_child(sv)
+	var sicons := {"aggro": "local_fire_department", "balanced": "balance", "defense": "shield"}
+	for k in gs.STYLES:
+		var key2: String = k
+		sv.add_child(_sel_card(sicons[k], tr(gs.STYLES[k]), tr(gs.STYLE_DESC[k]), gs.style == k, func(): gs.style = key2; show_screen("training", false), Color("5aa9ff")))
+
+func _train_care(role: String) -> void:
+	var lvl: int = gs.staff_level(role)
+	var sname := ""
+	for s in gs.staff_list:
+		if s["role"] == role:
+			sname = s["name"]
+	if lvl == 0:
+		content.add_child(_alert(tr("В штате нет сотрудника «%s». Наймите его в разделе «Штат».") % tr(gs.STAFF_ROLES[role][0]), false))
+	else:
+		content.add_child(_alert(tr("%s проводит сессии: раз в неделю на каждого игрока.") % sname, true))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	content.add_child(grid)
 	for p in gs.players:
-		var r2 := hbox(10)
-		r2.add_child(portrait(p, 30))
-		r2.add_child(cell(p["nick"], 110, Color.WHITE))
-		var b := _bar(float(p["form"]), 100.0, _form_col(int(p["form"])), 160, 10)
+		var c := _card()
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var h := hbox(12)
+		c.add_child(h)
+		h.add_child(portrait(p, 60))
+		var v := vbox(4)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_child(label(str(p["nick"]), 16, Color.WHITE))
+		var val: int = int(p.get("morale", 80)) if role == "psych" else int(p["form"])
+		var r := hbox(6)
+		r.add_child(label(tr("Мораль") if role == "psych" else tr("Форма"), 11, C_DIM))
+		var b := _bar(float(val), 100.0, _form_col(val), 100, 8)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		r2.add_child(b)
-		r2.add_child(cell("%d%%" % int(p["form"]), 44, _form_col(int(p["form"]))))
-		pv.add_child(r2)
+		r.add_child(b)
+		r.add_child(label("%d%%" % val, 12, _form_col(val)))
+		v.add_child(r)
+		if role == "physio" and int(p["inj"]) > 0:
+			v.add_child(label(tr("Травма: %d нед.") % int(p["inj"]), 12, C_BAD))
+		var ref: Dictionary = p
+		var done: bool = int(p.get("psy_w" if role == "psych" else "phy_w", -1)) == gs.season * 100 + gs.week
+		var sb2 := small_btn(tr("Сессия проведена") if done else (tr("Провести сессию") if role == "psych" else tr("Процедуры")), func():
+			var err: String = gs.psych_session(ref) if role == "psych" else gs.physio_session(ref)
+			if err != "":
+				gs.add_news(err)
+			show_screen("training", false), C_GOOD)
+		sb2.disabled = done or lvl == 0
+		v.add_child(sb2)
+		h.add_child(v)
+		grid.add_child(c)
 
 # ------------------------------------------------------------ трансферы
 
