@@ -54,6 +54,7 @@ var players: Array = []
 var market: Array = []
 var world: Array = []        # игроки других команд (для скаутинга)
 var shortlist: Array = []    # закладки (ники)
+var transfers_log: Array = []   # все трансферы мира
 var map_skill: Dictionary = {}
 var style: String = "balanced"
 var train_focus: String = "aim"
@@ -590,6 +591,11 @@ func answer_talk(i: int, opt: int) -> void:
 					if lst.size() >= TRAIN_MAX:
 						lst.pop_front()
 					lst.append(eff["train"][1])
+	if eff.has("sell"):
+		for i2 in players.size():
+			if players[i2]["nick"] == eff["sell"][0]:
+				sell_player(i2, str(eff["sell"][1]), int(eff["sell"][2]))
+				break
 	rep = clampf(rep + float(eff.get("rep", 0)), 0.0, 100.0)
 	money += int(eff.get("money", 0))
 	mail.push_front({"from": coach_name, "to": t2["who"], "subject": tr("Ответ: %s") % t2["who"], "body": str(o["t"]), "season": season, "week": week, "read": true, "kind": "out"})
@@ -832,6 +838,7 @@ func _make_schedule(teams: Array) -> Array:
 ## Игроки других реальных команд (их можно купить или взять в аренду).
 func build_world() -> void:
 	world = []
+	transfers_log = []
 	for rt in load("res://scripts/teams.gd").START_TEAMS:
 		if rt["name"] == team_name:
 			continue
@@ -839,6 +846,7 @@ func build_world() -> void:
 			var p: Dictionary = roster_player(rp, float(rt["base"]), str(rt.get("country", "ru")))
 			p["team"] = rt["name"]
 			p["loan_ok"] = randf() < 0.35
+			p["listed"] = randf() < 0.25
 			p["contract"] = {"type": "club", "end": season + randi_range(0, 2), "signed": "01.01.2026"}
 			world.append(p)
 
@@ -1001,6 +1009,7 @@ func finish_week() -> String:
 	var rep_txt: String = _finances()
 	_weekly_event()
 	_weekly_feed()
+	_transfer_offers()
 	for p in players:
 		if int(p["inj"]) > 0:
 			p["inj"] -= 1
@@ -1425,12 +1434,25 @@ func buyout(p: Dictionary) -> int:
 func loan_fee(p: Dictionary) -> int:
 	return int(fee(p) * 0.15)
 
+## Запись трансфера в общий журнал и в историю игрока.
+func log_transfer(p: Dictionary, from: String, to: String, cost: int, kind: String) -> void:
+	var e := {"date": game_date_str(), "season": season, "week": week, "nick": str(p["nick"]), "photo": str(p.get("photo", "")),
+		"country": str(p.get("country", "xx")), "role": str(p.get("role", "")), "ovr": ovr(p), "from": from, "to": to, "fee": cost, "kind": kind}
+	transfers_log.push_front(e)
+	while transfers_log.size() > 200:
+		transfers_log.pop_back()
+
+func _other_teams() -> Array:
+	return league_teams.filter(func(x): return x != team_name)
+
 func _arrive(p: Dictionary, kind: String, cost: int) -> void:
 	var from: String = str(p.get("team", ""))
 	p.erase("pot_est")
 	var th: Array = p.get("thist", [])
 	th.push_front({"date": game_date_str(), "from": from if from != "" else tr("Свободный агент"), "to": team_name, "fee": cost, "kind": kind})
 	p["thist"] = th
+	log_transfer(p, from, team_name, cost, kind)
+	p.erase("listed")
 	if kind == "loan":
 		p["loan_from"] = from
 		p["contract"] = {"type": "loan", "end": season, "signed": game_date_str()}
@@ -1482,6 +1504,7 @@ func _return_loans() -> void:
 		if str(p.get("contract", {}).get("type", "")) == "loan":
 			var to: String = str(p.get("loan_from", ""))
 			players.erase(p)
+			log_transfer(p, team_name, to, 0, "return")
 			p["team"] = to
 			p["contract"] = {"type": "club", "end": season + 1, "signed": game_date_str()}
 			world.append(p)
@@ -1514,17 +1537,70 @@ func release_player(idx: int) -> void:
 	money -= sev
 	add_news(tr("%s отчислен (выплата $%d).") % [p["nick"], sev])
 	players.remove_at(idx)
+	log_transfer(p, team_name, "", 0, "release")
+	_push_thist(p, team_name, tr("Свободный агент"), 0, "release")
+	p["team"] = ""
+	p["listed"] = false
+	p["contract"] = {"type": "free", "end": season, "signed": ""}
+	market.append(p)
 	changed.emit()
 
-func sell_player(idx: int) -> void:
+func _push_thist(p: Dictionary, from: String, to: String, cost: int, kind: String) -> void:
+	var th: Array = p.get("thist", [])
+	th.push_front({"date": game_date_str(), "from": from, "to": to, "fee": cost, "kind": kind})
+	p["thist"] = th
+
+## Продажа: игрок уходит в другую команду (если она есть) или на рынок.
+func sell_player(idx: int, to_team: String = "", price: int = -1) -> void:
 	if idx < 0 or idx >= players.size():
 		return
 	var p: Dictionary = players[idx]
-	var v: int = int(fee(p) * 0.6)
+	var v: int = price if price >= 0 else int(fee(p) * 0.6)
+	var others: Array = _other_teams()
+	if to_team == "" and not others.is_empty():
+		to_team = others[randi() % others.size()]
 	money += v
-	add_news(tr("%s продан за $%d.") % [p["nick"], v])
 	players.remove_at(idx)
+	log_transfer(p, team_name, to_team, v, "sell")
+	_push_thist(p, team_name, to_team if to_team != "" else tr("Свободный агент"), v, "sell")
+	p["listed"] = false
+	if to_team != "":
+		p["team"] = to_team
+		p["loan_ok"] = false
+		p["contract"] = {"type": "club", "end": season + 2, "signed": game_date_str()}
+		world.append(p)
+		if strengths.has(to_team):
+			strengths[to_team] = float(strengths[to_team]) + 1.0
+	else:
+		p["team"] = ""
+		market.append(p)
+	add_news(tr("%s продан в %s за $%d.") % [p["nick"], to_team if to_team != "" else tr("свободных агентов"), v])
+	add_mail(tr("Трансферный рынок"), tr("Продажа: %s") % p["nick"], tr("%s переходит из %s в %s за $%d.") % [p["nick"], team_name, to_team if to_team != "" else tr("свободных агентов"), v], "transfer")
 	changed.emit()
+
+## Трансферный список: выставить своего игрока с ценой.
+func list_player(p: Dictionary, ask: int) -> void:
+	p["listed"] = true
+	p["ask"] = ask
+	changed.emit()
+
+func unlist_player(p: Dictionary) -> void:
+	p["listed"] = false
+	changed.emit()
+
+## Предложения за выставленных игроков (каждую неделю).
+func _transfer_offers() -> void:
+	var others: Array = _other_teams()
+	if others.is_empty():
+		return
+	for p in players:
+		if not bool(p.get("listed", false)) or randf() > 0.4:
+			continue
+		var tm: String = others[randi() % others.size()]
+		var ask: int = int(p.get("ask", fee(p)))
+		var offer: int = int(ask * randf_range(0.75, 1.1))
+		add_talk(tr("Спортивный директор %s") % tm, tr("Трансферное предложение"), "", tr("%s готовы купить %s за $%d (вы просите $%d). Принимаете?") % [tm, p["nick"], offer, ask],
+			[{"t": tr("Принять предложение"), "eff": {"sell": [p["nick"], tm, offer]}}, {"t": tr("Отклонить"), "eff": {}}])
 
 func move_player(idx: int, dir: int) -> void:
 	var j: int = idx + dir
@@ -1548,7 +1624,7 @@ func to_dict() -> Dictionary:
 	return {
 		"active": active, "game_over": game_over, "legend": legend, "coach_name": coach_name, "team_name": team_name,
 		"season": season, "week": week, "tier": tier, "money": money, "rep": rep, "coach_pts": coach_pts,
-		"coach_skill": coach_skill, "players": players, "market": market, "world": world, "shortlist": shortlist, "map_skill": map_skill, "style": style,
+		"coach_skill": coach_skill, "players": players, "market": market, "world": world, "shortlist": shortlist, "transfers_log": transfers_log, "map_skill": map_skill, "style": style,
 		"train_focus": train_focus, "train_map": train_map, "map_pool": map_pool, "map_picks": map_picks, "map_bans": map_bans, "map_usage": map_usage, "league_teams": league_teams, "strengths": strengths,
 		"standings": standings, "schedule": schedule, "playoff": playoff, "match_done": match_done, "news": news,
 		"history": history, "titles": titles, "bad_seasons": bad_seasons, "next_id": next_id,
@@ -1581,6 +1657,7 @@ func from_dict(d: Dictionary) -> void:
 		if str(p.get("team", "")) == "Team CyberHero":
 			p["team"] = "CyberHero"
 	shortlist = d.get("shortlist", [])
+	transfers_log = d.get("transfers_log", [])
 	if world.is_empty():
 		build_world()
 	map_skill = {}

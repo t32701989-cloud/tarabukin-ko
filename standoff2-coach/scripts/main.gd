@@ -3873,86 +3873,166 @@ var tr_role: String = ""
 var tr_sort: String = "ovr"
 
 
+var trf_tab: String = "mine"
+var trf_ask: Dictionary = {}
+
+const TRF_KIND := {"buy": ["Покупка", "5aa9ff"], "loan": ["Аренда", "ffb23e"], "sell": ["Продажа", "7dd66b"], "release": ["Отчисление", "ff6b6b"], "return": ["Возврат из аренды", "9aa3b2"]}
+
 func screen_transfers() -> void:
-	content.add_child(_hdr_card("swap_horiz", tr("Трансферы"), tr("Свободные агенты. Состав: %d/%d · Бюджет: %s") % [gs.players.size(), gs.MAX_ROSTER, money_fmt(gs.money)]))
-	var fr := hbox(8)
-	fr.add_child(label(tr("Роль:"), 13, C_DIM))
-	for rr in [""] + gs.ROLES:
-		var key: String = rr
-		var b := small_btn(tr("Все") if rr == "" else tr(rr), func(): tr_role = key; show_screen("transfers", false), C_ACC if tr_role == rr else Color.WHITE)
-		fr.add_child(b)
-	content.add_child(fr)
-	fr = hbox(8)
-	fr.add_child(label(tr("Сортировка:"), 13, C_DIM))
-	for so in [["ovr", tr("ОБЩ")], ["pot", tr("Потенциал")], ["fee", tr("Цена")], ["age", tr("Возраст")]]:
-		var sk: String = so[0]
-		fr.add_child(small_btn(so[1], func(): tr_sort = sk; show_screen("transfers", false), C_ACC if tr_sort == sk else Color.WHITE))
-	content.add_child(fr)
-	var idxs: Array = []
-	for i in gs.market.size():
-		if tr_role == "" or gs.market[i]["role"] == tr_role:
-			idxs.append(i)
-	idxs.sort_custom(func(a, b):
-		var pa: Dictionary = gs.market[a]
-		var pb: Dictionary = gs.market[b]
-		match tr_sort:
-			"pot": return int(pa.get("pot_est", pa["pot"])) > int(pb.get("pot_est", pb["pot"]))
-			"fee": return gs.fee(pa) < gs.fee(pb)
-			"age": return int(pa["age"]) < int(pb["age"])
-		return gs.ovr(pa) > gs.ovr(pb))
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	content.add_child(grid)
-	if idxs.is_empty():
-		content.add_child(label(tr("Нет игроков под фильтр."), 14, C_DIM))
-	for i in idxs:
-		var pl: Dictionary = gs.market[i]
-		var c := _card()
-		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var v := vbox(5)
-		c.add_child(v)
-		var h := hbox(10)
-		h.add_child(portrait(pl, 54))
-		var hv := vbox(0)
+	var tabs := hbox(18)
+	for tb in [["mine", tr("Мои трансферы")], ["world", tr("Мировые трансферы")], ["list", tr("Трансферный список")]]:
+		var key: String = tb[0]
+		tabs.add_child(text_btn(tb[1], func(): trf_tab = key; show_screen("transfers", false), 17, C_ACC if trf_tab == key else Color.WHITE))
+	tabs.add_child(spacer())
+	tabs.add_child(label(tr("Бюджет: %s · Состав: %d/%d") % [money_fmt(gs.money), gs.players.size(), gs.MAX_ROSTER], 13, C_DIM))
+	content.add_child(tabs)
+	match trf_tab:
+		"mine": _trf_log(true)
+		"world": _trf_log(false)
+		"list": _trf_list()
+
+func _trf_log(mine_only: bool) -> void:
+	var rows: Array = []
+	for e in gs.transfers_log:
+		if not mine_only or e["from"] == gs.team_name or e["to"] == gs.team_name:
+			rows.append(e)
+	if mine_only:
+		var tin: int = 0
+		var tout: int = 0
+		for e in rows:
+			if e["to"] == gs.team_name: tin += int(e["fee"])
+			elif e["from"] == gs.team_name: tout += int(e["fee"])
+		var tiles := hbox(10)
+		tiles.add_child(_stat_tile(tr("Сделок"), str(rows.size()), Color.WHITE, "swap_horiz"))
+		tiles.add_child(_stat_tile(tr("Потрачено"), money_fmt(tin), C_BAD, "trending_down"))
+		tiles.add_child(_stat_tile(tr("Заработано"), money_fmt(tout), C_GOOD, "trending_up"))
+		tiles.add_child(_stat_tile(tr("Баланс трансферов"), money_fmt(tout - tin), C_GOOD if tout >= tin else C_BAD, "account_balance"))
+		content.add_child(tiles)
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(3)
+	c.add_child(v)
+	var hh := hbox(8)
+	for e in [[tr("Дата"), 80], ["", 30], [tr("Игрок"), 120], [tr("Роль"), 80], [tr("ОБЩ"), 34], [tr("Откуда"), 140], ["", 18], [tr("Куда"), 140], [tr("Тип"), 120], [tr("Сумма"), 80]]:
+		hh.add_child(cell(e[0], e[1], C_DIM, 11))
+	v.add_child(hh)
+	if rows.is_empty():
+		v.add_child(label(tr("Трансферов пока не было.") if mine_only else tr("В мире пока не было трансферов."), 14, C_DIM))
+	for i in mini(rows.size(), 40):
+		var e: Dictionary = rows[i]
+		var row := PanelContainer.new()
+		var rs := StyleBoxFlat.new()
+		rs.bg_color = Color(1, 1, 1, 0.04) if i % 2 == 0 else Color(1, 1, 1, 0.015)
+		rs.content_margin_top = 4; rs.content_margin_bottom = 4; rs.content_margin_left = 4
+		row.add_theme_stylebox_override("panel", rs)
+		var r := hbox(8)
+		row.add_child(r)
+		r.add_child(cell(str(e["date"]), 80, C_DIM, 12))
+		r.add_child(_circle(str(e.get("photo", "")), 30))
 		var nr := hbox(5)
-		nr.add_child(_flag(str(pl.get("country", "xx")), 18))
-		nr.add_child(_nick_link(pl, 110, Color.WHITE))
-		hv.add_child(nr)
-		hv.add_child(label("%s · %d %s" % [tr(pl["role"]), int(pl["age"]), tr("лет")], 12, C_ACC))
-		h.add_child(hv)
-		h.add_child(spacer())
-		var ov := vbox(0)
-		ov.add_child(label(str(gs.ovr(pl)), 22, stat_color(gs.ovr(pl))))
-		ov.add_child(label(tr("ОБЩ"), 10, C_DIM))
-		h.add_child(ov)
-		v.add_child(h)
-		var pe: int = int(pl.get("pot_est", pl["pot"]))
-		var pr := hbox(6)
-		pr.add_child(label(tr("Потенциал"), 11, C_DIM))
-		var pbar := _bar(float(pe), 100.0, Color("b18cff"), 80, 6)
-		pbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		pr.add_child(pbar)
-		pr.add_child(label("~%d" % pe, 11, Color("b18cff")))
-		v.add_child(pr)
-		var fee: int = gs.fee(pl)
-		var br := hbox(6)
-		var fv := vbox(0)
-		fv.add_child(label(money_fmt(fee), 15, C_GOOD if gs.money >= fee else C_BAD))
-		fv.add_child(label("$%d / %s" % [int(pl["salary"]), tr("нед.")], 10, C_DIM))
-		br.add_child(fv)
-		br.add_child(spacer())
-		var idx: int = i
-		var sb := small_btn(tr("Подписать"), func():
-			var err: String = gs.sign_player(idx)
+		nr.custom_minimum_size = Vector2(120, 0)
+		nr.add_child(_flag(str(e.get("country", "xx")), 18))
+		nr.add_child(label(str(e["nick"]), 13, Color.WHITE))
+		r.add_child(nr)
+		r.add_child(cell(tr(str(e.get("role", ""))), 80, C_ACC, 12))
+		r.add_child(cell(str(int(e.get("ovr", 0))), 34, stat_color(int(e.get("ovr", 0))), 13))
+		r.add_child(_trf_team(str(e["from"]), 140))
+		var ar := UITheme.icon("arrow_forward", 16, C_DIM)
+		ar.custom_minimum_size = Vector2(18, 0)
+		r.add_child(ar)
+		r.add_child(_trf_team(str(e["to"]), 140))
+		var kd: Array = TRF_KIND.get(str(e["kind"]), ["?", "ffffff"])
+		r.add_child(cell(tr(kd[0]), 120, Color(kd[1]), 12))
+		r.add_child(cell(money_fmt(int(e["fee"])) if int(e["fee"]) > 0 else "—", 80, Color.WHITE, 13))
+		v.add_child(row)
+
+func _trf_team(t: String, w: int) -> Control:
+	var h := hbox(5)
+	h.custom_minimum_size = Vector2(w, 0)
+	if t == "":
+		h.add_child(label(tr("Свободный агент"), 12, C_DIM))
+		return h
+	h.add_child(team_icon(t, 20))
+	var l := label(t, 12, C_ACC if t == gs.team_name else Color("5aa9ff"))
+	l.clip_text = true
+	l.custom_minimum_size = Vector2(w - 30, 0)
+	h.add_child(l)
+	return h
+
+func _trf_list() -> void:
+	var mb := _block(tr("Мои игроки"))
+	content.add_child(mb)
+	var mc := _card()
+	mb.add_child(mc)
+	var mv := vbox(4)
+	mc.add_child(mv)
+	mv.add_child(label(tr("Выставьте игрока на трансфер со своей ценой — клубы будут присылать предложения в «Разговор»."), 12, C_DIM))
+	for p in gs.players:
+		var r := hbox(8)
+		r.add_child(portrait(p, 34))
+		r.add_child(_flag(str(p.get("country", "xx")), 20))
+		r.add_child(_nick_link(p, 130, Color.WHITE))
+		r.add_child(cell(tr(p["role"]), 90, C_ACC, 12))
+		r.add_child(cell(str(gs.ovr(p)), 40, stat_color(gs.ovr(p)), 13))
+		r.add_child(cell(tr("Стоимость %s") % money_fmt(gs.fee(p)), 160, C_DIM, 12))
+		var ref: Dictionary = p
+		var loan: bool = str(p.get("contract", {}).get("type", "")) == "loan"
+		if bool(p.get("listed", false)):
+			r.add_child(_badge(tr("В списке · %s") % money_fmt(int(p.get("ask", 0))), C_ACC))
+			r.add_child(spacer())
+			r.add_child(small_btn(tr("Снять"), func(): gs.unlist_player(ref); show_screen("transfers", false), C_BAD))
+		else:
+			r.add_child(spacer())
+			var key: String = str(p["nick"])
+			if not trf_ask.has(key):
+				trf_ask[key] = gs.fee(p)
+			var sp := SpinBox.new()
+			sp.min_value = 1000
+			sp.max_value = 10000000
+			sp.step = 1000
+			sp.value = int(trf_ask[key])
+			sp.prefix = "$"
+			sp.custom_minimum_size = Vector2(140, 0)
+			sp.editable = not loan
+			sp.value_changed.connect(func(x): trf_ask[key] = int(x))
+			r.add_child(sp)
+			var lb := small_btn(tr("Выставить"), func(): gs.list_player(ref, int(trf_ask[key])); show_screen("transfers", false), C_GOOD)
+			lb.disabled = loan
+			if loan:
+				lb.tooltip_text = tr("Арендованного игрока нельзя выставить.")
+			r.add_child(lb)
+		mv.add_child(r)
+	var ob := _block(tr("Выставлены другими клубами"))
+	content.add_child(ob)
+	var oc := _card()
+	ob.add_child(oc)
+	var ov := vbox(4)
+	oc.add_child(ov)
+	var any := false
+	for p in gs.world:
+		if not bool(p.get("listed", false)):
+			continue
+		any = true
+		var r2 := hbox(8)
+		r2.add_child(portrait(p, 34))
+		r2.add_child(_flag(str(p.get("country", "xx")), 20))
+		r2.add_child(_nick_link(p, 130, Color("5aa9ff")))
+		r2.add_child(cell(tr(p["role"]), 90, C_ACC, 12))
+		r2.add_child(cell(str(gs.ovr(p)), 40, stat_color(gs.ovr(p)), 13))
+		r2.add_child(_trf_team(str(p.get("team", "")), 150))
+		r2.add_child(cell(money_fmt(gs.buyout(p)), 100, C_GOOD, 13))
+		r2.add_child(spacer())
+		var ref2: Dictionary = p
+		var bb := small_btn(tr("Купить"), func():
+			var err: String = gs.buy_player(ref2)
 			if err != "":
 				gs.add_news(err)
 			show_screen("transfers", false), C_GOOD)
-		sb.disabled = gs.money < fee or gs.players.size() >= gs.MAX_ROSTER
-		br.add_child(sb)
-		v.add_child(br)
-		grid.add_child(c)
+		bb.disabled = gs.money < gs.buyout(p) or gs.players.size() >= gs.MAX_ROSTER
+		r2.add_child(bb)
+		ov.add_child(r2)
+	if not any:
+		ov.add_child(label(tr("Сейчас никто не выставлен."), 13, C_DIM))
 
 # ------------------------------------------------------------ турниры
 
