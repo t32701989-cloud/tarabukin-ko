@@ -2044,6 +2044,9 @@ func refresh_top() -> void:
 			label_t = tr("К МАТЧУ")
 		cont_btn.text = label_t + "  >"
 		cont_btn.disabled = in_match or gs.game_over != ""
+	if nav_btns.has("mail"):
+		var ub: int = gs.unread_mail()
+		nav_btns["mail"].text = "          " + tr("Почта") + (("  (%d)" % ub) if ub > 0 else "")
 	for k in nav_btns:
 		var b: Button = nav_btns[k]
 		b.add_theme_color_override("font_color", Color.WHITE if k == current else Color("aab2c0"))
@@ -2409,98 +2412,6 @@ func screen_player() -> void:
 			cv.add_child(row)
 		cols.add_child(cv)
 
-# ------------------------------------------------------------ почта / штат / статистика / финансы
-
-func screen_mail() -> void:
-	var c := _card()
-	content.add_child(c)
-	var v := vbox(6)
-	c.add_child(v)
-	if gs.news.is_empty():
-		v.add_child(label(tr("Писем нет."), 14, C_DIM))
-	for n in gs.news:
-		var r := hbox(10)
-		r.add_child(UITheme.icon("mail", 18, C_DIM))
-		r.add_child(wrap_label(str(n), 13, Color("d6dbe3"), 820))
-		v.add_child(r)
-
-func screen_staff() -> void:
-	var c := _card()
-	content.add_child(c)
-	var v := vbox(10)
-	c.add_child(v)
-	var h := hbox(14)
-	h.add_child(_circle(gs.photo_path, 72, Color(gs.team_color)))
-	var hv := vbox(2)
-	hv.add_child(label("%s%s" % [gs.coach_name, (" \"%s\"" % gs.coach_nick) if gs.coach_nick != "" else ""], 18, Color.WHITE))
-	hv.add_child(label(tr("Главный менеджер"), 13, C_DIM))
-	h.add_child(hv)
-	v.add_child(h)
-	if gs.staff_coach != "":
-		var h2 := hbox(14)
-		h2.add_child(_circle(gs.staff_photo, 72))
-		var v2 := vbox(2)
-		v2.add_child(label(gs.staff_coach, 18, Color.WHITE))
-		v2.add_child(label(tr("Тренер состава · +1.5 к силе команды"), 13, C_DIM))
-		h2.add_child(v2)
-		v.add_child(h2)
-	v.add_child(label(tr("Сотрудников штаба: %d (каждый +0.4 к силе, $400 в неделю)") % gs.staff_count, 14, Color("d6dbe3")))
-	var row := hbox(10)
-	for i in gs.staff_count:
-		row.add_child(_circle("", 48, Color(1, 1, 1, 0.4)))
-	v.add_child(row)
-
-func screen_stats() -> void:
-	var c := _card()
-	content.add_child(c)
-	var v := vbox(6)
-	c.add_child(v)
-	v.add_child(label(tr("Статистика игроков"), 17, Color.WHITE))
-	for p in gs.players:
-		var r := hbox(10)
-		r.add_child(portrait(p, 30))
-		r.add_child(cell(p["nick"], 140, Color.WHITE))
-		r.add_child(cell(tr(p["role"]), 100, C_DIM))
-		r.add_child(cell(tr("Матчей: %d") % int(p["matches"]), 120, Color("d6dbe3")))
-		r.add_child(cell(tr("ОБЩ") + " %d" % gs.ovr(p), 80, stat_color(gs.ovr(p))))
-		v.add_child(r)
-	var c2 := _card()
-	content.add_child(c2)
-	var v2 := vbox(4)
-	c2.add_child(v2)
-	v2.add_child(label(tr("История карьеры · Титулов: %d") % gs.titles, 17, Color.WHITE))
-	if gs.history.is_empty():
-		v2.add_child(label(tr("Пока пусто."), 14, C_DIM))
-	for t in gs.history:
-		v2.add_child(label(t, 13, C_DIM))
-
-func screen_finance() -> void:
-	var income: int = int(4000 + gs.rep * 70.0 + float(gs.tier) * 3500.0)
-	var salaries: int = 0
-	for p in gs.players:
-		salaries += int(p["salary"])
-	var staff: int = 800 + gs.tier * 600 + gs.staff_count * 400
-	var net: int = income - salaries - staff
-	var c := _card()
-	content.add_child(c)
-	var v := vbox(8)
-	c.add_child(v)
-	v.add_child(label(tr("Баланс: %s") % money_fmt(gs.money), 22, C_GOOD if gs.money >= 0 else C_BAD))
-	for e in [[tr("Спонсоры (в неделю)"), income, C_GOOD], [tr("Зарплаты игроков"), -salaries, C_BAD], [tr("Штаб и инфраструктура"), -staff, C_BAD]]:
-		var r := hbox(10)
-		r.add_child(cell(e[0], 260, Color("d6dbe3")))
-		r.add_child(cell(("+" if int(e[1]) >= 0 else "") + money_fmt(int(e[1])), 120, e[2]))
-		v.add_child(r)
-	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.1)
-	sep.custom_minimum_size = Vector2(0, 1)
-	v.add_child(sep)
-	var r2 := hbox(10)
-	r2.add_child(cell(tr("Итого за неделю"), 260, Color.WHITE))
-	r2.add_child(cell(("+" if net >= 0 else "") + money_fmt(net), 120, C_GOOD if net >= 0 else C_BAD))
-	v.add_child(r2)
-	v.add_child(label(tr("Призовые: победа в матче +$%d, места в лиге и титулы — в конце сезона.") % (1500 * (gs.tier + 1)), 12, C_DIM))
-
 func table_header() -> HBoxContainer:
 	var h := hbox(4)
 	h.add_child(cell("#", 30, C_DIM)); h.add_child(cell(tr("Команда"), 220, C_DIM)); h.add_child(cell(tr("В"), 40, C_DIM)); h.add_child(cell(tr("П"), 40, C_DIM)); h.add_child(cell(tr("Раунды ±"), 80, C_DIM))
@@ -2522,59 +2433,243 @@ func on_finish_week() -> void:
 		gs.add_news(rep_txt)
 		refresh_top()
 
+# ------------------------------------------------------------ общие элементы разделов
+
+func _hdr_card(icon: String, t: String, sub: String, right: Control = null) -> PanelContainer:
+	var c := _card()
+	var h := hbox(14)
+	c.add_child(h)
+	var ib := PanelContainer.new()
+	var isb := StyleBoxFlat.new()
+	var tc := Color(gs.team_color)
+	isb.bg_color = Color(tc.r, tc.g, tc.b, 0.22)
+	isb.set_corner_radius_all(10)
+	isb.set_content_margin_all(10)
+	ib.add_theme_stylebox_override("panel", isb)
+	ib.add_child(UITheme.icon(icon, 30, tc.lightened(0.3)))
+	h.add_child(ib)
+	var v := vbox(2)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_child(label(t, 22, Color.WHITE))
+	v.add_child(label(sub, 13, C_DIM))
+	h.add_child(v)
+	if right != null:
+		right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(right)
+	return c
+
+func _stat_tile(t: String, val: String, col: Color = Color.WHITE, icon: String = "") -> PanelContainer:
+	var c := _card()
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var h := hbox(10)
+	c.add_child(h)
+	if icon != "":
+		h.add_child(UITheme.icon(icon, 26, C_DIM))
+	var v := vbox(0)
+	v.add_child(label(t.to_upper(), 11, C_DIM))
+	v.add_child(label(val, 22, col))
+	h.add_child(v)
+	return c
+
+func _sel_card(icon: String, t: String, desc: String, selected: bool, cb: Callable, accent: Color = C_ACC) -> Control:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(accent.r, accent.g, accent.b, 0.18) if selected else Color(0.09, 0.12, 0.17, 0.88)
+	sb.border_color = accent if selected else Color(1, 1, 1, 0.08)
+	sb.set_border_width_all(2 if selected else 1)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(12)
+	card.add_theme_stylebox_override("panel", sb)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var v := vbox(6)
+	card.add_child(v)
+	var h := hbox(8)
+	h.add_child(UITheme.icon(icon, 26, accent if selected else Color("c9ced8")))
+	var tl := label(t, 14, Color.WHITE)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tl.custom_minimum_size = Vector2(110, 0)
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(tl)
+	if selected:
+		h.add_child(UITheme.icon("check_circle", 20, accent))
+	v.add_child(h)
+	var d := label(desc, 12, C_DIM)
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	d.custom_minimum_size = Vector2(140, 0)
+	v.add_child(d)
+	var hit := Button.new()
+	hit.flat = true
+	for st in ["normal", "hover", "pressed", "focus"]:
+		hit.add_theme_stylebox_override(st, _flat_style())
+	if not selected:
+		hit.mouse_entered.connect(func(): sb.border_color = Color(accent.r, accent.g, accent.b, 0.6))
+		hit.mouse_exited.connect(func(): sb.border_color = Color(1, 1, 1, 0.08))
+	hit.pressed.connect(cb)
+	card.add_child(hit)
+	_ignore_mouse(v)
+	return card
+
+func _bar(v: float, mx: float, col: Color, w: int = 120, h: int = 8) -> ProgressBar:
+	var b := ProgressBar.new()
+	b.min_value = 0
+	b.max_value = mx
+	b.value = v
+	b.show_percentage = false
+	b.custom_minimum_size = Vector2(w, h)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var fs := StyleBoxFlat.new()
+	fs.bg_color = col
+	fs.set_corner_radius_all(4)
+	b.add_theme_stylebox_override("fill", fs)
+	return b
+
+func _form_col(f: int) -> Color:
+	return C_GOOD if f >= 70 else (C_ACC if f >= 45 else C_BAD)
+
+# ------------------------------------------------------------ почта
+
+var mail_sel: int = 0
+
+func screen_mail() -> void:
+	if not gs.mail.is_empty():
+		mail_sel = clampi(mail_sel, 0, gs.mail.size() - 1)
+		gs.mail[mail_sel]["read"] = true
+	content.add_child(_hdr_card("mail", tr("Почта"), tr("Писем: %d · непрочитанных: %d") % [gs.mail.size(), gs.unread_mail()]))
+	if gs.mail.is_empty():
+		var c0 := _card()
+		c0.add_child(label(tr("Писем нет."), 14, C_DIM))
+		content.add_child(c0)
+		return
+	mail_sel = clampi(mail_sel, 0, gs.mail.size() - 1)
+	gs.mail[mail_sel]["read"] = true
+	var cols := hbox(12)
+	content.add_child(cols)
+	var lc := _card()
+	lc.custom_minimum_size = Vector2(380, 0)
+	cols.add_child(lc)
+	var lv := vbox(4)
+	lc.add_child(lv)
+	var kind_col := {"good": C_GOOD, "bad": C_BAD, "info": Color("5aa9ff")}
+	for i in mini(gs.mail.size(), 14):
+		var ml: Dictionary = gs.mail[i]
+		var row := PanelContainer.new()
+		var rs := StyleBoxFlat.new()
+		rs.bg_color = Color(0.2, 0.45, 0.85, 0.3) if i == mail_sel else Color(1, 1, 1, 0.03)
+		rs.border_width_left = 4
+		rs.border_color = kind_col.get(ml.get("kind", "info"), Color("5aa9ff"))
+		rs.set_corner_radius_all(6)
+		rs.set_content_margin_all(8)
+		row.add_theme_stylebox_override("panel", rs)
+		var rv := vbox(1)
+		var top := hbox(6)
+		top.add_child(label(str(ml["from"]), 12, C_DIM))
+		top.add_child(spacer())
+		top.add_child(label(tr("С%d Н%d") % [int(ml["season"]), int(ml["week"])], 11, C_DIM))
+		rv.add_child(top)
+		var sl := label(str(ml["subject"]), 14, Color.WHITE if not bool(ml["read"]) else Color("c9ced8"))
+		if not bool(ml["read"]):
+			sl.add_theme_font_override("font", UITheme.bold())
+		sl.clip_text = true
+		sl.custom_minimum_size = Vector2(330, 0)
+		rv.add_child(sl)
+		row.add_child(rv)
+		var hit := Button.new()
+		hit.flat = true
+		for st in ["normal", "hover", "pressed", "focus"]:
+			hit.add_theme_stylebox_override(st, _flat_style())
+		var idx: int = i
+		hit.pressed.connect(func(): mail_sel = idx; show_screen("mail", false))
+		row.add_child(hit)
+		_ignore_mouse(rv)
+		lv.add_child(row)
+	var ml2: Dictionary = gs.mail[mail_sel]
+	var rc := _card()
+	rc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(rc)
+	var rv2 := vbox(10)
+	rc.add_child(rv2)
+	rv2.add_child(label(str(ml2["subject"]), 20, Color.WHITE))
+	rv2.add_child(label(tr("От: %s · сезон %d, неделя %d") % [ml2["from"], int(ml2["season"]), int(ml2["week"])], 12, C_DIM))
+	var sep := ColorRect.new()
+	sep.color = Color(1, 1, 1, 0.08)
+	sep.custom_minimum_size = Vector2(0, 1)
+	rv2.add_child(sep)
+	rv2.add_child(wrap_label(str(ml2["body"]), 15, Color("d6dbe3"), 560))
+	refresh_top()
+
 # ------------------------------------------------------------ состав
 
 func screen_squad() -> void:
-	content.add_child(title(tr("Состав (первые 5 здоровых игроков выходят на карту)")))
-	if gs.staff_coach != "":
-		var sp := panel()
-		var sh := hbox(12)
-		sp.add_child(sh)
-		sh.add_child(portrait({"photo": gs.staff_photo}, 56))
-		var sv := vbox(2)
-		sv.add_child(label(tr("Тренер состава: ") + gs.staff_coach, 17))
-		sv.add_child(label(tr("Работает в вашем штабе: +1.5 к силе команды"), 13, C_DIM))
-		sh.add_child(sv)
-		content.add_child(sp)
-	var p := panel()
-	var v := vbox(5)
-	p.add_child(v)
-	var h := hbox(4)
-	for e in [["", 34], [tr("Ник"), 108], [tr("Роль"), 78], [tr("Воз"), 36], [tr("Аим"), 40], [tr("ИИ"), 40], [tr("Сыг"), 40], [tr("ОБЩ"), 44], [tr("Форма"), 56], [tr("Зарплата"), 70], [tr("Статус"), 96]]:
-		h.add_child(cell(e[0], e[1], C_DIM, 13))
+	var pw: Dictionary = gs.team_power(gs.style, gs.train_map)
+	content.add_child(_hdr_card("groups", tr("Состав"), tr("На карту выходят первые 5 здоровых игроков. Игроков: %d/%d") % [gs.players.size(), gs.MAX_ROSTER]))
+	var tiles := hbox(10)
+	var avg: float = 0.0
+	var fsum: float = 0.0
+	for p in gs.players:
+		avg += gs.ovr(p)
+		fsum += float(p["form"])
+	var n: float = maxf(1.0, gs.players.size())
+	tiles.add_child(_stat_tile(tr("Средний ОБЩ"), "%d" % int(avg / n), stat_color(int(avg / n)), "star"))
+	tiles.add_child(_stat_tile(tr("Средняя форма"), "%d%%" % int(fsum / n), _form_col(int(fsum / n)), "favorite"))
+	tiles.add_child(_stat_tile(tr("Атака"), "%.1f" % pw["atk"], C_ACC, "flash_on"))
+	tiles.add_child(_stat_tile(tr("Защита"), "%.1f" % pw["dfn"], Color("5aa9ff"), "shield"))
+	tiles.add_child(_stat_tile(tr("Зарплаты / нед."), money_fmt(gs.player_salaries()), C_DIM, "payments"))
+	content.add_child(tiles)
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(4)
+	c.add_child(v)
+	var h := hbox(6)
+	for e in [["", 44], ["", 22], [tr("Игрок"), 160], [tr("Роль"), 90], [tr("Воз"), 36], [tr("ОБЩ"), 44], [tr("Форма"), 130], [tr("Зарплата"), 70], [tr("Статус"), 96]]:
+		h.add_child(cell(e[0], e[1], C_DIM, 12))
 	v.add_child(h)
 	var lineup_ids: Array = []
 	for q in gs.lineup():
 		lineup_ids.append(q["id"])
 	for i in gs.players.size():
 		var pl: Dictionary = gs.players[i]
-		var r := hbox(4)
 		var starter: bool = lineup_ids.has(pl["id"])
-		r.add_child(portrait(pl, 34))
+		var row := PanelContainer.new()
+		var rs := StyleBoxFlat.new()
+		rs.bg_color = Color(1, 1, 1, 0.045) if starter else Color(1, 1, 1, 0.015)
+		rs.border_width_left = 3
+		rs.border_color = Color(gs.team_color) if starter else Color(1, 1, 1, 0.1)
+		rs.set_corner_radius_all(6)
+		rs.content_margin_left = 6; rs.content_margin_top = 4; rs.content_margin_bottom = 4
+		row.add_theme_stylebox_override("panel", rs)
+		var r := hbox(6)
+		row.add_child(r)
+		r.add_child(portrait(pl, 40))
 		r.add_child(_flag(str(pl.get("country", "xx")), 20))
-		r.add_child(_nick_link(pl, 108, C_ACC if starter else C_DIM))
-		r.add_child(cell(pl["role"], 78))
+		var nv := vbox(0)
+		nv.custom_minimum_size = Vector2(160, 0)
+		nv.add_child(_nick_link(pl, 160, Color.WHITE if starter else Color("c9ced8")))
+		var full: String = ("%s %s" % [tr(str(pl.get("first", ""))), tr(str(pl.get("last", "")))]).strip_edges()
+		if full != "":
+			nv.add_child(label(full, 11, C_DIM))
+		r.add_child(nv)
+		r.add_child(cell(tr(pl["role"]), 90, C_ACC))
 		r.add_child(cell(str(pl["age"]), 36, C_DIM))
-		r.add_child(cell(str(pl["aim"]), 40, stat_color(pl["aim"])))
-		r.add_child(cell(str(pl["iq"]), 40, stat_color(pl["iq"])))
-		r.add_child(cell(str(pl["tw"]), 40, stat_color(pl["tw"])))
-		r.add_child(cell(str(gs.ovr(pl)), 44, stat_color(gs.ovr(pl))))
-		var fc: Color = C_GOOD if pl["form"] >= 70 else (C_ACC if pl["form"] >= 45 else C_BAD)
-		r.add_child(cell(str(pl["form"]) + "%", 56, fc))
+		r.add_child(cell(str(gs.ovr(pl)), 44, stat_color(gs.ovr(pl)), 16))
+		var fh := hbox(6)
+		fh.custom_minimum_size = Vector2(130, 0)
+		fh.add_child(_bar(float(pl["form"]), 100.0, _form_col(int(pl["form"])), 80))
+		fh.add_child(label("%d%%" % int(pl["form"]), 12, _form_col(int(pl["form"]))))
+		r.add_child(fh)
 		r.add_child(cell("$" + str(pl["salary"]), 70, C_DIM))
 		var st := tr("Основа") if starter else tr("Скамейка")
 		var stc: Color = C_GOOD if starter else C_DIM
-		if pl["inj"] > 0:
-			st = tr("Травма %dн") % pl["inj"]
+		if int(pl["inj"]) > 0:
+			st = tr("Травма %dн") % int(pl["inj"])
 			stc = C_BAD
 		r.add_child(cell(st, 96, stc))
+		r.add_child(spacer())
 		var idx: int = i
-		r.add_child(icon_btn("arrow_upward", tr("Вверх"), func(): gs.move_player(idx, -1); show_screen("squad")))
-		r.add_child(icon_btn("arrow_downward", tr("Вниз"), func(): gs.move_player(idx, 1); show_screen("squad")))
-		r.add_child(small_btn(tr("Продать"), func(): gs.sell_player(idx); show_screen("squad")))
-		r.add_child(small_btn(tr("Отчислить"), func(): gs.release_player(idx); show_screen("squad"), C_BAD))
-		v.add_child(r)
-	content.add_child(p)
+		r.add_child(icon_btn("arrow_upward", tr("Вверх"), func(): gs.move_player(idx, -1); show_screen("squad", false)))
+		r.add_child(icon_btn("arrow_downward", tr("Вниз"), func(): gs.move_player(idx, 1); show_screen("squad", false)))
+		r.add_child(small_btn(tr("Продать"), func(): gs.sell_player(idx); show_screen("squad", false)))
+		r.add_child(small_btn(tr("Отчислить"), func(): gs.release_player(idx); show_screen("squad", false), C_BAD))
+		v.add_child(row)
 	var roles: Array = []
 	for q in gs.lineup():
 		if not roles.has(q["role"]):
@@ -2583,196 +2678,544 @@ func screen_squad() -> void:
 	for rr in gs.ROLES:
 		if not roles.has(rr):
 			miss.append(rr)
-	var info := label(tr("Роли в основе: %d/5.%s") % [roles.size(), (tr(" Не хватает: ") + ", ".join(miss.map(func(x): return tr(x))) + tr(" (бонус к силе команды)")) if miss.size() > 0 else tr(" Полный набор ролей: бонус +2!")], 14, C_DIM)
-	content.add_child(info)
-	var pw: Dictionary = gs.team_power(gs.style, gs.train_map)
-	content.add_child(label(tr("Сила команды: атака %.1f · защита %.1f") % [pw["atk"], pw["dfn"]], 15, C_ACC))
+	content.add_child(_alert(tr("Полный набор ролей в основе: бонус +2 к силе!") if miss.is_empty() else tr("Не хватает ролей: %s") % ", ".join(miss.map(func(x): return tr(x))), miss.is_empty()))
 
-# ------------------------------------------------------------ тренировки
+# ------------------------------------------------------------ штат
+
+func screen_staff() -> void:
+	content.add_child(_hdr_card("badge", tr("Штат"), tr("Сотрудники усиливают команду. Зарплаты штаба: %s в неделю") % money_fmt(gs.staff_salaries())))
+	var top := hbox(12)
+	content.add_child(top)
+	var mc := _card()
+	mc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(mc)
+	var mh := hbox(14)
+	mc.add_child(mh)
+	mh.add_child(_circle(gs.photo_path, 80, Color(gs.team_color)))
+	var mv := vbox(2)
+	mv.add_child(label("%s%s" % [gs.coach_name, (" \"%s\"" % gs.coach_nick) if gs.coach_nick != "" else ""], 18, Color.WHITE))
+	mv.add_child(label(tr("Главный менеджер"), 13, C_ACC))
+	mv.add_child(label(tr("Тактика %d · Мотивация %d · Скаутинг %d") % [int(gs.coach_skill["tactics"]), int(gs.coach_skill["motivation"]), int(gs.coach_skill["scout"])], 12, C_DIM))
+	mh.add_child(mv)
+	if gs.staff_coach != "":
+		var cc := _card()
+		cc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(cc)
+		var ch := hbox(14)
+		cc.add_child(ch)
+		ch.add_child(_circle(gs.staff_photo, 80))
+		var cv := vbox(2)
+		cv.add_child(label(gs.staff_coach, 18, Color.WHITE))
+		cv.add_child(label(tr("Тренер состава"), 13, C_ACC))
+		cv.add_child(label(tr("+1.5 к силе команды"), 12, C_DIM))
+		ch.add_child(cv)
+	var sb := _block(tr("Персонал"))
+	content.add_child(sb)
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	sb.add_child(grid)
+	for role in gs.STAFF_ROLES:
+		var idx: int = -1
+		for i in gs.staff_list.size():
+			if gs.staff_list[i]["role"] == role:
+				idx = i
+		var c := _card()
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		c.custom_minimum_size = Vector2(170, 210)
+		var v := vbox(5)
+		c.add_child(v)
+		var rl := label(tr(gs.STAFF_ROLES[role][0]).to_upper(), 12, C_ACC)
+		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(rl)
+		if idx >= 0:
+			var s: Dictionary = gs.staff_list[idx]
+			var pc := _circle(str(s["photo"]), 70)
+			pc.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			v.add_child(pc)
+			var nl := label(tr(str(s["name"]).split(" ")[0]) + " " + tr(str(s["name"]).split(" ")[1]) if str(s["name"]).split(" ").size() > 1 else str(s["name"]), 13, Color.WHITE)
+			nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			v.add_child(nl)
+			var stl := _stars(float(s["lvl"]), 13)
+			stl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			v.add_child(stl)
+			var sl := label("$%d / %s" % [int(s["salary"]), tr("нед.")], 11, C_DIM)
+			sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			v.add_child(sl)
+			var ii: int = idx
+			v.add_child(small_btn(tr("Уволить"), func(): gs.fire_staff(ii); show_screen("staff", false), C_BAD))
+		else:
+			var e := _circle("", 70, Color(1, 1, 1, 0.15))
+			e.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			v.add_child(e)
+			var vl := label(tr("Вакансия"), 13, C_DIM)
+			vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			v.add_child(vl)
+			var dl := label(tr(gs.STAFF_ROLES[role][1]), 11, C_DIM)
+			dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			dl.custom_minimum_size = Vector2(150, 0)
+			v.add_child(dl)
+		grid.add_child(c)
+	var hb := _block(tr("Кандидаты на найм"))
+	content.add_child(hb)
+	var hc := _card()
+	hb.add_child(hc)
+	var hv := vbox(4)
+	hc.add_child(hv)
+	for i in gs.staff_market.size():
+		var s2: Dictionary = gs.staff_market[i]
+		var r := hbox(10)
+		r.add_child(_circle(str(s2["photo"]), 36))
+		r.add_child(cell(str(s2["name"]), 170, Color.WHITE))
+		r.add_child(cell(tr(gs.STAFF_ROLES[s2["role"]][0]), 160, C_ACC))
+		r.add_child(_stars(float(s2["lvl"]), 13))
+		r.add_child(cell(tr("Подъёмные %s") % money_fmt(int(s2["fee"])), 170, C_GOOD if gs.money >= int(s2["fee"]) else C_BAD, 12))
+		r.add_child(cell("$%d / %s" % [int(s2["salary"]), tr("нед.")], 100, C_DIM, 12))
+		r.add_child(spacer())
+		var ii2: int = i
+		var hire := small_btn(tr("Нанять"), func():
+			var err: String = gs.hire_staff(ii2)
+			if err != "":
+				gs.add_news(err)
+			show_screen("staff", false), C_GOOD)
+		hire.disabled = gs.staff_level(s2["role"]) > 0
+		r.add_child(hire)
+		hv.add_child(r)
+
+# ------------------------------------------------------------ тренировка
 
 func screen_training() -> void:
-	content.add_child(title(tr("Тренировки и тактика")))
-	var p := panel()
-	var v := vbox(8)
-	p.add_child(v)
-	v.add_child(label(tr("Недельный фокус тренировок"), 17, C_ACC))
-	var ob := OptionButton.new()
-	var keys: Array = gs.TRAIN.keys()
-	for k in keys:
-		ob.add_item(tr(gs.TRAIN[k]))
-	ob.selected = keys.find(gs.train_focus)
-	ob.item_selected.connect(func(i): gs.train_focus = keys[i]; show_screen("training"))
-	v.add_child(ob)
-	if gs.train_focus == "maps":
-		var mo := OptionButton.new()
-		for mm in gs.MAPS:
-			mo.add_item(tr("%s (мастерство %d)") % [mm, int(gs.map_skill[mm])])
-		mo.selected = gs.MAPS.find(gs.train_map)
-		mo.item_selected.connect(func(i): gs.train_map = gs.MAPS[i]; show_screen("training"))
-		v.add_child(mo)
-	var desc := {"aim": tr("Растёт аим. Утомляет игроков."), "iq": tr("Растёт игровое мышление. Утомляет игроков."), "tw": tr("Растёт сыгранность. Слегка утомляет."), "maps": tr("Команда лучше знает выбранную карту (+бонус к силе на ней)."), "rest": tr("Игроки восстанавливают форму (+16%).")}
-	v.add_child(label(desc[gs.train_focus], 14, C_DIM))
-	content.add_child(p)
-
-	var tp := panel()
-	var tv := vbox(8)
-	tp.add_child(tv)
-	tv.add_child(label(tr("Стиль игры"), 17, C_ACC))
-	var so := OptionButton.new()
-	var skeys: Array = gs.STYLES.keys()
-	for k in skeys:
-		so.add_item(tr(gs.STYLES[k]))
-	so.selected = skeys.find(gs.style)
-	so.item_selected.connect(func(i): gs.style = skeys[i]; show_screen("training"))
-	tv.add_child(so)
-	tv.add_child(label(tr(gs.STYLE_DESC[gs.style]), 14, C_DIM))
-	content.add_child(tp)
-
-	var mp := panel()
-	var mv := vbox(4)
-	mp.add_child(mv)
-	mv.add_child(label(tr("Пул карт"), 17, C_ACC))
+	content.add_child(_hdr_card("fitness_center", tr("Тренировка"), tr("Фокус недели применяется при нажатии «Продолжить»")))
+	var fb := _block(tr("Фокус тренировок"))
+	content.add_child(fb)
+	var fr := hbox(10)
+	fb.add_child(fr)
+	var icons := {"aim": "gps_fixed", "iq": "psychology", "tw": "diversity_3", "maps": "map", "rest": "hotel"}
+	var desc := {"aim": tr("Навык, оружие, реакция. Утомляет игроков."), "iq": tr("Тактика, креативность, клатч. Утомляет игроков."), "tw": tr("Командная работа, лидерство, мораль. Слегка утомляет."), "maps": tr("Мастерство на выбранной карте."), "rest": tr("Игроки восстанавливают форму (+16%).")}
+	for k in gs.TRAIN:
+		var key: String = k
+		fr.add_child(_sel_card(icons[k], tr(gs.TRAIN[k]), desc[k], gs.train_focus == k, func(): gs.train_focus = key; show_screen("training", false)))
+	var sb := _block(tr("Стиль игры"))
+	content.add_child(sb)
+	var sr := hbox(10)
+	sb.add_child(sr)
+	var sicons := {"aggro": "local_fire_department", "balanced": "balance", "defense": "shield"}
+	for k in gs.STYLES:
+		var key2: String = k
+		sr.add_child(_sel_card(sicons[k], tr(gs.STYLES[k]), tr(gs.STYLE_DESC[k]), gs.style == k, func(): gs.style = key2; show_screen("training", false), Color("5aa9ff")))
+	var cols := hbox(12)
+	content.add_child(cols)
+	var mb := _block(tr("Пул карт"))
+	mb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(mb)
+	var mc := _card()
+	mb.add_child(mc)
+	var mv := vbox(6)
+	mc.add_child(mv)
 	for mm in gs.MAPS:
-		var r := hbox(8)
-		r.add_child(cell(mm, 120))
-		var bar := ProgressBar.new()
-		bar.min_value = 0
-		bar.max_value = 100
-		bar.value = int(gs.map_skill[mm])
-		bar.custom_minimum_size = Vector2(240, 18)
-		bar.show_percentage = false
+		var r := hbox(10)
+		var sel: bool = gs.train_focus == "maps" and gs.train_map == mm
+		var mbn := small_btn(mm, func(): gs.train_map = mm; gs.train_focus = "maps"; show_screen("training", false), C_ACC if sel else Color.WHITE)
+		mbn.custom_minimum_size = Vector2(110, 0)
+		r.add_child(mbn)
+		var bar := _bar(float(gs.map_skill[mm]), 100.0, Color("5aa9ff") if not sel else C_ACC, 220, 10)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		r.add_child(bar)
-		r.add_child(cell(str(int(gs.map_skill[mm])), 40, C_DIM))
+		r.add_child(cell(str(int(gs.map_skill[mm])), 34, Color.WHITE))
 		mv.add_child(r)
-	content.add_child(mp)
+	mv.add_child(label(tr("Нажмите на карту, чтобы отработать её на этой неделе."), 11, C_DIM))
+	var pb := _block(tr("Форма игроков"))
+	pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(pb)
+	var pc := _card()
+	pb.add_child(pc)
+	var pv := vbox(6)
+	pc.add_child(pv)
+	for p in gs.players:
+		var r2 := hbox(10)
+		r2.add_child(portrait(p, 30))
+		r2.add_child(cell(p["nick"], 110, Color.WHITE))
+		var b := _bar(float(p["form"]), 100.0, _form_col(int(p["form"])), 160, 10)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r2.add_child(b)
+		r2.add_child(cell("%d%%" % int(p["form"]), 44, _form_col(int(p["form"]))))
+		pv.add_child(r2)
 
 # ------------------------------------------------------------ трансферы
 
+var tr_role: String = ""
+var tr_sort: String = "ovr"
+
 func screen_transfers() -> void:
-	content.add_child(title(tr("Рынок свободных агентов")))
-	content.add_child(label(tr("Состав: %d/%d · Деньги: %s · Скаутинг ур.%d (чем выше — тем точнее оценка потенциала)") % [gs.players.size(), gs.MAX_ROSTER, money_fmt(gs.money), int(gs.coach_skill["scout"])], 14, C_DIM))
-	var p := panel()
-	var v := vbox(5)
-	p.add_child(v)
-	var h := hbox(4)
-	for e in [["", 34], [tr("Ник"), 130], [tr("Роль"), 80], [tr("Воз"), 40], [tr("Аим"), 44], [tr("ИИ"), 44], [tr("Сыг"), 44], [tr("ОБЩ"), 48], [tr("Потенциал"), 80], [tr("Цена"), 90], [tr("Зарплата"), 80]]:
-		h.add_child(cell(e[0], e[1], C_DIM, 13))
-	v.add_child(h)
+	content.add_child(_hdr_card("swap_horiz", tr("Трансферы"), tr("Свободные агенты. Состав: %d/%d · Бюджет: %s") % [gs.players.size(), gs.MAX_ROSTER, money_fmt(gs.money)]))
+	var fr := hbox(8)
+	fr.add_child(label(tr("Роль:"), 13, C_DIM))
+	for rr in [""] + gs.ROLES:
+		var key: String = rr
+		var b := small_btn(tr("Все") if rr == "" else tr(rr), func(): tr_role = key; show_screen("transfers", false), C_ACC if tr_role == rr else Color.WHITE)
+		fr.add_child(b)
+	content.add_child(fr)
+	fr = hbox(8)
+	fr.add_child(label(tr("Сортировка:"), 13, C_DIM))
+	for so in [["ovr", tr("ОБЩ")], ["pot", tr("Потенциал")], ["fee", tr("Цена")], ["age", tr("Возраст")]]:
+		var sk: String = so[0]
+		fr.add_child(small_btn(so[1], func(): tr_sort = sk; show_screen("transfers", false), C_ACC if tr_sort == sk else Color.WHITE))
+	content.add_child(fr)
+	var idxs: Array = []
 	for i in gs.market.size():
+		if tr_role == "" or gs.market[i]["role"] == tr_role:
+			idxs.append(i)
+	idxs.sort_custom(func(a, b):
+		var pa: Dictionary = gs.market[a]
+		var pb: Dictionary = gs.market[b]
+		match tr_sort:
+			"pot": return int(pa.get("pot_est", pa["pot"])) > int(pb.get("pot_est", pb["pot"]))
+			"fee": return gs.fee(pa) < gs.fee(pb)
+			"age": return int(pa["age"]) < int(pb["age"])
+		return gs.ovr(pa) > gs.ovr(pb))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	content.add_child(grid)
+	if idxs.is_empty():
+		content.add_child(label(tr("Нет игроков под фильтр."), 14, C_DIM))
+	for i in idxs:
 		var pl: Dictionary = gs.market[i]
-		var r := hbox(4)
-		r.add_child(portrait(pl, 34))
-		r.add_child(_flag(str(pl.get("country", "xx")), 20))
-		r.add_child(_nick_link(pl, 130, C_ACC))
-		r.add_child(cell(pl["role"], 80))
-		r.add_child(cell(str(pl["age"]), 40, C_DIM))
-		r.add_child(cell(str(pl["aim"]), 44, stat_color(pl["aim"])))
-		r.add_child(cell(str(pl["iq"]), 44, stat_color(pl["iq"])))
-		r.add_child(cell(str(pl["tw"]), 44, stat_color(pl["tw"])))
-		r.add_child(cell(str(gs.ovr(pl)), 48, stat_color(gs.ovr(pl))))
+		var c := _card()
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var v := vbox(5)
+		c.add_child(v)
+		var h := hbox(10)
+		h.add_child(portrait(pl, 54))
+		var hv := vbox(0)
+		var nr := hbox(5)
+		nr.add_child(_flag(str(pl.get("country", "xx")), 18))
+		nr.add_child(_nick_link(pl, 110, Color.WHITE))
+		hv.add_child(nr)
+		hv.add_child(label("%s · %d %s" % [tr(pl["role"]), int(pl["age"]), tr("лет")], 12, C_ACC))
+		h.add_child(hv)
+		h.add_child(spacer())
+		var ov := vbox(0)
+		ov.add_child(label(str(gs.ovr(pl)), 22, stat_color(gs.ovr(pl))))
+		ov.add_child(label(tr("ОБЩ"), 10, C_DIM))
+		h.add_child(ov)
+		v.add_child(h)
 		var pe: int = int(pl.get("pot_est", pl["pot"]))
-		r.add_child(cell("~%d" % pe if int(gs.coach_skill["scout"]) < 6 else str(pe), 80, stat_color(pe)))
+		var pr := hbox(6)
+		pr.add_child(label(tr("Потенциал"), 11, C_DIM))
+		var pbar := _bar(float(pe), 100.0, Color("b18cff"), 80, 6)
+		pbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pr.add_child(pbar)
+		pr.add_child(label("~%d" % pe, 11, Color("b18cff")))
+		v.add_child(pr)
 		var fee: int = gs.fee(pl)
-		r.add_child(cell("$" + str(fee), 90, C_GOOD if gs.money >= fee else C_BAD))
-		r.add_child(cell("$" + str(pl["salary"]), 80, C_DIM))
+		var br := hbox(6)
+		var fv := vbox(0)
+		fv.add_child(label(money_fmt(fee), 15, C_GOOD if gs.money >= fee else C_BAD))
+		fv.add_child(label("$%d / %s" % [int(pl["salary"]), tr("нед.")], 10, C_DIM))
+		br.add_child(fv)
+		br.add_child(spacer())
 		var idx: int = i
-		var b := small_btn(tr("Подписать"), func():
+		var sb := small_btn(tr("Подписать"), func():
 			var err: String = gs.sign_player(idx)
 			if err != "":
 				gs.add_news(err)
-			show_screen("transfers"))
-		r.add_child(b)
-		v.add_child(r)
-	content.add_child(p)
+			show_screen("transfers", false), C_GOOD)
+		sb.disabled = gs.money < fee or gs.players.size() >= gs.MAX_ROSTER
+		br.add_child(sb)
+		v.add_child(br)
+		grid.add_child(c)
 
-# ------------------------------------------------------------ лига
+# ------------------------------------------------------------ турниры
 
 func screen_league() -> void:
-	content.add_child(title(tr("Лига: %s") % tr(gs.TIERS[gs.tier])))
-	var p := panel()
-	var v := vbox(4)
-	p.add_child(v)
-	v.add_child(table_header())
+	content.add_child(_hdr_card("emoji_events", tr("Турниры"), "%s · %s" % [tr(gs.TIERS[gs.tier]), gs.phase_name()]))
+	var cols := hbox(12)
+	content.add_child(cols)
+	var lb := _block(tr("Таблица лиги"))
+	lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(lb)
+	var lc := _card()
+	lb.add_child(lc)
+	var lv := vbox(4)
+	lc.add_child(lv)
+	var hh := hbox(6)
+	for e in [["#", 30], ["", 30], [tr("Команда"), 200], [tr("В"), 36], [tr("П"), 36], [tr("Раунды ±"), 70]]:
+		hh.add_child(cell(e[0], e[1], C_DIM, 12))
+	lv.add_child(hh)
 	var rl: Array = gs.rank_list()
 	for i in rl.size():
-		v.add_child(table_row(i + 1, rl[i]))
-	v.add_child(label(tr("Топ-4 выходят в плей-офф. Топ-2 повышаются в дивизионе, два последних — вылетают."), 13, C_DIM))
-	content.add_child(p)
-	var pp := panel()
-	var pv := vbox(4)
-	pp.add_child(pv)
-	pv.add_child(label(tr("Плей-офф"), 17, C_ACC))
-	if gs.playoff["semis"].is_empty():
-		pv.add_child(label(tr("Начнётся после 7-го тура."), 14, C_DIM))
-	else:
-		for i in gs.playoff["semis"].size():
-			var s: Array = gs.playoff["semis"][i]
-			var w: String = str(gs.playoff["sf"].get(str(i), ""))
-			pv.add_child(label(tr("Полуфинал %d: %s — %s%s") % [i + 1, s[0], s[1], ("  → " + w) if w != "" else ""], 14))
-		if not gs.playoff["final"].is_empty():
-			pv.add_child(label(tr("Финал: %s — %s%s") % [gs.playoff["final"][0], gs.playoff["final"][1], (tr("  → ЧЕМПИОН: ") + gs.playoff["champion"]) if gs.playoff["champion"] != "" else ""], 15, C_ACC))
-	content.add_child(pp)
-	var hp := panel()
-	var hv := vbox(3)
-	hp.add_child(hv)
-	hv.add_child(label(tr("История карьеры · Титулов: %d") % gs.titles, 17, C_ACC))
+		var tn: String = rl[i]
+		var s: Dictionary = gs.standings[tn]
+		var mine: bool = tn == gs.team_name
+		var row := PanelContainer.new()
+		var rs := StyleBoxFlat.new()
+		rs.bg_color = Color(1, 0.7, 0.24, 0.12) if mine else Color(1, 1, 1, 0.025)
+		rs.border_width_left = 3
+		rs.border_color = C_GOOD if i < 4 else Color(1, 1, 1, 0.1)
+		rs.set_corner_radius_all(5)
+		rs.set_content_margin_all(6)
+		row.add_theme_stylebox_override("panel", rs)
+		var r := hbox(6)
+		row.add_child(r)
+		r.add_child(cell(str(i + 1), 30, C_ACC if mine else Color.WHITE, 15))
+		r.add_child(team_icon(tn, 26))
+		r.add_child(cell(tn, 200, C_ACC if mine else Color.WHITE, 15))
+		r.add_child(cell(str(int(s["w"])), 36, C_GOOD))
+		r.add_child(cell(str(int(s["l"])), 36, C_BAD))
+		r.add_child(cell(("+" if int(s["rd"]) > 0 else "") + str(int(s["rd"])), 70, C_DIM))
+		lv.add_child(row)
+	lv.add_child(label(tr("Зелёная полоса — зона плей-офф."), 11, C_DIM))
+	var pb := _block(tr("Плей-офф"))
+	pb.custom_minimum_size = Vector2(360, 0)
+	cols.add_child(pb)
+	var pc := _card()
+	pb.add_child(pc)
+	var pv := vbox(8)
+	pc.add_child(pv)
+	if gs.week <= 7:
+		pv.add_child(label(tr("Начнётся после 7-го тура (через %d нед.).") % (8 - gs.week), 13, C_DIM))
+	for i in gs.playoff["semis"].size():
+		var sm: Array = gs.playoff["semis"][i]
+		pv.add_child(_match_box(tr("Полуфинал %d") % (i + 1), sm[0], sm[1], str(gs.playoff["sf"].get(str(i), ""))))
+	if not gs.playoff["final"].is_empty():
+		pv.add_child(_match_box(tr("ФИНАЛ"), gs.playoff["final"][0], gs.playoff["final"][1], str(gs.playoff["champion"])))
+	if str(gs.playoff["champion"]) != "":
+		var ch := hbox(8)
+		ch.add_child(pic("res://assets/ui/trophy.png", 40))
+		ch.add_child(label(tr("Чемпион: %s") % gs.playoff["champion"], 16, Color("f5c518")))
+		pv.add_child(ch)
+	pv.add_child(label(tr("Призы: 1 место $%d, 2 место $%d · Чемпион плей-офф +$%d") % [12000 * (gs.tier + 1), 8000 * (gs.tier + 1), 15000 * (gs.tier + 1)], 11, C_DIM))
+	var hb := _block(tr("История"))
+	content.add_child(hb)
+	var hc := _card()
+	hb.add_child(hc)
+	var hv := vbox(4)
+	hc.add_child(hv)
+	hv.add_child(label(tr("Титулов: %d") % gs.titles, 15, Color("f5c518")))
 	if gs.history.is_empty():
-		hv.add_child(label(tr("Пока пусто."), 14, C_DIM))
+		hv.add_child(label(tr("Пока пусто."), 13, C_DIM))
 	for t in gs.history:
-		hv.add_child(label(t, 13, C_DIM))
-	content.add_child(hp)
+		hv.add_child(label(t, 13, Color("c9ced8")))
 
-# ------------------------------------------------------------ тренер
+func _match_box(t: String, a: String, b: String, winner: String) -> Control:
+	var c := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.04)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(8)
+	c.add_theme_stylebox_override("panel", sb)
+	var v := vbox(3)
+	c.add_child(v)
+	v.add_child(label(t, 11, C_DIM))
+	for tn in [a, b]:
+		var r := hbox(8)
+		r.add_child(team_icon(tn, 22))
+		var col: Color = Color.WHITE
+		if winner != "":
+			col = C_GOOD if tn == winner else C_DIM
+		if tn == gs.team_name:
+			col = C_ACC if winner == "" or winner == tn else C_BAD
+		r.add_child(label(tn, 14, col))
+		v.add_child(r)
+	return c
+
+# ------------------------------------------------------------ статистика
+
+func screen_stats() -> void:
+	content.add_child(_hdr_card("bar_chart", tr("Статистика"), tr("Сезон %d") % gs.season))
+	var ts: Dictionary = gs.team_stats
+	var tiles := hbox(10)
+	tiles.add_child(_stat_tile(tr("Матчи (В-П)"), "%d-%d" % [int(ts.get("w", 0)), int(ts.get("l", 0))], Color.WHITE, "sports_esports"))
+	tiles.add_child(_stat_tile(tr("Карты (В-П)"), "%d-%d" % [int(ts.get("mw", 0)), int(ts.get("ml", 0))], Color.WHITE, "map"))
+	tiles.add_child(_stat_tile(tr("Раунды"), "%d:%d" % [int(ts.get("rw", 0)), int(ts.get("rl", 0))], Color.WHITE, "flag"))
+	var games: int = int(ts.get("w", 0)) + int(ts.get("l", 0))
+	tiles.add_child(_stat_tile(tr("Винрейт"), ("%d%%" % int(100.0 * int(ts.get("w", 0)) / games)) if games > 0 else "—", C_GOOD, "trending_up"))
+	tiles.add_child(_stat_tile(tr("Титулы"), str(gs.titles), Color("f5c518"), "emoji_events"))
+	content.add_child(tiles)
+	var pb := _block(tr("Статистика игроков"))
+	content.add_child(pb)
+	var c := _card()
+	pb.add_child(c)
+	var v := vbox(4)
+	c.add_child(v)
+	var hh := hbox(8)
+	for e in [["", 36], [tr("Игрок"), 150], [tr("Роль"), 100], [tr("Матчи"), 70], [tr("Киллы"), 70], [tr("Смерти"), 70], ["K/D", 70], [tr("ОБЩ"), 50]]:
+		hh.add_child(cell(e[0], e[1], C_DIM, 12))
+	v.add_child(hh)
+	var arr: Array = gs.players.duplicate()
+	arr.sort_custom(func(a, b): return int(a.get("st", {}).get("k", 0)) > int(b.get("st", {}).get("k", 0)))
+	for p in arr:
+		var st: Dictionary = p.get("st", {})
+		var k: int = int(st.get("k", 0))
+		var d: int = int(st.get("d", 0))
+		var kd: float = float(k) / maxf(1.0, float(d))
+		var r := hbox(8)
+		r.add_child(portrait(p, 32))
+		r.add_child(_nick_link(p, 150, Color.WHITE))
+		r.add_child(cell(tr(p["role"]), 100, C_ACC))
+		r.add_child(cell(str(int(p["matches"])), 70))
+		r.add_child(cell(str(k), 70, C_GOOD))
+		r.add_child(cell(str(d), 70, C_BAD))
+		r.add_child(cell(("%.2f" % kd) if d > 0 else "—", 70, C_GOOD if kd >= 1.0 else C_ACC))
+		r.add_child(cell(str(gs.ovr(p)), 50, stat_color(gs.ovr(p))))
+		v.add_child(r)
+
+# ------------------------------------------------------------ финансы
+
+func screen_finance() -> void:
+	var income: int = gs.weekly_income()
+	var salaries: int = gs.player_salaries()
+	var staff: int = gs.staff_salaries()
+	var upk: int = gs.upkeep()
+	var net: int = income - salaries - staff - upk
+	content.add_child(_hdr_card("payments", tr("Финансы"), tr("Баланс клуба и движение денег")))
+	var tiles := hbox(10)
+	tiles.add_child(_stat_tile(tr("Баланс"), money_fmt(gs.money), C_GOOD if gs.money >= 0 else C_BAD, "account_balance"))
+	tiles.add_child(_stat_tile(tr("Доход / нед."), "+" + money_fmt(income), C_GOOD, "trending_up"))
+	tiles.add_child(_stat_tile(tr("Расходы / нед."), "-" + money_fmt(salaries + staff + upk), C_BAD, "trending_down"))
+	tiles.add_child(_stat_tile(tr("Итог / нед."), ("+" if net >= 0 else "") + money_fmt(net), C_GOOD if net >= 0 else C_BAD, "savings"))
+	content.add_child(tiles)
+	var cols := hbox(12)
+	content.add_child(cols)
+	var bb := _block(tr("Статьи бюджета"))
+	bb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(bb)
+	var bc := _card()
+	bb.add_child(bc)
+	var bv := vbox(8)
+	bc.add_child(bv)
+	var mx: float = float(maxi(1, maxi(income, salaries + staff + upk)))
+	for e in [[tr("Спонсоры"), income, C_GOOD, "handshake"], [tr("Зарплаты игроков"), salaries, C_BAD, "groups"], [tr("Зарплаты штаба"), staff, C_BAD, "badge"], [tr("Инфраструктура"), upk, C_BAD, "home_work"]]:
+		var r := hbox(10)
+		r.add_child(UITheme.icon(e[3], 20, C_DIM))
+		r.add_child(cell(e[0], 170, Color("d6dbe3")))
+		var b := _bar(float(e[1]), mx, e[2], 180, 10)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(b)
+		r.add_child(cell(money_fmt(int(e[1])), 80, e[2]))
+		bv.add_child(r)
+	bv.add_child(label(tr("Призовые: победа в матче +$%d. Места в лиге и титулы — в конце сезона.") % (1500 * (gs.tier + 1)), 11, C_DIM))
+	var hb := _block(tr("Итог по неделям"))
+	hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(hb)
+	var hc := _card()
+	hb.add_child(hc)
+	var vals: Array = []
+	var labs: Array = []
+	for h in gs.money_hist:
+		vals.append(int(h["net"]))
+		labs.append("%d" % int(h["w"]))
+	hc.add_child(preload("res://scripts/bar_chart.gd").new().setup(vals, labs, 190))
+
+# ------------------------------------------------------------ профиль
 
 func screen_coach() -> void:
-	content.add_child(title(tr("Профиль менеджера")))
-	var pr := panel()
-	var ph := hbox(18)
-	pr.add_child(ph)
-	ph.add_child(make_avatar(gs.avatar, 140, photo_tex))
-	var pv := vbox(4)
-	ph.add_child(pv)
-	pv.add_child(label(gs.coach_name, 26))
-	pv.add_child(label(tr("%d лет · %s") % [gs.coach_age, tr(gs.coach_country)], 15, C_DIM))
-	var bgname := ""
-	for b in Teams.BACKGROUNDS:
-		if b["id"] == gs.coach_bg: bgname = b["name"]
-	pv.add_child(label(tr("Предыстория: ") + tr(bgname), 15, C_DIM))
-	pv.add_child(label(tr("Команда: %s [%s]") % [gs.team_name, gs.team_tag], 15, Color(gs.team_color)))
+	var pr := _card()
 	content.add_child(pr)
-	content.add_child(label(tr("Очки навыков: %d (дают победы, плей-офф и титулы)") % gs.coach_pts, 16, C_GOOD))
-	var p := panel()
-	var v := vbox(8)
-	p.add_child(v)
+	var ph := hbox(20)
+	pr.add_child(ph)
+	ph.add_child(_circle(gs.photo_path, 140, Color(gs.team_color)))
+	var pv := vbox(4)
+	pv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var nr := hbox(10)
+	nr.add_child(_flag(gs.coach_country_code, 30))
+	nr.add_child(label(gs.coach_name, 28, Color.WHITE))
+	pv.add_child(nr)
+	if gs.coach_nick != "":
+		pv.add_child(label("\"%s\"" % gs.coach_nick, 16, C_ACC))
+	pv.add_child(label(tr("%d лет · %s") % [gs.coach_age, tr(gs.coach_country)], 14, C_DIM))
+	var tr2 := hbox(8)
+	if tex(gs.team_logo) != null:
+		tr2.add_child(pic(gs.team_logo, 28))
+	tr2.add_child(label(tr("Главный менеджер · %s") % gs.team_name, 14, Color(gs.team_color).lightened(0.3)))
+	pv.add_child(tr2)
+	ph.add_child(pv)
+	var tiles := vbox(6)
+	tiles.add_child(_stat_tile(tr("Репутация"), str(int(gs.rep)), C_ACC, "star"))
+	tiles.add_child(_stat_tile(tr("Титулы"), str(gs.titles), Color("f5c518"), "emoji_events"))
+	ph.add_child(tiles)
+	var cols := hbox(12)
+	content.add_child(cols)
+	var ab := _block(tr("Качества менеджера"))
+	ab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(ab)
+	var ac := _card()
+	ab.add_child(ac)
+	var av := vbox(6)
+	ac.add_child(av)
+	if gs.coach_attrs.is_empty():
+		av.add_child(label(tr("Нет данных."), 13, C_DIM))
+	for pair in Teams.ATTR_PAIRS:
+		for kk in [[pair[0], pair[1]], [pair[2], pair[3]]]:
+			if not gs.coach_attrs.has(kk[0]):
+				continue
+			var val: float = float(gs.coach_attrs[kk[0]])
+			var r := hbox(10)
+			r.add_child(cell(tr(kk[1]), 170, Color("d6dbe3")))
+			var b := _bar(val, 20.0, _attr_color(val), 160, 8)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			r.add_child(b)
+			r.add_child(cell(str(int(val)), 30, _attr_color(val)))
+			av.add_child(r)
+	var sb := _block(tr("Навыки · очков: %d") % gs.coach_pts)
+	sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(sb)
+	var sc := _card()
+	sb.add_child(sc)
+	var sv := vbox(10)
+	sc.add_child(sv)
+	var sicons := {"tactics": "psychology", "motivation": "local_fire_department", "scout": "travel_explore"}
 	for k in gs.COACH_SKILLS:
-		var r := hbox(10)
-		r.add_child(cell(tr(gs.COACH_SKILLS[k]), 460))
-		r.add_child(cell(tr("Ур. %d/10") % int(gs.coach_skill[k]), 70, C_ACC))
+		var r2 := hbox(10)
+		r2.add_child(UITheme.icon(sicons.get(k, "star"), 24, C_ACC))
+		var v2 := vbox(2)
+		v2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v2.add_child(label(tr(gs.COACH_SKILLS[k]), 13, Color.WHITE))
+		var lvl := hbox(3)
+		for i in 10:
+			var dot := ColorRect.new()
+			dot.custom_minimum_size = Vector2(16, 6)
+			dot.color = C_ACC if i < int(gs.coach_skill[k]) else Color(1, 1, 1, 0.1)
+			lvl.add_child(dot)
+		v2.add_child(lvl)
+		r2.add_child(v2)
 		var key: String = k
-		var b := btn(tr("Улучшить"), func(): gs.upgrade_coach(key); show_screen("coach"))
-		b.disabled = gs.coach_pts <= 0 or int(gs.coach_skill[k]) >= 10
-		r.add_child(b)
-		v.add_child(r)
-	content.add_child(p)
-	content.add_child(label(tr("Репутация: %d · Титулов: %d · Дивизион: %s") % [int(gs.rep), gs.titles, tr(gs.TIERS[gs.tier])], 15, C_DIM))
+		var b2 := small_btn("+", func(): gs.upgrade_coach(key); show_screen("coach", false), C_GOOD)
+		b2.disabled = gs.coach_pts <= 0 or int(gs.coach_skill[k]) >= 10
+		r2.add_child(b2)
+		sv.add_child(r2)
+	sv.add_child(label(tr("Очки дают победы, плей-офф и титулы."), 11, C_DIM))
 	if gs.legend:
-		content.add_child(label(tr("Вы выиграли Мировую серию — вы легенда Standoff 2!"), 16, C_ACC))
+		content.add_child(_alert(tr("Вы выиграли Мировую серию — вы легенда Standoff 2!"), true))
 
-# ------------------------------------------------------------ система
+# ------------------------------------------------------------ настройки
 
 func screen_system() -> void:
-	content.add_child(title(tr("Меню")))
-	var p := panel()
-	var v := vbox(8)
-	p.add_child(v)
-	v.add_child(btn(tr("Сохранить игру"), func(): gs.save(); gs.add_news(tr("Игра сохранена.")); show_screen("system")))
-	v.add_child(btn(tr("Выйти в главное меню"), func(): gs.save(); show_menu()))
-	content.add_child(p)
-	var sp := panel()
+	content.add_child(_hdr_card("settings", tr("Настройки"), tr("Сохранение, язык, экран и игра")))
+	var cols := hbox(12)
+	content.add_child(cols)
+	var gb := _block(tr("Игра"))
+	gb.custom_minimum_size = Vector2(320, 0)
+	cols.add_child(gb)
+	var gc := _card()
+	gb.add_child(gc)
+	var gv := vbox(10)
+	gc.add_child(gv)
+	gv.add_child(label(tr("Слот %d") % gs.slot + " · " + gs.team_name, 14, Color.WHITE))
+	gv.add_child(btn(tr("Сохранить игру"), func(): gs.save(); gs.add_news(tr("Игра сохранена.")); show_screen("system", false), C_GOOD))
+	gv.add_child(btn(tr("Выйти в главное меню"), func(): gs.save(); show_menu()))
+	var sb := _block(tr("Параметры"))
+	sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(sb)
+	var sc := _card()
+	sb.add_child(sc)
 	var sv := vbox(8)
-	sp.add_child(sv)
-	build_settings(sv, func(): show_screen("system"))
-	content.add_child(sp)
+	sc.add_child(sv)
+	build_settings(sv, func(): show_screen("system", false))
 
 func _unhandled_input(e: InputEvent) -> void:
 	if not e.is_action_pressed("ui_cancel") or busy:
@@ -2982,7 +3425,7 @@ func show_match_result() -> void:
 	content.add_child(p)
 
 func end_match(won: bool) -> void:
-	gs.report_match({"won": won, "my": m["total"][0], "opp": m["total"][1], "maps_my": m["wins"][0], "maps_opp": m["wins"][1]})
+	gs.report_match({"won": won, "my": m["total"][0], "opp": m["total"][1], "maps_my": m["wins"][0], "maps_opp": m["wins"][1], "stats": m["stats"]})
 	in_match = false
 	m = {}
 	show_screen("dashboard")
