@@ -15,7 +15,7 @@ const START_TEAMS := [
 			{"nick": "Arventy", "first": "Иван", "last": "Шумкин", "role": "Рифлер", "captain": true, "aim": 73, "iq": 84, "tw": 82, "age": 19, "country": "ru", "photo": "res://assets/teams/vp/arventy.png"},
 			{"nick": "Hi-Lo", "first": "Иван", "last": "Сидоренков", "role": "Рифлер", "aim": 82, "iq": 71, "tw": 74, "age": 20, "country": "ru", "photo": "res://assets/teams/vp/hi-lo.png"},
 		]},
-	{"name": "Team CyberHero", "rankoff": 1037, "country": "ru", "tag": "CH", "color": "7a6a9c", "diff": 1, "base": 72.0, "money": 160000, "rep": 48.0, "tier": 1,
+	{"name": "CyberHero", "rankoff": 1037, "country": "ru", "tag": "CH", "color": "7a6a9c", "diff": 1, "base": 72.0, "money": 160000, "rep": 48.0, "tier": 1,
 		"logo": "res://assets/teams/ch/logo.png",
 		"desc": "Амбициозная команда Про-лиги с сильным индивидуальным скиллом.",
 		"roster": [

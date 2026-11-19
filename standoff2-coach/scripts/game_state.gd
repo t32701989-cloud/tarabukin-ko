@@ -769,7 +769,7 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 		players.append(gen_player(base - 4.0))
 	_start_league()
 	_init_rankoff()
-	_refresh_market(40)
+	market = []   # сгенерированных игроков пока нет — только реальные
 	build_world()
 	add_mail(tr("Совет директоров"), tr("Добро пожаловать в «%s»!") % team_name,
 		tr("Здравствуйте, %s!\n\nСовет директоров рад приветствовать вас на посту главного менеджера.\nЦель на сезон: место не ниже %d в лиге «%s».\nБюджет клуба: $%d.\n\nУдачи, мы верим в вас!") % [coach_name, [4, 6, 8][tier], tr(TIERS[tier]), money], "good")
@@ -1004,11 +1004,6 @@ func finish_week() -> String:
 	for p in players:
 		if int(p["inj"]) > 0:
 			p["inj"] -= 1
-	if randf() < 0.3 and market.size() > 0:
-		market.remove_at(randi() % market.size())
-		var np: Dictionary = gen_player(38.0 + float(tier) * 12.0 + randf_range(-4, 14))
-		np["pot_est"] = int(np["pot"])
-		market.append(np)
 	var prev_week: int = week
 	match_done = false
 	week += 1
@@ -1408,7 +1403,7 @@ func _start_next_season() -> void:
 	for n in strengths:
 		if not rankoff.has(n):
 			rankoff[n] = _base_rank(n)
-	_refresh_market(12)
+	market = []
 	add_news(tr("Начался сезон %d — %s.") % [season, tr(TIERS[tier])])
 
 # ---------------------------------------------------------------- действия тренера
@@ -1580,7 +1575,11 @@ func from_dict(d: Dictionary) -> void:
 		coach_skill[k] = int(d["coach_skill"][k])
 	players = _fix_players(d["players"])
 	market = _fix_players(d["market"])
+	market = []
 	world = _fix_players(d.get("world", []))
+	for p in world:
+		if str(p.get("team", "")) == "Team CyberHero":
+			p["team"] = "CyberHero"
 	shortlist = d.get("shortlist", [])
 	if world.is_empty():
 		build_world()
