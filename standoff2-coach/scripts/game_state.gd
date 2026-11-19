@@ -312,8 +312,6 @@ func _base_rank(n: String) -> float:
 
 func _init_rankoff() -> void:
 	rankoff = {}
-	for n in AI_TEAMS:
-		rankoff[n] = _base_rank(n)
 	for rt in load("res://scripts/teams.gd").START_TEAMS:
 		rankoff[rt["name"]] = _base_rank(rt["name"])
 	for n in strengths:
@@ -460,25 +458,20 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 	save()
 	changed.emit()
 
+## Лига состоит только из реальных команд базы (плюс своя организация игрока).
 func _start_league() -> void:
 	week = 1
 	match_done = false
-	var pool: Array = AI_TEAMS.filter(func(x): return x != team_name)
-	pool.shuffle()
-	# реальные команды из базы — тоже соперники в своей лиге
-	for rt in load("res://scripts/teams.gd").START_TEAMS:
-		if rt["name"] != team_name and int(rt.get("tier", 0)) == tier:
-			pool.erase(rt["name"])
-			pool.push_front(rt["name"])
 	league_teams = [team_name]
 	strengths = {}
-	for i in 7:
-		var n: String = pool[i]
-		league_teams.append(n)
-		strengths[n] = _real_strength(n) if _real_strength(n) > 0.0 else 38.0 + float(tier) * 15.0 + minf(8.0, float(season - 1) * 1.5) + randf_range(-1, 13)
+	for rt in load("res://scripts/teams.gd").START_TEAMS:
+		var n: String = rt["name"]
+		if n != team_name:
+			league_teams.append(n)
+			strengths[n] = _real_strength(n)
 	standings = {}
-	for t in league_teams:
-		standings[t] = {"w": 0, "l": 0, "rd": 0}
+	for tm in league_teams:
+		standings[tm] = {"w": 0, "l": 0, "rd": 0}
 	var order: Array = league_teams.duplicate()
 	order.shuffle()
 	schedule = _make_schedule(order)
@@ -490,16 +483,27 @@ func _real_strength(n: String) -> float:
 			return float(rt["base"]) - 4.0
 	return 0.0
 
+## Круговая система для любого числа команд; туры повторяются, чтобы заполнить 7 недель.
 func _make_schedule(teams: Array) -> Array:
-	var t: Array = teams.duplicate()
+	var tl: Array = teams.duplicate()
+	if tl.size() % 2 == 1:
+		tl.append("")          # пустое место = выходной
+	var n: int = tl.size()
+	var rounds: Array = []
+	if n >= 2:
+		for r in n - 1:
+			var pairs: Array = []
+			for i in n / 2:
+				var a2: String = tl[i]
+				var b2: String = tl[n - 1 - i]
+				if a2 != "" and b2 != "":
+					pairs.append([a2, b2] if r % 2 == 0 else [b2, a2])
+			rounds.append(pairs)
+			var last = tl.pop_back()
+			tl.insert(1, last)
 	var res: Array = []
-	for r in 7:
-		var pairs: Array = []
-		for i in 4:
-			pairs.append([t[i], t[7 - i]])
-		res.append(pairs)
-		var last = t.pop_back()
-		t.insert(1, last)
+	for w in 7:
+		res.append(rounds[w % rounds.size()] if not rounds.is_empty() else [])
 	return res
 
 func _refresh_market(n: int) -> void:
@@ -548,7 +552,7 @@ func player_match() -> Dictionary:
 				return {"opp": opp2, "bo": 3, "kind": "semi", "idx": i}
 	elif week == 9:
 		var f: Array = playoff["final"]
-		if f.has(team_name):
+		if f.size() == 2 and f.has(team_name):
 			var opp3: String = f[1] if f[0] == team_name else f[0]
 			return {"opp": opp3, "bo": 3, "kind": "final"}
 	return {}
@@ -682,20 +686,29 @@ func _sim_others() -> void:
 				playoff["sf"][str(i)] = pair2[0] if r["winner"] == 0 else pair2[1]
 	elif week == 9:
 		var f: Array = playoff["final"]
-		if not f.has(team_name) and playoff["champion"] == "":
+		if f.size() == 2 and not f.has(team_name) and playoff["champion"] == "":
 			var r2: Dictionary = _ai_series(f[0], f[1], 3)
 			playoff["champion"] = f[0] if r2["winner"] == 0 else f[1]
 
 func _make_playoffs() -> void:
 	var rl: Array = rank_list()
-	playoff["semis"] = [[rl[0], rl[3]], [rl[1], rl[2]]]
 	playoff["sf"] = {}
+	if rl.size() < 4:
+		# мало команд — сразу финал двух лучших на 9-й неделе
+		playoff["semis"] = []
+		if rl.size() >= 2:
+			playoff["sf"] = {"0": rl[0], "1": rl[1]}
+		return
+	playoff["semis"] = [[rl[0], rl[3]], [rl[1], rl[2]]]
 	if rl.slice(0, 4).has(team_name):
 		add_news(tr("Команда вышла в плей-off! Полуфинал против %s.") % player_match()["opp"])
 	else:
 		add_news(tr("Плей-офф пройдёт без вас: вы заняли %d-е место.") % my_rank())
 
 func _make_final() -> void:
+	if not playoff["sf"].has("0") or not playoff["sf"].has("1"):
+		playoff["final"] = []
+		return
 	playoff["final"] = [playoff["sf"]["0"], playoff["sf"]["1"]]
 	if playoff["final"].has(team_name):
 		add_news(tr("Вы в финале! Соперник — %s.") % player_match()["opp"])
@@ -773,7 +786,7 @@ func _check_fired() -> void:
 func _end_season() -> void:
 	var pos: int = my_rank()
 	var prizes: Array = [12000, 8000, 5000, 3000, 1500, 500, 0, 0]
-	var prize: int = int(prizes[pos - 1]) * (tier + 1)
+	var prize: int = int(prizes[clampi(pos - 1, 0, prizes.size() - 1)]) * (tier + 1)
 	money += prize
 	var champ: bool = playoff["champion"] == team_name
 	var txt: String = tr("Сезон %d (%s): %d-е место") % [season, tr(TIERS[tier]), pos]
@@ -813,10 +826,10 @@ func _end_season() -> void:
 		p["salary"] = int(300 + (ovr(p) - 30) * 32)
 		p["form"] = 80
 	# переход между дивизионами
-	if pos <= 2 and tier < 2:
+	if pos <= 2 and tier < 2 and league_teams.size() >= 6:
 		tier += 1
 		add_news(tr("Повышение! Следующий сезон: %s.") % tr(TIERS[tier]))
-	elif pos >= 7 and tier > 0:
+	elif pos >= 7 and tier > 0 and league_teams.size() >= 8:
 		tier -= 1
 		rep = maxf(0.0, rep - 5.0)
 		add_news(tr("Вылет в дивизион ниже: %s.") % tr(TIERS[tier]))

@@ -2286,6 +2286,8 @@ func screen_dashboard() -> void:
 	var rl: Array = gs.rankoff_list()
 	var my_pos: int = rl.find(gs.team_name)
 	for stage in [[tr("STAGE 3"), 0, 8], [tr("STAGE 2"), 8, 16]]:
+		if rl.size() <= stage[1]:
+			continue
 		rv2.add_child(label(stage[0], 13, C_DIM))
 		for i in range(stage[1], mini(stage[2], rl.size())):
 			rv2.add_child(_rank_row(i, rl[i]))
