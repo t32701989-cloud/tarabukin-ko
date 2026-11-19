@@ -933,27 +933,25 @@ func show_team_select() -> void:
 	var idxs: Array = _ts_filtered()
 	if not idxs.has(ts_sel) and not idxs.is_empty():
 		ts_sel = idxs[0]
-	# ---- список слева
-	var lp := panel(Color(0.085, 0.095, 0.12, 0.97), 18)
-	lp.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	lp.offset_right = 400
-	add_child(lp)
-	var lv := vbox(10)
-	lp.add_child(lv)
-	var tt := label(tr("ВЫБРАТЬ КОМАНДУ"), 28, Color.WHITE)
-	tt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lv.add_child(tt)
-	var sr := hbox(6)
+	var root := vbox(14)
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = 28; root.offset_right = -28; root.offset_top = 20; root.offset_bottom = -20
+	add_child(root)
+	# --- шапка: заголовок, поиск, фильтр
+	var top := hbox(14)
+	top.add_child(label(tr("ВЫБРАТЬ КОМАНДУ"), 30, Color.WHITE))
+	top.add_child(spacer())
 	var search := LineEdit.new()
 	search.placeholder_text = tr("Поиск команды...")
 	search.text = ts_query
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.text_submitted.connect(func(t): ts_query = t; ts_page = 0; show_team_select())
+	search.custom_minimum_size = Vector2(260, 40)
+	search.right_icon = null
 	search.text_changed.connect(func(t):
-		ts_query = t; ts_page = 0
+		ts_query = t
 		_ts_refresh_later())
-	sr.add_child(search)
+	top.add_child(search)
 	var cf := OptionButton.new()
+	cf.custom_minimum_size = Vector2(200, 40)
 	cf.add_item(tr("Все страны"))
 	var codes: Array = [""]
 	for c in Teams.COUNTRY_LIST:
@@ -962,59 +960,53 @@ func show_team_select() -> void:
 		else: cf.add_item(tr(c[1]))
 		codes.append(c[0])
 	cf.selected = maxi(0, codes.find(ts_country))
-	cf.item_selected.connect(func(i): ts_country = codes[i]; ts_page = 0; show_team_select())
-	sr.add_child(cf)
-	lv.add_child(sr)
-	var list := vbox(8)
-	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lv.add_child(list)
-	var pages: int = maxi(1, int(ceil(float(idxs.size()) / TS_PER_PAGE)))
-	ts_page = clampi(ts_page, 0, pages - 1)
-	var from: int = ts_page * TS_PER_PAGE
-	var to: int = mini(idxs.size(), from + TS_PER_PAGE)
+	cf.item_selected.connect(func(i): ts_country = codes[i]; show_team_select())
+	top.add_child(cf)
+	root.add_child(top)
+	# --- плитки команд (только реальные)
+	var strip := hbox(12)
 	if idxs.is_empty():
-		list.add_child(label(tr("Ничего не найдено."), 15, C_DIM))
-	for k in range(from, to):
-		list.add_child(_ts_row(int(idxs[k])))
-	var pr := hbox(10)
-	pr.alignment = BoxContainer.ALIGNMENT_CENTER
-	var pb := btn("<", func(): ts_page -= 1; show_team_select())
-	pb.disabled = ts_page == 0
-	pr.add_child(pb)
-	pr.add_child(label(str(ts_page + 1), 16))
-	var nb := btn(">", func(): ts_page += 1; show_team_select())
-	nb.disabled = ts_page >= pages - 1
-	pr.add_child(nb)
-	pr.add_child(spacer())
-	pr.add_child(label("(%d - %d) %d" % [from + 1 if to > 0 else 0, to, idxs.size()], 13, C_DIM))
-	lv.add_child(pr)
-	lv.add_child(_outline_btn("<  " + tr("НАЗАД"), func(): show_org_choice(), Color("e0453a"), 16))
-	# ---- карточка справа
+		strip.add_child(label(tr("Ничего не найдено."), 16, C_DIM))
+	for i in idxs:
+		strip.add_child(_ts_tile(int(i)))
+	var ssc := ScrollContainer.new()
+	ssc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	ssc.custom_minimum_size = Vector2(0, 92)
+	ssc.add_child(strip)
+	root.add_child(ssc)
+	# --- карточка выбранной команды на всю оставшуюся высоту
 	if not idxs.is_empty():
-		var rp := Control.new()
-		rp.set_anchors_preset(Control.PRESET_FULL_RECT)
-		rp.offset_left = 430
-		rp.offset_right = -30
-		rp.offset_top = 40
-		rp.offset_bottom = -40
-		add_child(rp)
-		rp.add_child(_ts_detail(Teams.START_TEAMS[ts_sel]))
+		var d := _ts_detail(Teams.START_TEAMS[ts_sel])
+		d.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		root.add_child(d)
+	else:
+		var f := Control.new()
+		f.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		root.add_child(f)
+	var bot := hbox(12)
+	bot.add_child(_outline_btn("<  " + tr("НАЗАД"), func(): show_org_choice(), Color("e0453a"), 16))
+	bot.add_child(spacer())
+	if cr_slot > 0 and gs.read_slot(cr_slot) != null:
+		var w := label(tr("Карьера в слоте %d будет заменена") % cr_slot, 13, C_BAD)
+		w.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bot.add_child(w)
+	if not idxs.is_empty():
+		var team: Dictionary = Teams.START_TEAMS[ts_sel]
+		bot.add_child(_outline_btn(tr("ПОДПИСАТЬ КОМАНДУ") + "  >", func(): start_career(team), C_GOOD, 18))
+	root.add_child(bot)
 
 var _ts_timer: SceneTreeTimer
 
 func _ts_refresh_later() -> void:
-	# поиск без потери фокуса: обновляем список после паузы ввода
-	var t := get_tree().create_timer(0.5)
+	var t := get_tree().create_timer(0.45)
 	_ts_timer = t
 	await t.timeout
 	if _ts_timer == t and top_label == null:
 		show_team_select()
-		for c in get_children():
-			var le := _find_line_edit(c)
-			if le != null:
-				le.grab_focus()
-				le.caret_column = le.text.length()
-				break
+		var le := _find_line_edit(self)
+		if le != null:
+			le.grab_focus()
+			le.caret_column = le.text.length()
 
 func _find_line_edit(n: Node) -> LineEdit:
 	if n is LineEdit:
@@ -1025,28 +1017,31 @@ func _find_line_edit(n: Node) -> LineEdit:
 			return r
 	return null
 
-func _ts_row(i: int) -> Control:
+func _ts_tile(i: int) -> Control:
 	var t: Dictionary = Teams.START_TEAMS[i]
 	var sel: bool = i == ts_sel
+	var col := Color(t["color"])
 	var card := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("3f8f3a") if sel else Color("1f232b")
+	sb.bg_color = Color(col.r, col.g, col.b, 0.28) if sel else Color(0.1, 0.12, 0.16, 0.9)
+	sb.border_color = col if sel else Color(1, 1, 1, 0.08)
+	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(10)
-	sb.set_content_margin_all(8)
+	sb.set_content_margin_all(10)
 	card.add_theme_stylebox_override("panel", sb)
+	card.custom_minimum_size = Vector2(280, 0)
 	var h := hbox(12)
 	card.add_child(h)
-	h.add_child(_team_logo_box(t, 50))
+	h.add_child(_team_logo_box(t, 56))
 	var v := vbox(2)
 	var nr := hbox(8)
 	nr.add_child(_flag(str(t.get("country", "xx"))))
-	nr.add_child(label(str(t["name"]).to_upper(), 19, Color.WHITE))
+	nr.add_child(label(str(t["name"]).to_upper(), 17, Color.WHITE))
 	v.add_child(nr)
 	var sr := hbox(8)
-	sr.add_child(_stars(_team_stars(t), 15))
-	sr.add_child(label(tr("СЛОЖНОСТЬ:"), 11, Color("d6dbe3")))
-	var d: int = int(t["diff"])
-	sr.add_child(label(tr(DIFF_TEXT[d]), 11, Color(Teams.DIFF_COLORS[d])))
+	sr.add_child(_stars(_team_stars(t), 14))
+	if t.has("rankoff"):
+		sr.add_child(label("Rankoff %d" % int(t["rankoff"]), 12, Color("f5c518")))
 	v.add_child(sr)
 	h.add_child(v)
 	var hit := Button.new()
@@ -1054,108 +1049,154 @@ func _ts_row(i: int) -> Control:
 	for st in ["normal", "hover", "pressed", "focus"]:
 		hit.add_theme_stylebox_override(st, _flat_style())
 	if not sel:
-		hit.mouse_entered.connect(func(): sb.bg_color = Color("2a303c"))
-		hit.mouse_exited.connect(func(): sb.bg_color = Color("1f232b"))
+		hit.mouse_entered.connect(func(): sb.border_color = Color(col.r, col.g, col.b, 0.7))
+		hit.mouse_exited.connect(func(): sb.border_color = Color(1, 1, 1, 0.08))
 	hit.pressed.connect(func(): ts_sel = i; show_team_select())
 	card.add_child(hit)
 	_ignore_mouse(h)
 	return card
 
+func _rankoff_pos(name: String) -> int:
+	var arr: Array = []
+	for rt in Teams.START_TEAMS:
+		if rt.has("rankoff"):
+			arr.append([float(rt["rankoff"]), rt["name"]])
+	arr.sort_custom(func(a, b): return a[0] > b[0])
+	for k in arr.size():
+		if arr[k][1] == name:
+			return k + 1
+	return 0
+
+func _ts_player_card(pl: Dictionary, team_col: Color) -> Control:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.09, 0.13, 0.95)
+	sb.border_color = Color(team_col.r, team_col.g, team_col.b, 0.45)
+	sb.set_border_width_all(1)
+	sb.border_width_bottom = 4
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(0)
+	card.add_theme_stylebox_override("panel", sb)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var v := vbox(0)
+	card.add_child(v)
+	# фото во весь верх карточки
+	var ph := PanelContainer.new()
+	var pbs := StyleBoxFlat.new()
+	var g1 := Color(team_col.r, team_col.g, team_col.b, 0.35)
+	pbs.bg_color = g1
+	pbs.corner_radius_top_left = 10; pbs.corner_radius_top_right = 10
+	ph.add_theme_stylebox_override("panel", pbs)
+	ph.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var img := TextureRect.new()
+	img.texture = tex(player_photo(pl))
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	img.custom_minimum_size = Vector2(0, 150)
+	img.clip_contents = true
+	ph.add_child(img)
+	ph.clip_contents = true
+	v.add_child(ph)
+	var info := MarginContainer.new()
+	for m in ["margin_left", "margin_right"]:
+		info.add_theme_constant_override(m, 10)
+	info.add_theme_constant_override("margin_top", 8)
+	info.add_theme_constant_override("margin_bottom", 10)
+	var iv := vbox(2)
+	info.add_child(iv)
+	var nr := hbox(6)
+	nr.add_child(_flag(str(pl.get("country", "xx")), 20))
+	var nl := label(str(pl["nick"]), 17, Color.WHITE)
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nr.add_child(nl)
+	var tmp := pl.duplicate()
+	if not tmp.has("attrs"):
+		tmp["attrs"] = gs.make_attrs(float(tmp["aim"]), float(tmp["iq"]), float(tmp["tw"]), str(tmp["role"]), str(tmp["nick"]))
+	var o: int = gs.ovr(tmp)
+	if pl["role"] != "Тренер":
+		nr.add_child(label(str(o), 20, stat_color(o)))
+	iv.add_child(nr)
+	var full: String = ("%s %s" % [tr(str(pl.get("first", ""))), tr(str(pl.get("last", "")))]).strip_edges()
+	iv.add_child(label(full if full != "" else " ", 12, C_DIM))
+	var rr := hbox(6)
+	rr.add_child(label(tr(pl["role"]), 13, Color(team_col).lightened(0.35)))
+	rr.add_child(spacer())
+	if pl["role"] != "Тренер":
+		rr.add_child(_stars(_player_stars(tmp), 12))
+	iv.add_child(rr)
+	v.add_child(info)
+	return card
+
 func _ts_detail(t: Dictionary) -> Control:
-	var p := panel(Color(0.09, 0.1, 0.13, 0.96), 22)
-	p.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
-	sb.set_border_width_all(2)
-	sb.border_color = Color(1, 1, 1, 0.35)
-	var outer := vbox(10)
-	p.add_child(outer)
-	var sc := ScrollContainer.new()
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	outer.add_child(sc)
+	var col := Color(t["color"])
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.075, 0.1, 0.94)
+	sb.border_color = Color(col.r, col.g, col.b, 0.5)
+	sb.set_border_width_all(1)
+	sb.border_width_top = 4
+	sb.set_corner_radius_all(12)
+	sb.set_content_margin_all(18)
+	p.add_theme_stylebox_override("panel", sb)
 	var v := vbox(14)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(v)
+	p.add_child(v)
 	# шапка
 	var head := hbox(18)
-	var lb := panel(Color(t["color"]).darkened(0.55), 8)
-	lb.add_child(_team_logo_box(t, 110))
+	var lb := PanelContainer.new()
+	var ls := StyleBoxFlat.new()
+	ls.bg_color = Color(col.r, col.g, col.b, 0.22)
+	ls.set_corner_radius_all(10)
+	ls.set_content_margin_all(8)
+	lb.add_theme_stylebox_override("panel", ls)
+	lb.add_child(_team_logo_box(t, 92))
 	head.add_child(lb)
-	var hv := vbox(6)
+	var hv := vbox(4)
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hv.add_child(label(str(t["name"]).to_upper(), 30, Color.WHITE))
-	var r1 := hbox(14)
-	r1.add_child(_stars(_team_stars(t), 20))
-	r1.add_child(label(tr("ОБЩИЙ БЮДЖЕТ:"), 14, Color("d6dbe3")))
-	r1.add_child(label(money_fmt(int(t["money"])), 14, Color("f5c518")))
-	r1.add_child(label(tr("СЛОЖНОСТЬ:"), 14, Color("d6dbe3")))
+	var nr := hbox(10)
+	nr.add_child(_flag(str(t.get("country", "xx")), 32))
+	nr.add_child(label(str(t["name"]).to_upper(), 30, Color.WHITE))
+	hv.add_child(nr)
+	hv.add_child(wrap_label(tr(t["desc"]), 14, Color("c9ced8"), 560))
+	var chips := hbox(10)
 	var d: int = int(t["diff"])
-	r1.add_child(label(tr(DIFF_TEXT[d]), 14, Color(Teams.DIFF_COLORS[d])))
-	hv.add_child(r1)
-	var r2 := hbox(12)
-	r2.add_child(_flag(str(t.get("country", "xx")), 36))
-	r2.add_child(wrap_label(tr(t["desc"]) + "  " + tr("Лига: %s") % tr(gs.TIERS[int(t.get("tier", 0))]), 13, Color("c9ced8"), 520))
-	hv.add_child(r2)
+	for c in [[tr("Лига"), tr(gs.TIERS[int(t.get("tier", 0))]), Color.WHITE], [tr("Бюджет"), money_fmt(int(t["money"])), Color("f5c518")],
+			[tr("Сложность"), tr(DIFF_TEXT[d]), Color(Teams.DIFF_COLORS[d])], [tr("Rankoff"), ("#%d · %d" % [_rankoff_pos(t["name"]), int(t["rankoff"])]) if t.has("rankoff") else "—", Color("f5c518")]]:
+		var chip := PanelContainer.new()
+		var cs := StyleBoxFlat.new()
+		cs.bg_color = Color(1, 1, 1, 0.05)
+		cs.border_color = Color(1, 1, 1, 0.08)
+		cs.set_border_width_all(1)
+		cs.set_corner_radius_all(8)
+		cs.content_margin_left = 12; cs.content_margin_right = 12; cs.content_margin_top = 6; cs.content_margin_bottom = 6
+		chip.add_theme_stylebox_override("panel", cs)
+		var cv := vbox(0)
+		cv.add_child(label(str(c[0]).to_upper(), 10, C_DIM))
+		cv.add_child(label(str(c[1]), 15, c[2]))
+		chip.add_child(cv)
+		chips.add_child(chip)
+	hv.add_child(chips)
 	head.add_child(hv)
+	var sv := vbox(4)
+	sv.add_child(label(tr("Сила команды"), 11, C_DIM))
+	var sl := label("%d" % int(t["base"]), 40, stat_color(int(t["base"])))
+	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sv.add_child(sl)
+	sv.add_child(_stars(_team_stars(t), 16))
+	head.add_child(sv)
 	v.add_child(head)
-	# состав
-	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.08)
-	sep.custom_minimum_size = Vector2(0, 2)
-	v.add_child(sep)
-	var roster := hbox(18)
-	roster.alignment = BoxContainer.ALIGNMENT_CENTER
+	# состав — крупные карточки, растягиваются на всю ширину и высоту
+	var rh := hbox(12)
+	rh.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	for pl in _preview_roster(t):
-		var pv := vbox(3)
-		var c := _circle(player_photo(pl), 104)
-		c.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		pv.add_child(c)
-		var nr := hbox(5)
-		nr.alignment = BoxContainer.ALIGNMENT_CENTER
-		nr.add_child(_flag(str(pl.get("country", t.get("country", "xx"))), 20))
-		nr.add_child(label(str(pl["nick"]), 15, Color.WHITE))
-		pv.add_child(nr)
-		var st := _stars(_player_stars(pl), 15)
-		st.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		pv.add_child(st)
-		var rl := label(tr(pl["role"]), 13, Color("d6dbe3"))
-		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		pv.add_child(rl)
-		roster.add_child(pv)
-	v.add_child(roster)
-	# персонал
-	v.add_child(label(tr("ПЕРСОНАЛ КОМАНДЫ"), 15, Color("d6dbe3")))
-	var staff := hbox(14)
+		rh.add_child(_ts_player_card(pl, col))
 	if t.has("coach"):
-		var sv := vbox(2)
-		var c2 := _circle(str(t["coach"]["photo"]), 64)
-		c2.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		sv.add_child(c2)
-		var cl := label(str(t["coach"]["name"]), 13, Color.WHITE)
-		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sv.add_child(cl)
-		var rl2 := label(tr("Тренер"), 11, C_DIM)
-		rl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sv.add_child(rl2)
-		staff.add_child(sv)
-	else:
-		staff.add_child(label(tr("НЕТ ПЕРСОНАЛА"), 14, C_DIM))
-	v.add_child(staff)
-	# молодые игроки
-	v.add_child(label(tr("МОЛОДЫЕ ИГРОКИ"), 15, Color("d6dbe3")))
-	var ac := hbox(14)
-	for i in 5:
-		var e := preload("res://scripts/circle_pic.gd").new().setup(null, 56, Color(1, 1, 1, 0.12))
-		ac.add_child(e)
-	ac.add_child(label(tr("НЕТ АКАДЕМИИ"), 15, C_DIM))
-	v.add_child(ac)
-	var br := hbox(10)
-	br.add_child(spacer())
-	if cr_slot > 0 and gs.read_slot(cr_slot) != null:
-		br.add_child(label(tr("Карьера в слоте %d будет заменена") % cr_slot, 13, C_BAD))
-	var team: Dictionary = t
-	br.add_child(_outline_btn(tr("ПОДПИСАТЬ КОМАНДУ") + "  >", func(): start_career(team), C_GOOD, 18))
-	outer.add_child(br)
+		var c: Dictionary = t["coach"]
+		var cpl := {"nick": c["name"], "role": "Тренер", "photo": c.get("photo", ""), "country": c.get("country", t.get("country", "ru")), "aim": 60, "iq": 80, "tw": 80}
+		var cc := _ts_player_card(cpl, Color("9aa3b2"))
+		cc.size_flags_stretch_ratio = 0.85
+		rh.add_child(cc)
+	v.add_child(rh)
 	return p
 
 # ------------------------------------------------------------ договор

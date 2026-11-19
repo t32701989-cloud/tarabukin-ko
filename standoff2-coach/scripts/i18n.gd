@@ -4,6 +4,9 @@ extends Node
 const LANGS := {"ru": "Русский", "en": "English"}
 
 const EN := {
+	"Бюджет": "Budget",
+	"Сложность": "Difficulty",
+	"Сила команды": "Team strength",
 	"Амбициозная команда Про-лиги с сильным индивидуальным скиллом.": "An ambitious Pro League team with strong individual skill.",
 	"Денис": "Denis",
 	"Егоров": "Egorov",
