@@ -113,20 +113,44 @@ func play_round() -> Dictionary:
 		var r: float = rng.randf()
 		if r < 0.35:
 			out["text"] = tr("%s обезвреживает бомбу на %s.") % [names[w], site]
+			out["defuse"] = true
 		elif r < 0.7:
 			out["text"] = tr("%s останавливает атаку на %s.") % [names[w], site]
 			elimination = true
 		else:
 			out["text"] = tr("%s не даёт атаке закрепиться — время вышло.") % names[w]
-	# статистика
+	# статистика: события убийств (для визуализации и K/D)
 	var kw: int = 5 if elimination else rng.randi_range(2, 4)
 	var kl: int = rng.randi_range(0, 3)
+	var alive: Array = [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]]
+	var order: Array = []
 	for i in kw:
-		kills[w][_pick(w)] += 1
-		deaths[l][rng.randi_range(0, 4)] += 1
+		order.append(w)
 	for i in kl:
-		kills[l][_pick(l)] += 1
-		deaths[w][rng.randi_range(0, 4)] += 1
+		order.append(l)
+	order.shuffle()
+	# победитель делает последнее убийство
+	if kw > 0:
+		order.erase(w)
+		order.append(w)
+	var events: Array = []
+	for kt in order:
+		var vt: int = 1 - kt
+		if alive[vt].is_empty() or alive[kt].is_empty():
+			continue
+		var weights_alive: Array = alive[kt]
+		var killer: int = _pick(kt)
+		if not weights_alive.has(killer):
+			killer = weights_alive[rng.randi() % weights_alive.size()]
+		var victim: int = alive[vt][rng.randi() % alive[vt].size()]
+		alive[vt].erase(victim)
+		kills[kt][killer] += 1
+		deaths[vt][victim] += 1
+		events.append({"kt": kt, "k": killer, "vt": vt, "v": victim, "hs": rng.randf() < 0.42})
+	out["events"] = events
+	out["elim"] = elimination
+	out["site"] = site
+	out["planted"] = (attacker_won and not elimination) or bool(out.get("defuse", false))
 	# яркий момент
 	if not nicks[w].is_empty() and rng.randf() < 0.07:
 		var star: String = str(nicks[w][_pick(w)])

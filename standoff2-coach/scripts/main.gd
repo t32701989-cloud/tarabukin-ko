@@ -4639,8 +4639,13 @@ func start_map() -> void:
 	var sim = MatchSim.new()
 	var l: Array = gs.lineup()
 	sim.names = [gs.team_name, m["opp"]]
-	sim.nicks = [l.map(func(x): return x["nick"]), []]
-	sim.weights = [l.map(func(x): return float(x["aim"])), []]
+	var opp_l: Array = gs.world.filter(func(x): return str(x.get("team", "")) == str(m["opp"])).slice(0, 5)
+	while opp_l.size() < 5:
+		opp_l.append({"nick": "%s %d" % [str(m["opp"]).substr(0, 3).to_upper(), opp_l.size() + 1], "photo": "", "aim": 60})
+	sim.nicks = [l.map(func(x): return x["nick"]), opp_l.map(func(x): return x["nick"])]
+	sim.weights = [l.map(func(x): return float(x["aim"])), opp_l.map(func(x): return float(x.get("aim", 60)))]
+	m["teamA"] = l.map(func(x): return {"nick": x["nick"], "photo": player_photo(x)})
+	m["teamB"] = opp_l.map(func(x): return {"nick": x["nick"], "photo": player_photo(x) if x.has("role") else ""})
 	var pw: Dictionary = gs.team_power(gs.style, map_name)
 	var os: float = gs.opp_strength(m["opp"])
 	sim.atk = [pw["atk"], os + randf_range(-2.5, 2.5)]
@@ -4672,10 +4677,16 @@ func show_map_ui() -> void:
 	c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hv.add_child(c)
 	content.add_child(hp)
+	var mv = preload("res://scripts/match_view.gd").new()
+	mv.custom_minimum_size = Vector2(0, 420)
+	mv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(mv)
+	mv.setup(str(m["map"]), m.get("teamA", []), m.get("teamB", []), sim.side_atk)
+	m["view"] = mv
 	var rt := RichTextLabel.new()
 	rt.bbcode_enabled = true
 	rt.scroll_following = true
-	rt.custom_minimum_size = Vector2(0, 300)
+	rt.custom_minimum_size = Vector2(0, 110)
 	rt.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	m["log"] = rt
 	content.add_child(rt)
@@ -4727,7 +4738,15 @@ func play(n: int) -> void:
 			line += tr("[color=#6b7280]   Закупка: вы — %s, соперник — %s[/color]\n") % [modes[r["buy"][0]], modes[r["buy"][1]]]
 		m["log_text"] = str(m.get("log_text", "")) + line
 		i += 1
-		if n > 1:
+		var mv = m.get("view", null)
+		if n <= 5 and mv != null and is_instance_valid(mv) and mv.is_inside_tree():
+			var dur: float = {"slow": 9.0, "normal": 6.0, "fast": 3.0}.get(get_node("/root/Settings").match_speed, 6.0) * (1.0 if n == 1 else 0.45)
+			mv.play_round(r, int(r["side_atk"]), dur)
+			if m.has("log") and is_instance_valid(m["log"]):
+				m["log"].text = m["log_text"]
+			await mv.round_done
+			await get_tree().create_timer(0.6 if n == 1 else 0.25).timeout
+		elif n > 1:
 			await get_tree().create_timer(get_node("/root/Settings").round_delay()).timeout
 		if not is_inside_tree():
 			return
