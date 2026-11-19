@@ -52,6 +52,8 @@ var coach_pts: int = 0
 var coach_skill: Dictionary = {"tactics": 0, "motivation": 0, "scout": 0}
 var players: Array = []
 var market: Array = []
+var world: Array = []        # игроки других команд (для скаутинга)
+var shortlist: Array = []    # закладки (ники)
 var map_skill: Dictionary = {}
 var style: String = "balanced"
 var train_focus: String = "aim"
@@ -170,6 +172,24 @@ func bump(p: Dictionary, grp: String, delta: float) -> void:
 	derive(p)
 
 ## Общий рейтинг 1..100: среднее всех характеристик (0..20) × 5, с упором на ключевые для роли.
+func roster_player(rp: Dictionary, base: float, country: String) -> Dictionary:
+	var p: Dictionary = gen_player(base, rp["role"])
+	for k in ["nick", "aim", "iq", "tw", "age", "photo", "country", "first", "last", "role2", "captain"]:
+		if rp.has(k):
+			p[k] = rp[k]
+	if not rp.has("country"):
+		p["country"] = country
+	var b: Array = p.get("birth", [1, 1, 2000])
+	p["birth"] = [int(b[0]), int(b[1]), 2026 - int(p["age"]) - (1 if int(b[1]) > 1 else 0)]
+	p["attrs"] = make_attrs(float(p["aim"]), float(p["iq"]), float(p["tw"]), str(p["role"]), str(p["nick"]))
+	if bool(p.get("captain", false)):
+		p["attrs"]["leader"] = minf(20.0, float(p["attrs"]["leader"]) + 5.0)
+		p["attrs"]["tactics"] = minf(20.0, float(p["attrs"]["tactics"]) + 3.0)
+	derive(p)
+	p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
+	p["salary"] = int(300 + (ovr(p) - 30) * 32)
+	return p
+
 func ovr(p: Dictionary) -> int:
 	var a: Dictionary = p.get("attrs", {})
 	if a.is_empty():
@@ -231,7 +251,8 @@ func init_player_meta(p: Dictionary) -> void:
 	if not p.has("pr"):
 		p["pr"] = randi_range(40, 90)
 	if not p.has("birth"):
-		p["birth"] = [randi_range(1, 28), randi_range(1, 12), 2026 - int(p["age"])]
+		var bm: int = randi_range(1, 12)
+		p["birth"] = [randi_range(1, 28), bm, 2026 - int(p["age"]) - (1 if bm > 1 else 0)]
 	if not p.has("contract"):
 		p["contract"] = {"type": "club", "end": season + randi_range(1, 3), "signed": "%02d.%02d.%d" % [1, 1, 2026]}
 	if not p.has("thist"):
@@ -743,25 +764,13 @@ func new_game(coach: Dictionary, team: Dictionary) -> void:
 			p["age"] = randi_range(17, 23)
 	else:
 		for rp in roster:
-			var p: Dictionary = gen_player(base, rp["role"])
-			for k in ["nick", "aim", "iq", "tw", "age", "photo", "country", "first", "last", "role2", "captain"]:
-				if rp.has(k):
-					p[k] = rp[k]
-			if not rp.has("country"):
-				p["country"] = team_country
-			p["attrs"] = make_attrs(float(p["aim"]), float(p["iq"]), float(p["tw"]), str(p["role"]), str(p["nick"]))
-			if bool(p.get("captain", false)):
-				p["attrs"]["leader"] = minf(20.0, float(p["attrs"]["leader"]) + 5.0)
-				p["attrs"]["tactics"] = minf(20.0, float(p["attrs"]["tactics"]) + 3.0)
-			derive(p)
-			p["pot"] = maxi(int(p["pot"]), ovr(p) + randi_range(4, 12))
-			p["salary"] = int(300 + (ovr(p) - 30) * 32)
-			players.append(p)
+			players.append(roster_player(rp, base, team_country))
 	if roster.is_empty() and not bool(team.get("empty_roster", false)) and not bool(team.get("custom", false)):
 		players.append(gen_player(base - 4.0))
 	_start_league()
 	_init_rankoff()
-	_refresh_market(12)
+	_refresh_market(40)
+	build_world()
 	add_mail(tr("Совет директоров"), tr("Добро пожаловать в «%s»!") % team_name,
 		tr("Здравствуйте, %s!\n\nСовет директоров рад приветствовать вас на посту главного менеджера.\nЦель на сезон: место не ниже %d в лиге «%s».\nБюджет клуба: $%d.\n\nУдачи, мы верим в вас!") % [coach_name, [4, 6, 8][tier], tr(TIERS[tier]), money], "good")
 	add_mail(tr("Оргкомитет лиги"), tr("Приглашение: %s, сезон %d") % [tr(TIERS[tier]), season], tr("Ваша команда приглашена в турнир «%s». Регулярный сезон: 7 туров, затем плей-офф. Удачи!") % tr(TIERS[tier]), "invite")
@@ -820,6 +829,19 @@ func _make_schedule(teams: Array) -> Array:
 		res.append(rounds[w % rounds.size()] if not rounds.is_empty() else [])
 	return res
 
+## Игроки других реальных команд (их можно купить или взять в аренду).
+func build_world() -> void:
+	world = []
+	for rt in load("res://scripts/teams.gd").START_TEAMS:
+		if rt["name"] == team_name:
+			continue
+		for rp in rt.get("roster", []):
+			var p: Dictionary = roster_player(rp, float(rt["base"]), str(rt.get("country", "ru")))
+			p["team"] = rt["name"]
+			p["loan_ok"] = randf() < 0.35
+			p["contract"] = {"type": "club", "end": season + randi_range(0, 2), "signed": "01.01.2026"}
+			world.append(p)
+
 func _refresh_market(n: int) -> void:
 	market = []
 	var err: int = maxi(0, 12 - int(coach_skill["scout"]) * 2 - staff_level("scout") * 2)
@@ -827,6 +849,8 @@ func _refresh_market(n: int) -> void:
 		var base: float = 38.0 + float(tier) * 12.0 + randf_range(-4, 14)
 		var p: Dictionary = gen_player(base)
 		p["pot_est"] = clampi(int(p["pot"]) + randi_range(-err, err), 30, 99)
+		p["team"] = ""
+		p["contract"] = {"type": "free", "end": season, "signed": ""}
 		market.append(p)
 
 # ---------------------------------------------------------------- расписание
@@ -1321,6 +1345,7 @@ func _check_fired() -> void:
 # ---------------------------------------------------------------- конец сезона
 
 func _end_season() -> void:
+	_return_loans()
 	var pos: int = my_rank()
 	var prizes: Array = [12000, 8000, 5000, 3000, 1500, 500, 0, 0]
 	var prize: int = int(prizes[clampi(pos - 1, 0, prizes.size() - 1)]) * (tier + 1)
@@ -1388,6 +1413,87 @@ func _start_next_season() -> void:
 
 # ---------------------------------------------------------------- действия тренера
 
+func is_shortlisted(p: Dictionary) -> bool:
+	return shortlist.has(str(p["nick"]))
+
+func toggle_shortlist(p: Dictionary) -> void:
+	if shortlist.has(str(p["nick"])):
+		shortlist.erase(str(p["nick"]))
+	else:
+		shortlist.append(str(p["nick"]))
+	changed.emit()
+
+## Стоимость выкупа у команды (с наценкой клуба).
+func buyout(p: Dictionary) -> int:
+	return int(fee(p) * (1.35 if str(p.get("team", "")) != "" else 1.0))
+
+func loan_fee(p: Dictionary) -> int:
+	return int(fee(p) * 0.15)
+
+func _arrive(p: Dictionary, kind: String, cost: int) -> void:
+	var from: String = str(p.get("team", ""))
+	p.erase("pot_est")
+	var th: Array = p.get("thist", [])
+	th.push_front({"date": game_date_str(), "from": from if from != "" else tr("Свободный агент"), "to": team_name, "fee": cost, "kind": kind})
+	p["thist"] = th
+	if kind == "loan":
+		p["loan_from"] = from
+		p["contract"] = {"type": "loan", "end": season, "signed": game_date_str()}
+	else:
+		p.erase("loan_from")
+		p["contract"] = {"type": "club", "end": season + 2, "signed": game_date_str()}
+	p["team"] = team_name
+	players.append(p)
+	if from != "" and strengths.has(from):
+		strengths[from] = float(strengths[from]) - 1.0
+
+## Купить игрока (свободного агента или из команды).
+func buy_player(p: Dictionary) -> String:
+	if players.size() >= MAX_ROSTER:
+		return tr("Состав заполнен (максимум %d).") % MAX_ROSTER
+	var cost: int = buyout(p)
+	if money < cost:
+		return tr("Не хватает денег.")
+	money -= cost
+	market.erase(p)
+	world.erase(p)
+	var from: String = str(p.get("team", ""))
+	_arrive(p, "buy", cost)
+	add_mail(tr("Трансферный рынок"), tr("Трансфер: %s") % p["nick"], tr("%s переходит в %s из %s за $%d.") % [p["nick"], team_name, from if from != "" else tr("свободных агентов"), cost], "transfer")
+	add_news(tr("Подписан %s (%s, общий %d) за $%d.") % [p["nick"], tr(p["role"]), ovr(p), cost])
+	changed.emit()
+	return ""
+
+## Аренда до конца сезона: платим 15% стоимости, зарплату платит наш клуб.
+func loan_player(p: Dictionary) -> String:
+	if str(p.get("team", "")) == "" or not bool(p.get("loan_ok", false)):
+		return tr("Игрок недоступен для аренды.")
+	if players.size() >= MAX_ROSTER:
+		return tr("Состав заполнен (максимум %d).") % MAX_ROSTER
+	var cost: int = loan_fee(p)
+	if money < cost:
+		return tr("Не хватает денег.")
+	money -= cost
+	world.erase(p)
+	var from: String = str(p["team"])
+	_arrive(p, "loan", cost)
+	add_mail(tr("Трансферный рынок"), tr("Аренда: %s") % p["nick"], tr("%s арендован у %s до конца сезона за $%d.") % [p["nick"], from, cost], "transfer")
+	changed.emit()
+	return ""
+
+## Конец сезона: арендованные игроки возвращаются.
+func _return_loans() -> void:
+	for p in players.duplicate():
+		if str(p.get("contract", {}).get("type", "")) == "loan":
+			var to: String = str(p.get("loan_from", ""))
+			players.erase(p)
+			p["team"] = to
+			p["contract"] = {"type": "club", "end": season + 1, "signed": game_date_str()}
+			world.append(p)
+			if strengths.has(to):
+				strengths[to] = float(strengths[to]) + 1.0
+			add_news(tr("%s вернулся из аренды в %s.") % [p["nick"], to])
+
 func sign_player(idx: int) -> String:
 	if idx < 0 or idx >= market.size():
 		return tr("Ошибка")
@@ -1447,7 +1553,7 @@ func to_dict() -> Dictionary:
 	return {
 		"active": active, "game_over": game_over, "legend": legend, "coach_name": coach_name, "team_name": team_name,
 		"season": season, "week": week, "tier": tier, "money": money, "rep": rep, "coach_pts": coach_pts,
-		"coach_skill": coach_skill, "players": players, "market": market, "map_skill": map_skill, "style": style,
+		"coach_skill": coach_skill, "players": players, "market": market, "world": world, "shortlist": shortlist, "map_skill": map_skill, "style": style,
 		"train_focus": train_focus, "train_map": train_map, "map_pool": map_pool, "map_picks": map_picks, "map_bans": map_bans, "map_usage": map_usage, "league_teams": league_teams, "strengths": strengths,
 		"standings": standings, "schedule": schedule, "playoff": playoff, "match_done": match_done, "news": news,
 		"history": history, "titles": titles, "bad_seasons": bad_seasons, "next_id": next_id,
@@ -1474,6 +1580,10 @@ func from_dict(d: Dictionary) -> void:
 		coach_skill[k] = int(d["coach_skill"][k])
 	players = _fix_players(d["players"])
 	market = _fix_players(d["market"])
+	world = _fix_players(d.get("world", []))
+	shortlist = d.get("shortlist", [])
+	if world.is_empty():
+		build_world()
 	map_skill = {}
 	for k in d["map_skill"]:
 		map_skill[k] = int(d["map_skill"][k])

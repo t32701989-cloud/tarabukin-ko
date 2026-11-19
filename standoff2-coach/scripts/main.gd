@@ -1860,11 +1860,11 @@ var nav_btns: Dictionary = {}
 const NAV := [
 	["dashboard", "Главная", "home"], ["mail", "Почта", "mail"], ["talk", "Разговор", "forum"], [],
 	["squad", "Состав", "groups"], ["staff", "Штат", "badge"], ["training", "Тренировка", "fitness_center"],
-	[], ["transfers", "Трансферы", "swap_horiz"], ["league", "Турниры", "emoji_events"], ["stats", "Статистика", "bar_chart"],
+	[], ["scouting", "Скаутинг", "travel_explore"], ["transfers", "Трансферы", "swap_horiz"], ["league", "Турниры", "emoji_events"], ["stats", "Статистика", "bar_chart"],
 	[], ["finance", "Финансы", "payments"], ["coach", "Профиль", "account_circle"], [], ["system", "Настройки", "settings"],
 ]
 const SCREEN_TITLES := {"dashboard": "Главная", "mail": "Почта", "squad": "Состав", "staff": "Штат", "training": "Тренировка",
-	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч", "player": "Профиль игрока", "talk": "Разговор", "staff_member": "Персонал команды", "staff_hire": "Найм персонала"}
+	"transfers": "Трансферы", "league": "Турниры", "stats": "Статистика", "finance": "Финансы", "coach": "Профиль", "system": "Настройки", "match": "Матч", "player": "Профиль игрока", "talk": "Разговор", "scouting": "Скаутинг", "staff_member": "Персонал команды", "staff_hire": "Найм персонала"}
 const WEEKDAYS := ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]
 const MONTHS_SHORT := ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля", "авг.", "сент.", "окт.", "нояб.", "дек."]
 
@@ -2081,6 +2081,7 @@ func show_screen(name: String, push: bool = true) -> void:
 	match name:
 		"dashboard": screen_dashboard()
 		"mail": screen_mail()
+		"scouting": screen_scouting()
 		"talk": screen_talk()
 		"staff_member": screen_staff_member()
 		"staff_hire": screen_staff_hire()
@@ -2434,7 +2435,9 @@ func _player_left(pl: Dictionary, mine: bool) -> Control:
 	var tr2 := hbox(6)
 	if mine and tex(gs.team_logo) != null:
 		tr2.add_child(pic(gs.team_logo, 22))
-	tr2.add_child(label(gs.team_name if mine else tr("Свободный агент"), 13, Color.WHITE))
+	if not mine and str(pl.get("team", "")) != "":
+		tr2.add_child(team_icon(str(pl["team"]), 22))
+	tr2.add_child(label(gs.team_name if mine else (str(pl.get("team", "")) if str(pl.get("team", "")) != "" else tr("Свободный агент")), 13, Color.WHITE))
 	iv.add_child(tr2)
 	var cr2 := hbox(6)
 	cr2.add_child(_flag(str(pl.get("country", "xx")), 22))
@@ -2626,7 +2629,10 @@ func _player_contract(pl: Dictionary, right: VBoxContainer, mine: bool) -> void:
 	var v := vbox(4)
 	c.add_child(v)
 	if not mine:
-		v.add_child(_kv_row(tr("Тип контракта"), tr("Свободный агент"), C_ACC))
+		var tm: String = str(pl.get("team", ""))
+		v.add_child(_kv_row(tr("Тип контракта"), (tr("В клубе") + " · " + tm) if tm != "" else tr("Свободный агент"), C_ACC))
+		if tm != "":
+			v.add_child(_kv_row(tr("Конец контракта"), _season_end_date(int(pl.get("contract", {}).get("end", gs.season)))))
 		v.add_child(_kv_row(tr("Ожидаемая зарплата"), "$%d / %s" % [int(pl["salary"]), tr("нед.")]))
 		return
 	var ct: Dictionary = pl.get("contract", {})
@@ -2699,18 +2705,45 @@ func _player_transfer(pl: Dictionary, right: VBoxContainer, mine: bool) -> void:
 	var ref: Dictionary = pl
 	if mine:
 		v.add_child(_kv_row(tr("Сумма продажи (60%)"), money_fmt(int(val * 0.6)), C_ACC))
-		v.add_child(btn(tr("Продать игрока"), func():
+		var sb2 := btn(tr("Продать игрока"), func():
 			gs.sell_player(gs.players.find(ref))
 			viewed_player = {}
-			show_screen("squad"), C_BAD))
+			show_screen("squad"), C_BAD)
+		sb2.disabled = str(pl.get("contract", {}).get("type", "")) == "loan"
+		v.add_child(sb2)
 	else:
-		var b := btn(tr("Подписать за %s") % money_fmt(val), func():
-			var err: String = gs.sign_player(gs.market.find(ref))
+		var team: String = str(pl.get("team", ""))
+		v.add_child(_kv_row(tr("Команда"), team if team != "" else tr("Свободный агент")))
+		v.add_child(_kv_row(tr("Цена выкупа"), money_fmt(gs.buyout(pl)), C_GOOD))
+		var row := vbox(6)
+		var b := btn(tr("Купить за %s") % money_fmt(gs.buyout(pl)), func():
+			var err: String = gs.buy_player(ref)
 			if err != "":
 				gs.add_news(err)
-			show_screen("squad"), C_GOOD)
-		b.disabled = gs.money < val
-		v.add_child(b)
+				contract_answer = err
+				show_screen("player", false)
+			else:
+				show_screen("squad"), C_GOOD)
+		b.disabled = gs.money < gs.buyout(pl)
+		row.add_child(b)
+		if team != "":
+			v.add_child(_kv_row(tr("Аренда до конца сезона"), money_fmt(gs.loan_fee(pl)) if bool(pl.get("loan_ok", false)) else tr("недоступна"), C_ACC if bool(pl.get("loan_ok", false)) else C_DIM))
+			var lb := btn(tr("Арендовать за %s") % money_fmt(gs.loan_fee(pl)), func():
+				var err2: String = gs.loan_player(ref)
+				if err2 != "":
+					gs.add_news(err2)
+					contract_answer = err2
+					show_screen("player", false)
+				else:
+					show_screen("squad"), C_ACC)
+			lb.disabled = not bool(pl.get("loan_ok", false)) or gs.money < gs.loan_fee(pl)
+			row.add_child(lb)
+		var bm := btn(tr("Убрать из закладок") if gs.is_shortlisted(pl) else tr("В закладки"), func(): gs.toggle_shortlist(ref); show_screen("player", false))
+		row.add_child(bm)
+		v.add_child(row)
+		if contract_answer != "":
+			v.add_child(_alert(contract_answer, false))
+			contract_answer = ""
 	var hb := _block(tr("Трансферная история"))
 	right.add_child(hb)
 	var hc := _card()
@@ -4214,6 +4247,255 @@ func screen_system() -> void:
 	var sv := vbox(8)
 	sc.add_child(sv)
 	build_settings(sv, func(): show_screen("system", false))
+
+# ------------------------------------------------------------ скаутинг
+
+var sc_tab: String = "players"
+var sc_quick: String = "all"
+var sc_page: int = 0
+var sc_q: String = ""
+var sc_nat: String = ""
+var sc_role: String = ""
+var sc_age: Array = [16, 40]
+var sc_sal: int = 0
+var sc_price: int = 0
+var sc_stars: float = 0.0
+var sc_filters_open: bool = false
+const SC_PER_PAGE := 12
+
+func _k(v: int) -> String:
+	if v >= 1000000: return "%.1fM" % (v / 1000000.0)
+	if v >= 1000: return "%.1fK" % (v / 1000.0)
+	return str(v)
+
+func _scout_pool() -> Array:
+	var all: Array = gs.market + gs.world
+	var res: Array = []
+	for p in all:
+		gs.ensure_attrs(p)
+		var team: String = str(p.get("team", ""))
+		var age: int = int(p["age"])
+		match sc_quick:
+			"free": if team != "": continue
+			"u23": if age >= 23: continue
+			"loan": if team == "" or not bool(p.get("loan_ok", false)): continue
+			"expiring": if team == "" or int(p.get("contract", {}).get("end", 99)) > gs.season: continue
+			"afford": if gs.buyout(p) > gs.money: continue
+			"short": if not gs.is_shortlisted(p): continue
+		if sc_q != "" and str(p["nick"]).to_lower().find(sc_q.to_lower()) < 0 and ("%s %s" % [p.get("first", ""), p.get("last", "")]).to_lower().find(sc_q.to_lower()) < 0:
+			continue
+		if sc_nat != "" and str(p.get("country", "")) != sc_nat: continue
+		if sc_role != "" and p["role"] != sc_role and str(p.get("role2", "")) != sc_role: continue
+		if age < int(sc_age[0]) or age > int(sc_age[1]): continue
+		if sc_sal > 0 and int(p["salary"]) > sc_sal: continue
+		if sc_price > 0 and gs.buyout(p) > sc_price: continue
+		if sc_stars > 0.0 and _player_stars(p) < sc_stars: continue
+		res.append(p)
+	res.sort_custom(func(a, b): return gs.ovr(a) > gs.ovr(b))
+	return res
+
+func screen_scouting() -> void:
+	var top := hbox(10)
+	for tb in [["players", tr("Игроки")], ["staff", tr("Штат")]]:
+		var key: String = tb[0]
+		top.add_child(text_btn(tb[1], func(): sc_tab = key; show_screen("scouting", false), 17, C_ACC if sc_tab == key else Color.WHITE))
+	content.add_child(top)
+	top = hbox(6)
+	if sc_tab == "players":
+		for q in [["all", tr("Все")], ["free", tr("Свободные агенты")], ["u23", tr("До 23 лет")], ["loan", tr("Готов в аренду")], ["expiring", tr("Контракт кончается")], ["afford", tr("По карману")], ["short", tr("Мои закладки")]]:
+			var key2: String = q[0]
+			top.add_child(small_btn(q[1], func(): sc_quick = key2; sc_page = 0; show_screen("scouting", false), C_ACC if sc_quick == key2 else Color.WHITE))
+		top.add_child(spacer())
+		var se := LineEdit.new()
+		se.placeholder_text = tr("Поиск...")
+		se.text = sc_q
+		se.custom_minimum_size = Vector2(130, 30)
+		se.text_submitted.connect(func(t): sc_q = t; sc_page = 0; show_screen("scouting", false))
+		top.add_child(se)
+		top.add_child(small_btn(tr("ФИЛЬТРЫ"), func(): sc_filters_open = not sc_filters_open; show_screen("scouting", false), C_GOOD))
+		content.add_child(top)
+	if sc_tab == "staff":
+		_scout_staff()
+		return
+	if sc_filters_open:
+		content.add_child(_scout_filters())
+	var pool: Array = _scout_pool()
+	var pages: int = maxi(1, int(ceil(float(pool.size()) / SC_PER_PAGE)))
+	sc_page = clampi(sc_page, 0, pages - 1)
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(2)
+	c.add_child(v)
+	var hh := hbox(6)
+	for e in [["", 24], [tr("Ник"), 130], [tr("Роль"), 84], [tr("Возраст"), 50], [tr("Рейтинг"), 80], [tr("Нация"), 40], [tr("Потенциал"), 80], [tr("Истекает"), 80], [tr("Зарплата"), 80], [tr("Трансф. стоимость"), 110], [tr("Команда"), 120]]:
+		hh.add_child(cell(e[0], e[1], C_DIM, 11))
+	v.add_child(hh)
+	if pool.is_empty():
+		v.add_child(label(tr("Никого не найдено."), 14, C_DIM))
+	for i in range(sc_page * SC_PER_PAGE, mini(pool.size(), (sc_page + 1) * SC_PER_PAGE)):
+		v.add_child(_scout_row(pool[i], i))
+	var pr := hbox(8)
+	pr.alignment = BoxContainer.ALIGNMENT_CENTER
+	var pb := small_btn("<", func(): sc_page -= 1; show_screen("scouting", false))
+	pb.disabled = sc_page == 0
+	pr.add_child(pb)
+	for pg in range(maxi(0, sc_page - 2), mini(pages, sc_page + 3)):
+		var pp: int = pg
+		pr.add_child(small_btn(str(pg + 1), func(): sc_page = pp; show_screen("scouting", false), C_ACC if pg == sc_page else Color.WHITE))
+	var nb := small_btn(">", func(): sc_page += 1; show_screen("scouting", false))
+	nb.disabled = sc_page >= pages - 1
+	pr.add_child(nb)
+	pr.add_child(spacer())
+	pr.add_child(label(tr("Найдено %d из %d") % [pool.size(), gs.market.size() + gs.world.size()], 12, C_DIM))
+	v.add_child(pr)
+
+func _scout_row(p: Dictionary, i: int) -> Control:
+	var row := PanelContainer.new()
+	var rs := StyleBoxFlat.new()
+	rs.bg_color = Color(1, 1, 1, 0.04) if i % 2 == 0 else Color(1, 1, 1, 0.015)
+	rs.content_margin_top = 3; rs.content_margin_bottom = 3; rs.content_margin_left = 4
+	row.add_theme_stylebox_override("panel", rs)
+	var r := hbox(6)
+	row.add_child(r)
+	var star := icon_btn("star" if gs.is_shortlisted(p) else "star_border", tr("В закладки"), func(): gs.toggle_shortlist(p); show_screen("scouting", false))
+	star.custom_minimum_size = Vector2(24, 24)
+	r.add_child(star)
+	var nv := vbox(0)
+	nv.custom_minimum_size = Vector2(130, 0)
+	var nl := _nick_link(p, 130, Color("5aa9ff"))
+	nl.add_theme_font_size_override("font_size", 13)
+	nv.add_child(nl)
+	var full: String = ("%s %s" % [tr(str(p.get("first", ""))), tr(str(p.get("last", "")))]).strip_edges()
+	nv.add_child(label(full if full != "" else " ", 10, C_DIM))
+	r.add_child(nv)
+	var roles: String = tr(p["role"]) + (("\n" + tr(p["role2"])) if str(p.get("role2", "")) != "" else "")
+	r.add_child(cell(roles, 84, Color.WHITE, 12))
+	r.add_child(cell(str(p["age"]), 50, Color.WHITE, 13))
+	var s1 := _stars(_player_stars(p), 12)
+	s1.custom_minimum_size = Vector2(80, 14)
+	r.add_child(s1)
+	var fl := _flag(str(p.get("country", "xx")), 24)
+	var fw := CenterContainer.new()
+	fw.custom_minimum_size = Vector2(40, 0)
+	fw.add_child(fl)
+	r.add_child(fw)
+	var s2 := _stars(clampf((float(p.get("pot_est", p["pot"])) - 35.0) / 9.0, 0.5, 5.0), 12)
+	s2.custom_minimum_size = Vector2(80, 14)
+	r.add_child(s2)
+	var team: String = str(p.get("team", ""))
+	r.add_child(cell(_season_end_date(int(p.get("contract", {}).get("end", gs.season))) if team != "" else "—", 80, Color.WHITE, 12))
+	r.add_child(cell("$" + _k(int(p["salary"]) * 4) + tr("/мес"), 80, C_GOOD, 12))
+	var price := hbox(4)
+	price.custom_minimum_size = Vector2(110, 0)
+	price.add_child(label("$" + _k(gs.buyout(p)), 13, Color("5aa9ff")))
+	if bool(p.get("loan_ok", false)) and team != "":
+		price.add_child(_badge(tr("аренда"), C_ACC))
+	r.add_child(price)
+	var tv := hbox(6)
+	tv.custom_minimum_size = Vector2(120, 0)
+	if team != "":
+		tv.add_child(team_icon(team, 20))
+		var tl := label(team, 11, Color("5aa9ff"))
+		tl.clip_text = true
+		tl.custom_minimum_size = Vector2(90, 0)
+		tv.add_child(tl)
+	else:
+		tv.add_child(label(tr("Свободный агент"), 12, C_DIM))
+	r.add_child(tv)
+	return row
+
+func _scout_filters() -> Control:
+	var c := _card()
+	var g := GridContainer.new()
+	g.columns = 4
+	g.add_theme_constant_override("h_separation", 18)
+	g.add_theme_constant_override("v_separation", 8)
+	c.add_child(g)
+	var nat := OptionButton.new()
+	nat.add_item(tr("Все нации"))
+	var codes: Array = [""]
+	for cc in Teams.COUNTRY_LIST:
+		var ft: Texture2D = tex("res://assets/flags/%s.png" % cc[0])
+		if ft != null: nat.add_icon_item(ft, tr(cc[1]))
+		else: nat.add_item(tr(cc[1]))
+		codes.append(cc[0])
+	nat.selected = maxi(0, codes.find(sc_nat))
+	nat.item_selected.connect(func(i): sc_nat = codes[i]; sc_page = 0; show_screen("scouting", false))
+	g.add_child(_flt(tr("Нация"), nat))
+	var ro := OptionButton.new()
+	ro.add_item(tr("Все роли"))
+	for rr in gs.ROLES:
+		ro.add_item(tr(rr))
+	ro.selected = maxi(0, gs.ROLES.find(sc_role) + 1)
+	ro.item_selected.connect(func(i): sc_role = "" if i == 0 else gs.ROLES[i - 1]; sc_page = 0; show_screen("scouting", false))
+	g.add_child(_flt(tr("Роль"), ro))
+	var ah := hbox(4)
+	var a0 := SpinBox.new(); a0.min_value = 16; a0.max_value = 40; a0.value = sc_age[0]
+	var a1 := SpinBox.new(); a1.min_value = 16; a1.max_value = 40; a1.value = sc_age[1]
+	a0.value_changed.connect(func(x): sc_age[0] = int(x))
+	a1.value_changed.connect(func(x): sc_age[1] = int(x))
+	ah.add_child(a0); ah.add_child(label("—", 13, C_DIM)); ah.add_child(a1)
+	g.add_child(_flt(tr("Возраст"), ah))
+	var st := OptionButton.new()
+	for s in [0.0, 2.0, 3.0, 3.5, 4.0, 4.5]:
+		st.add_item(tr("Любой") if s == 0.0 else "≥ %.1f★" % s)
+	st.selected = [0.0, 2.0, 3.0, 3.5, 4.0, 4.5].find(sc_stars)
+	st.item_selected.connect(func(i): sc_stars = [0.0, 2.0, 3.0, 3.5, 4.0, 4.5][i]; sc_page = 0; show_screen("scouting", false))
+	g.add_child(_flt(tr("Рейтинг"), st))
+	var sal := SpinBox.new(); sal.min_value = 0; sal.max_value = 20000; sal.step = 100; sal.value = sc_sal
+	sal.value_changed.connect(func(x): sc_sal = int(x))
+	g.add_child(_flt(tr("Зарплата до ($/нед, 0 — любая)"), sal))
+	var pr := SpinBox.new(); pr.min_value = 0; pr.max_value = 5000000; pr.step = 5000; pr.value = sc_price
+	pr.value_changed.connect(func(x): sc_price = int(x))
+	g.add_child(_flt(tr("Цена до ($, 0 — любая)"), pr))
+	var ap := btn(tr("Применить"), func(): sc_page = 0; show_screen("scouting", false), C_GOOD)
+	g.add_child(_flt(" ", ap))
+	var rs := btn(tr("Сбросить"), func():
+		sc_nat = ""; sc_role = ""; sc_age = [16, 40]; sc_sal = 0; sc_price = 0; sc_stars = 0.0; sc_q = ""
+		show_screen("scouting", false))
+	g.add_child(_flt(" ", rs))
+	return c
+
+func _flt(t: String, ctl: Control) -> Control:
+	var v := vbox(2)
+	v.add_child(label(t, 11, C_DIM))
+	v.add_child(ctl)
+	return v
+
+func _scout_staff() -> void:
+	var c := _card()
+	content.add_child(c)
+	var v := vbox(4)
+	c.add_child(v)
+	var hh := hbox(8)
+	for e in [["", 36], [tr("Имя"), 180], [tr("Должность"), 170], [tr("Нация"), 50], [tr("Рейтинг"), 90], [tr("Подъёмные"), 100], [tr("Зарплата"), 90]]:
+		hh.add_child(cell(e[0], e[1], C_DIM, 11))
+	v.add_child(hh)
+	for i in gs.staff_market.size():
+		var s: Dictionary = gs.staff_market[i]
+		var r := hbox(8)
+		r.add_child(_circle(str(s.get("photo", "")), 32))
+		r.add_child(cell(str(s["name"]), 180, Color("5aa9ff"), 13))
+		r.add_child(cell(tr(gs.STAFF_ROLES[s["role"]][0]), 170, Color.WHITE, 13))
+		var fw := CenterContainer.new()
+		fw.custom_minimum_size = Vector2(50, 0)
+		fw.add_child(_flag(str(s.get("country", "xx")), 22))
+		r.add_child(fw)
+		var st := _stars(gs.staff_stars(s), 13)
+		st.custom_minimum_size = Vector2(90, 14)
+		r.add_child(st)
+		r.add_child(cell("$" + _k(int(s["fee"])), 100, C_GOOD, 13))
+		r.add_child(cell("$" + _k(int(s["salary"]) * 4) + tr("/мес"), 90, C_GOOD, 13))
+		r.add_child(spacer())
+		var ii: int = i
+		var hb := small_btn(tr("Нанять"), func():
+			var err: String = gs.hire_staff(ii)
+			if err != "":
+				gs.add_news(err)
+			show_screen("scouting", false), C_GOOD)
+		hb.disabled = gs.staff_level(s["role"]) > 0 or gs.money < int(s["fee"])
+		r.add_child(hb)
+		v.add_child(r)
 
 func _unhandled_input(e: InputEvent) -> void:
 	if not e.is_action_pressed("ui_cancel") or busy:
