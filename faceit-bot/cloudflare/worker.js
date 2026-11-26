@@ -273,7 +273,7 @@ export class Arena extends DurableObject {
   async checkSeason() {
     const cur = seasonKey(), stored = this.setting("season");
     if (stored === cur) return;
-    const top = this.q(`SELECT tg_id, nick, elo, badges FROM players WHERE wins + losses >= ${CALIBRATION_GAMES} ORDER BY elo DESC, wins DESC LIMIT 3`);
+    const top = this.q(`SELECT tg_id, nick, elo, badges FROM players WHERE tg_id > 0 AND wins + losses >= ${CALIBRATION_GAMES} ORDER BY elo DESC, wins DESC LIMIT 3`);
     top.forEach((p, i) => {
       const badges = JSON.parse(p.badges || "[]");
       badges.push({ season: stored, place: i + 1 });
@@ -298,7 +298,7 @@ export class Arena extends DurableObject {
   rankOf(id) {
     const p = this.player(id);
     if (!p || !this.isCalibrated(p)) return null;
-    return this.one(`SELECT COUNT(*) AS n FROM players WHERE elo > ? AND wins + losses >= ${CALIBRATION_GAMES}`, p.elo).n + 1;
+    return this.one(`SELECT COUNT(*) AS n FROM players WHERE elo > ? AND tg_id > 0 AND wins + losses >= ${CALIBRATION_GAMES}`, p.elo).n + 1;
   }
   match(id) {
     const m = this.one("SELECT * FROM matches WHERE id = ?", id);
@@ -504,6 +504,7 @@ export class Arena extends DurableObject {
     return r.json();
   }
   async send(chatId, text, markup) {
+    if (chatId < 0 && chatId > -1000) return; // тестовые боты
     try {
       const r = await this.tg("sendMessage", { chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) });
       if (!r.ok) console.log("send failed", chatId, r.description);
@@ -537,7 +538,7 @@ export class Arena extends DurableObject {
 
   // ----- ready check -----
   async startReady(mid) {
-    this.sql.exec("UPDATE match_players SET ready = 0 WHERE match_id = ?", mid);
+    this.sql.exec("UPDATE match_players SET ready = CASE WHEN tg_id < 0 THEN 1 ELSE 0 END WHERE match_id = ?", mid);
     this.sql.exec("UPDATE matches SET status = 'ready', ready_deadline = ? WHERE id = ?", now() + READY_SEC, mid);
     await this.scheduleAlarm();
     const m = this.match(mid);
@@ -591,6 +592,7 @@ export class Arena extends DurableObject {
       `✅ <b>Все готовы!</b> Матч #${mid}\n\nКапитаны: <b>${esc(this.nick(m2, cap1))}</b> vs <b>${esc(this.nick(m2, cap2))}</b>\n` +
       `Капитаны по очереди банят карты (${this.maps.length - 1} банов), последняя карта играется.\n\n${this.teamsText(m2)}`, this.appButton("🗺 Открыть вето"));
     await this.send(cap1, `🗺 Ты капитан! Твой ход — забань карту (${VETO_TURN_SEC} сек).`, this.appButton("Забанить карту"));
+    await this.botVeto(mid);
     await this.notifyGroup(`🔔 Лобби ${m2.lobby_no} собрано (матч #${mid}). Капитаны: ${esc(this.nick(m2, cap1))} vs ${esc(this.nick(m2, cap2))}`);
   }
 
@@ -613,6 +615,17 @@ export class Arena extends DurableObject {
         this.appButton("Забанить карту"));
     }
     await this.scheduleAlarm();
+    if (this.vetoTurn(this.match(mid)) < 0) await this.botVeto(mid);
+  }
+
+  // если сейчас банит бот-капитан — банит сам, сразу
+  async botVeto(mid) {
+    for (let i = 0; i < 10; i++) {
+      const m = this.match(mid);
+      if (m.status !== "veto" || this.vetoTurn(m) >= 0) return;
+      const left = this.maps.filter(x => !m.bans.some(b => b.map === x));
+      await this.ban(mid, this.vetoTurn(m), pick(left), true);
+    }
   }
 
   async scheduleAlarm() {
@@ -659,6 +672,7 @@ export class Arena extends DurableObject {
   }
 
   async sendPhoto(chatId, bytes, caption, markup) {
+    if (chatId < 0) return;
     try {
       const fd = new FormData();
       fd.append("chat_id", String(chatId)); fd.append("caption", caption); fd.append("parse_mode", "HTML");
@@ -707,6 +721,9 @@ export class Arena extends DurableObject {
     }
     this.sql.exec(`UPDATE matches SET status = 'finished', winner = ?, score = ?, finished_at = ?, pending_winner = NULL, pending_score = NULL
       WHERE id = ?`, winner, score || "", now(), mid);
+    for (const p of m.players.filter(p => p.tg_id < 0 && p.kills == null))
+      this.sql.exec("UPDATE match_players SET kills = ?, deaths = ?, assists = ? WHERE match_id = ? AND tg_id = ?",
+        6 + Math.floor(Math.random() * 20), 8 + Math.floor(Math.random() * 12), Math.floor(Math.random() * 6), mid, p.tg_id);
     const mvp = this.computeMvp(mid);
     const earned = {};
     for (const p of m.players) {
@@ -896,7 +913,7 @@ export class Arena extends DurableObject {
     }
 
     if (method === "GET" && path === "/leaderboard") {
-      return this.q("SELECT tg_id, nick, game_id, photo, elo, wins, losses, created_at, badges, banned_until, frame, chevron, banner, nick_color, premium_until, last_seen, coins FROM players ORDER BY elo DESC, wins DESC")
+      return this.q("SELECT tg_id, nick, game_id, photo, elo, wins, losses, created_at, badges, banned_until, frame, chevron, banner, nick_color, premium_until, last_seen, coins FROM players WHERE tg_id > 0 ORDER BY elo DESC, wins DESC")
         .map(r => this.publicPlayer(r))
         .sort((a, b) => (b.calibrated - a.calibrated) || (a.calibrated ? 0 : b.calib_played - a.calib_played));
     }
@@ -1177,6 +1194,12 @@ export class Arena extends DurableObject {
             await this.send(id, `🛠 Админ изменил твоё ELO: ${p.elo} → <b>${elo}</b>`);
             return { ok: true };
           }
+          case "grant_all": {
+            for (const it of SHOP.filter(i => ["frame", "chevron", "banner"].includes(i.kind) && !i.premium))
+              this.sql.exec("INSERT OR IGNORE INTO inventory (tg_id, item, created) VALUES (?, ?, ?)", id, it.id, now());
+            this.sql.exec("UPDATE players SET coins = coins + 1000000, premium_until = MAX(COALESCE(premium_until, 0), ?) + ? WHERE tg_id = ?", now(), 3650 * 86400, id);
+            return { ok: true };
+          }
           case "coins": {
             const n = Math.round(Number(body.amount));
             if (!n || Math.abs(n) > 100000) throw new ApiError("Укажи количество");
@@ -1221,6 +1244,27 @@ export class Arena extends DurableObject {
         }
       }
       throw new ApiError("Неизвестный запрос");
+    }
+
+    if (method === "POST" && (mm = path.match(/^\/lobbies\/(\d+)\/addbot$/))) {
+      requireAdmin();
+      const m = getMatch(+mm[1]);
+      if (m.status !== "open") throw new ApiError("Лобби уже не открыто");
+      const want = Math.min(LOBBY_SIZE - m.players.length, Math.max(1, Number(body.count) || 1));
+      let added = 0;
+      for (let n = 1; n <= 60 && added < want; n++) {
+        const id = -n;
+        if (!this.player(id)) this.sql.exec(`INSERT INTO players (tg_id, nick, game_id, elo, wins, losses, created_at) VALUES (?, ?, ?, ?, 5, 5, ?)`,
+          id, `Bot_${n}`, String(90000000 + n), 800 + Math.floor(Math.random() * 800), now());
+        if (this.activeMatchOf(id)) continue;
+        this.sql.exec("INSERT INTO match_players (match_id, tg_id, joined_at, ready) VALUES (?, ?, ?, 1)", m.id, id, Date.now() / 1000 + added / 1000);
+        added++;
+      }
+      if (m.players.length + added === LOBBY_SIZE) {
+        await this.startReady(m.id);
+        if (this.one("SELECT COUNT(*) AS n FROM match_players WHERE match_id = ? AND ready = 0", m.id).n === 0) await this.startVeto(m.id);
+      }
+      return { ok: true, added };
     }
 
     if (method !== "POST" || !(mm = path.match(/^\/lobbies\/(\d+)\/(\w+)$/))) throw new ApiError("Неизвестный запрос");
@@ -1390,7 +1434,7 @@ export class Arena extends DurableObject {
         `\nПервые ${CALIBRATION_GAMES} матчей — калибровка, после неё получишь уровень.`, this.appButton());
     }
     if (cmd === "/top") {
-      const rows = this.q(`SELECT nick, elo FROM players WHERE wins + losses >= ${CALIBRATION_GAMES} ORDER BY elo DESC, wins DESC LIMIT 10`);
+      const rows = this.q(`SELECT nick, elo FROM players WHERE tg_id > 0 AND wins + losses >= ${CALIBRATION_GAMES} ORDER BY elo DESC, wins DESC LIMIT 10`);
       if (!rows.length) return this.send(chatId, "Пока никто не прошёл калибровку.");
       const medals = ["🥇", "🥈", "🥉"];
       return this.send(chatId, `<b>Топ-10 · сезон ${seasonName(this.setting("season"))}</b>\n\n` +

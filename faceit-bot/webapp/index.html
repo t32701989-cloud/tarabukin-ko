@@ -781,13 +781,14 @@ function lobbyCard(m) {
   else btn = inIt ? `<button class="btn ghost" onclick="act('/lobbies/${m.id}/leave', null, 'Ты вышел из лобби')">Выйти из лобби</button>`
     : `<button class="btn" ${S.me.active_match || S.me.player.banned ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби')">Войти в лобби</button>`;
   const ticks = Array.from({ length: m.size }, (_, i) => `<i class="${isReady ? (i < rc ? 'rd' : 'on') : i < n ? 'on' : ''}"></i>`).join('');
+  const botBtns = S.me.is_admin && !isReady && n < m.size ? `<div class="btns" style="margin-top:8px"><button class="btn ghost" onclick="addBots(${m.id},1)">+1 бот</button><button class="btn ghost" onclick="addBots(${m.id},${m.size - n})">Заполнить ботами</button></div>` : '';
   const sub = isReady ? 'Собрано. Подтверди готовность' : n ? `Ещё ${m.size - n} ${plural(m.size - n, 'игрок', 'игрока', 'игроков')} до старта` : 'Пусто. Зайди первым';
   return `<div class="panel lob">
     <div class="h"><div class="grow"><div class="t">Лобби ${m.lobby_no}</div><div class="mute">${sub}</div></div>
       <div class="cnt">${n}<span>/${m.size}</span></div></div>
     <div class="ticks">${ticks}</div>
     ${isReady ? `<div class="readyband"><div class="grow"><b>Готовы ${rc} из ${m.size}</b><div class="mute">Кто не нажмёт, вылетит из лобби</div></div>${timer(m.ready_left)}</div>` : ''}
-    <div class="slots">${slots}</div><div class="btns">${btn}</div></div>`;
+    <div class="slots">${slots}</div><div class="btns">${btn}</div>${botBtns}</div>`;
 }
 
 function matchCard(m) {
@@ -1302,12 +1303,16 @@ async function friendAct(op, id) {
 }
 
 // ---------- админка ----------
+async function addBots(mid, count) { try { const r = await api(`/lobbies/${mid}/addbot`, { count }); toast(`Добавлено ботов: ${r.added}`, true); await refresh(); } catch (e) { toast(e.message); } }
+async function grantAll() { try { await api(`/admin/players/${S.me.user.id}/grant_all`, {}); toast('Готово: всё выдано', true); await loadMe(); adminTab(); } catch (e) { toast(e.message); } }
 async function adminTab() {
   $('#app').innerHTML = topbar() + '<div class="wrap"><div class="panel empty" style="margin-top:10px">Загрузка…</div></div>';
   try {
     const [ov, players] = await Promise.all([api('/admin/overview'), api('/leaderboard')]);
     S.adm = { ov, players };
     $('#app').innerHTML = topbar() + `<div class="wrap">
+      <button class="btn" style="margin-top:10px;background:var(--gold)" onclick="grantAll()">Выдать себе всё: 1 000 000 TC, премиум, все предметы</button>
+      <p class="mute" style="margin:6px 0 0">Боты для теста: кнопки «+1 бот» и «Заполнить ботами» в карточке лобби. Видны только тебе как админу.</p>
       <h2>Тикеты <small>${ov.tickets.length}</small></h2><div class="panel">${ov.tickets.length ? ov.tickets.map(t => `<button class="tk" onclick="openTicket(${t.id})"><div class="grow">
         <b>#${t.id} · ${esc(t.topic)}${t.premium ? '<span class="ptag">PREMIUM</span>' : ''}</b><span class="mute">${esc(t.nick || '')} · ${fmtDate(t.updated)}</span></div><span class="tst ${t.status}">${TST[t.status]}</span>${I.chev}</button>`).join('') : '<div class="empty">Открытых тикетов нет</div>'}</div>
       <h2>На проверке <small>${ov.pending.length}</small></h2>${ov.pending.length ? ov.pending.map(matchCard).join('') : '<div class="panel empty">Всё проверено</div>'}
@@ -1438,7 +1443,7 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { addBots, grantAll, openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------
