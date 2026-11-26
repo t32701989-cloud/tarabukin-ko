@@ -24,32 +24,41 @@ const PLACEMENT_KD_MAX = 100;  // бонус/штраф за K/D на калиб
 const AVATAR_MAX = 220 * 1024;
 const READY_BAN_SEC = 10 * 60;  // бан за то, что не нажал «Готов»
 const PARTY_MAX = 3, PARTY_MAX_PREMIUM = 5;
-const COINS = { win: 20, loss: 8, mvp: 10, start: 200 };
+const COINS = { win: 50, loss: 20, mvp: 25, daily: 50, daily_premium: 150 }; // TC — Timoha Coin
 const PREMIUM_COIN_MULT = 1.5;
-// магазин: рамки аватара, шевроны у ника, премиум
+const NICK_COLORS = ["#ffc400", "#ff5236", "#2f7cff", "#27c96f", "#b48cff", "#ff6fb5", "#3fe0d0", "#ffffff"];
+const it = (id, kind, title, price, extra = {}) => ({ id, kind, title, price, ...extra });
+// магазин: премиум, рамки, шевроны, баннеры профиля, комплекты
 const SHOP = [
-  { id: "premium_7", kind: "premium", days: 7, price: 500, title: "Премиум на 7 дней" },
-  { id: "premium_30", kind: "premium", days: 30, price: 1500, title: "Премиум на 30 дней" },
-  { id: "frame_steel", kind: "frame", price: 150, title: "Сталь" },
-  { id: "frame_carbon", kind: "frame", price: 250, title: "Карбон" },
-  { id: "frame_fire", kind: "frame", price: 300, title: "Пламя" },
-  { id: "frame_ice", kind: "frame", price: 300, title: "Лёд" },
-  { id: "frame_toxic", kind: "frame", price: 350, title: "Токсин" },
-  { id: "frame_gold", kind: "frame", price: 600, title: "Золото" },
-  { id: "frame_prem", kind: "frame", price: 0, premium: true, title: "Премиум" },
-  { id: "chev_star", kind: "chevron", price: 120, title: "Звезда" },
-  { id: "chev_bolt", kind: "chevron", price: 150, title: "Молния" },
-  { id: "chev_target", kind: "chevron", price: 200, title: "Прицел" },
-  { id: "chev_skull", kind: "chevron", price: 250, title: "Череп" },
-  { id: "chev_wings", kind: "chevron", price: 400, title: "Крылья" },
-  { id: "chev_crown", kind: "chevron", price: 700, title: "Корона" },
-  { id: "chev_prem", kind: "chevron", price: 0, premium: true, title: "Премиум" },
+  it("premium_7", "premium", "Премиум на 7 дней", 1500, { days: 7 }),
+  it("premium_30", "premium", "Премиум на 30 дней", 5000, { days: 30, tag: "выгодно" }),
+  it("premium_90", "premium", "Премиум на 90 дней", 12000, { days: 90, tag: "−20%" }),
+  it("frame_steel", "frame", "Сталь", 300), it("frame_mint", "frame", "Мята", 400), it("frame_carbon", "frame", "Карбон", 500),
+  it("frame_ice", "frame", "Лёд", 600), it("frame_fire", "frame", "Пламя", 600), it("frame_toxic", "frame", "Токсин", 700),
+  it("frame_violet", "frame", "Фиалка", 700), it("frame_ruby", "frame", "Рубин", 900), it("frame_emerald", "frame", "Изумруд", 900),
+  it("frame_dual", "frame", "Дуэт", 1100), it("frame_gold", "frame", "Золото", 1500),
+  it("frame_prem", "frame", "Премиум (анимированная)", 0, { premium: true }),
+  it("chev_star", "chevron", "Звезда", 250), it("chev_heart", "chevron", "Сердце", 250), it("chev_bolt", "chevron", "Молния", 300),
+  it("chev_shield", "chevron", "Щит", 350), it("chev_target", "chevron", "Прицел", 400), it("chev_fire", "chevron", "Огонь", 450),
+  it("chev_diamond", "chevron", "Алмаз", 600), it("chev_skull", "chevron", "Череп", 600), it("chev_wings", "chevron", "Крылья", 800),
+  it("chev_crown", "chevron", "Корона", 1200), it("chev_prem", "chevron", "Премиум", 0, { premium: true }),
+  it("bn_night", "banner", "Ночной город", 500), it("bn_camo", "banner", "Камуфляж", 500), it("bn_sand", "banner", "Пустыня", 600),
+  it("bn_sakura", "banner", "Сакура", 700), it("bn_ice", "banner", "Ледник", 700), it("bn_lava", "banner", "Лава", 800),
+  it("bn_grid", "banner", "Сетка", 800), it("bn_carbon", "banner", "Карбон", 900), it("bn_storm", "banner", "Гроза", 1200),
+  it("bn_prem", "banner", "Премиум", 0, { premium: true }),
+  it("set_fire", "bundle", "Комплект «Пламя»", 1500, { items: ["frame_fire", "chev_fire", "bn_lava"] }),
+  it("set_ice", "bundle", "Комплект «Лёд»", 1500, { items: ["frame_ice", "chev_diamond", "bn_ice"] }),
+  it("set_ops", "bundle", "Комплект «Спецназ»", 1100, { items: ["frame_carbon", "chev_shield", "bn_camo"] }),
+  it("set_sakura", "bundle", "Комплект «Сакура»", 1350, { items: ["frame_violet", "chev_heart", "bn_sakura"] }),
+  it("set_king", "bundle", "Комплект «Король»", 3000, { items: ["frame_gold", "chev_crown", "bn_storm"] }),
 ];
 const PREMIUM_PERKS = [
   "Пати до 5 человек вместо 3",
-  "×1.5 монет за каждый матч",
-  "Эксклюзивные рамка и шеврон «Премиум»",
-  "Золотой ник и значок PREMIUM в рейтинге и лобби",
+  "×1.5 TC за каждый матч",
+  "Ежедневный бонус 150 TC вместо 50",
+  "Анимированная рамка, шеврон и баннер «Премиум»",
+  "Свой цвет ника из 8 вариантов",
+  "Значок PREMIUM в лобби, рейтинге и профиле",
   "Тикеты в поддержку рассматриваются первыми",
 ];
 const TICKET_TOPICS = ["Игрок не зашёл в игру", "Неверный результат", "Читы или нарушение", "Баг в приложении", "Другое"];
@@ -201,6 +210,9 @@ export class Arena extends DurableObject {
       "ALTER TABLE players ADD COLUMN frame TEXT",
       "ALTER TABLE players ADD COLUMN chevron TEXT",
       "ALTER TABLE players ADD COLUMN party_id INTEGER",
+      "ALTER TABLE players ADD COLUMN banner TEXT",
+      "ALTER TABLE players ADD COLUMN nick_color TEXT",
+      "ALTER TABLE players ADD COLUMN daily_at INTEGER",
     ]) { try { this.sql.exec(ddl); } catch {} }
     this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
 
@@ -263,7 +275,7 @@ export class Arena extends DurableObject {
     if (!m) return null;
     m.bans = JSON.parse(m.bans || "[]");
     m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, mp.ready, mp.kills, mp.deaths, mp.assists,
-        mp.party_id, p.nick, p.elo, p.game_id, p.tg_username, p.photo, p.frame, p.chevron, p.premium_until, p.wins + p.losses AS games
+        mp.party_id, p.nick, p.elo, p.game_id, p.tg_username, p.photo, p.frame, p.chevron, p.banner, p.nick_color, p.premium_until, p.wins + p.losses AS games
       FROM match_players mp JOIN players p ON p.tg_id = mp.tg_id WHERE mp.match_id = ? ORDER BY mp.joined_at`, id);
     return m;
   }
@@ -284,6 +296,8 @@ export class Arena extends DurableObject {
       badges: JSON.parse(badges || "[]"), banned: (p.banned_until || 0) > now(),
       online: now() - (p.last_seen || 0) < 120,
       premium: (p.premium_until || 0) > now(),
+      ...((p.premium_until || 0) > now() ? {} : { nick_color: null,
+        frame: /_prem$/.test(p.frame || "") ? null : p.frame, chevron: /_prem$/.test(p.chevron || "") ? null : p.chevron, banner: /_prem$/.test(p.banner || "") ? null : p.banner }),
     };
   }
   publicMatch(m) {
@@ -304,7 +318,9 @@ export class Arena extends DurableObject {
     out.players = m.players.map(p => {
       const calibrated = p.games >= CALIBRATION_GAMES;
       return { tg_id: p.tg_id, team: p.team, nick: p.nick, game_id: p.game_id, photo: p.photo, ready: !!p.ready, party_id: p.party_id,
-        frame: p.frame, chevron: p.chevron, premium: (p.premium_until || 0) > now(),
+        ...(((pr) => ({ premium: pr, nick_color: pr ? p.nick_color : null,
+          frame: !pr && /_prem$/.test(p.frame || "") ? null : p.frame, chevron: !pr && /_prem$/.test(p.chevron || "") ? null : p.chevron,
+          banner: !pr && /_prem$/.test(p.banner || "") ? null : p.banner }))((p.premium_until || 0) > now())),
         kills: p.kills, deaths: p.deaths, assists: p.assists, calibrating: !!p.calibrating,
         elo_delta: m.status === "finished" && !p.calibrating ? p.elo_delta : null,
         calibrated, calib_played: Math.min(p.games, CALIBRATION_GAMES), level: calibrated ? level(p.elo) : null, elo: calibrated ? p.elo : null };
@@ -443,7 +459,7 @@ export class Arena extends DurableObject {
     const party = this.partyOf(uid);
     const invites = this.q("SELECT pi.party_id, pi.from_id, p.nick FROM party_invites pi JOIN players p ON p.tg_id = pi.from_id WHERE pi.to_id = ?", uid);
     if (!party) return { party: null, invites };
-    const members = party.members.map(id => { const p = this.publicPlayer(this.player(id)); return { tg_id: id, nick: p.nick, photo: p.photo, level: p.level, frame: p.frame, chevron: p.chevron, premium: p.premium, online: p.online }; });
+    const members = party.members.map(id => { const p = this.publicPlayer(this.player(id)); return { tg_id: id, nick: p.nick, photo: p.photo, level: p.level, frame: p.frame, chevron: p.chevron, nick_color: p.nick_color, premium: p.premium, online: p.online }; });
     const sent = this.q("SELECT to_id FROM party_invites WHERE party_id = ?", party.id).map(r => r.to_id);
     return { party: { id: party.id, leader: party.leader, max: party.max, members, sent }, invites };
   }
@@ -661,7 +677,7 @@ export class Arena extends DurableObject {
         text += `ELO: ${p.elo_before} → <b>${p.elo}</b> (${p.elo_delta >= 0 ? "+" : ""}${p.elo_delta})` +
           (up ? `\n🎉 Новый уровень: ${level(p.elo)}!` : down ? `\n📉 Уровень понижен до ${level(p.elo)}` : "");
       }
-      text += `\n🪙 +${earned[p.tg_id]} монет`;
+      text += `\n🪙 +${earned[p.tg_id]} TC`;
       if (p.kills == null) text += "\n\n📊 Впиши свои убийства/смерти — так считается MVP и K/D.";
       return this.send(p.tg_id, text, p.kills == null ? this.appButton("📊 Вписать K/D") : null);
     }));
@@ -746,7 +762,7 @@ export class Arena extends DurableObject {
       const season = this.setting("season");
       const d = new Date(), end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
       return { maps: this.maps, levels: LEVELS, calibration_games: CALIBRATION_GAMES, lobby_size: LOBBY_SIZE, veto_turn_sec: VETO_TURN_SEC,
-        ready_sec: READY_SEC, ready_ban_min: READY_BAN_SEC / 60, shop: SHOP, premium_perks: PREMIUM_PERKS, coins: COINS, ticket_topics: TICKET_TOPICS,
+        ready_sec: READY_SEC, ready_ban_min: READY_BAN_SEC / 60, shop: SHOP, premium_perks: PREMIUM_PERKS, coins: COINS, ticket_topics: TICKET_TOPICS, nick_colors: NICK_COLORS,
         party_max: PARTY_MAX, party_max_premium: PARTY_MAX_PREMIUM, placement_max_level: level(PLACEMENT_MAX), calibration_mult: CALIBRATION_MULT, season, season_name: seasonName(season), season_days_left: Math.ceil((end - Date.now()) / 86400000) };
     }
 
@@ -763,6 +779,7 @@ export class Arena extends DurableObject {
       const ticketsNew = isAdmin ? this.one("SELECT COUNT(*) AS n FROM tickets WHERE status = 'open'").n : 0;
       return { user, player: p ? this.publicPlayer(p) : null, rank: this.rankOf(uid), active_match: this.activeMatchOf(uid), is_admin: isAdmin, pending_count: pendingCount + ticketsNew, friend_requests: friendReq,
         party: p ? this.partyView(uid) : null, inventory: p ? this.q("SELECT item FROM inventory WHERE tg_id = ?", uid).map(r => r.item) : [],
+        daily_ready: p ? p.daily_at !== Math.floor(now() / 86400) : false,
         my_tickets_answered: p ? this.one("SELECT COUNT(*) AS n FROM tickets WHERE tg_id = ? AND status = 'answered'", uid).n : 0 };
     }
 
@@ -807,7 +824,7 @@ export class Arena extends DurableObject {
     if (method === "GET" && (mm = path.match(/^\/matches\/(\d+)$/))) return this.publicMatch(getMatch(+mm[1]));
 
     if (method === "GET" && path === "/leaderboard") {
-      return this.q("SELECT tg_id, nick, game_id, photo, elo, wins, losses, created_at, badges, banned_until, frame, chevron, premium_until, last_seen, coins FROM players ORDER BY elo DESC, wins DESC")
+      return this.q("SELECT tg_id, nick, game_id, photo, elo, wins, losses, created_at, badges, banned_until, frame, chevron, banner, nick_color, premium_until, last_seen, coins FROM players ORDER BY elo DESC, wins DESC")
         .map(r => this.publicPlayer(r))
         .sort((a, b) => (b.calibrated - a.calibrated) || (a.calibrated ? 0 : b.calib_played - a.calib_played));
     }
@@ -902,25 +919,46 @@ export class Arena extends DurableObject {
       if (!item) throw new ApiError("Нет такого товара");
       if (item.premium) throw new ApiError("Этот предмет даёт премиум");
       if (item.kind !== "premium" && this.one("SELECT 1 AS x FROM inventory WHERE tg_id = ? AND item = ?", uid, item.id)) throw new ApiError("Уже куплено");
-      if (p.coins < item.price) throw new ApiError(`Не хватает ${item.price - p.coins} монет`);
+      const owned = new Set(this.q("SELECT item FROM inventory WHERE tg_id = ?", uid).map(r => r.item));
+      if (item.kind === "bundle" && item.items.every(x => owned.has(x))) throw new ApiError("Всё из комплекта уже есть");
+      if (p.coins < item.price) throw new ApiError(`Не хватает ${item.price - p.coins} TC`);
       this.sql.exec("UPDATE players SET coins = coins - ? WHERE tg_id = ?", item.price, uid);
       if (item.kind === "premium") {
         this.sql.exec("UPDATE players SET premium_until = MAX(COALESCE(premium_until, 0), ?) + ? WHERE tg_id = ?", now(), item.days * 86400, uid);
-        await this.send(uid, `⭐ Премиум активирован на ${item.days} дн. Пати до ${PARTY_MAX_PREMIUM} человек и ×${PREMIUM_COIN_MULT} монет уже работают.`);
+        await this.send(uid, `⭐ Премиум активирован на ${item.days} дн. Пати до ${PARTY_MAX_PREMIUM} человек, ×${PREMIUM_COIN_MULT} TC и свой цвет ника уже работают.`);
       } else {
-        this.sql.exec("INSERT INTO inventory (tg_id, item, created) VALUES (?, ?, ?)", uid, item.id, now());
-        this.sql.exec(`UPDATE players SET ${item.kind === "frame" ? "frame" : "chevron"} = ? WHERE tg_id = ?`, item.id, uid);
+        for (const id of item.kind === "bundle" ? item.items : [item.id]) {
+          const sub = SHOP.find(x => x.id === id);
+          this.sql.exec("INSERT OR IGNORE INTO inventory (tg_id, item, created) VALUES (?, ?, ?)", uid, id, now());
+          this.sql.exec(`UPDATE players SET ${sub.kind} = ? WHERE tg_id = ?`, id, uid);
+        }
       }
       return { ok: true };
     }
     if (method === "POST" && path === "/shop/equip") {
-      const p = requirePlayer(), kind = body.kind === "frame" ? "frame" : "chevron";
+      const p = requirePlayer(), kind = ["frame", "chevron", "banner"].includes(body.kind) ? body.kind : "chevron";
       const item = body.item ? SHOP.find(i => i.id === body.item && i.kind === kind) : null;
       if (body.item && !item) throw new ApiError("Нет такого предмета");
       if (item?.premium && !this.isPremium(p)) throw new ApiError("Нужен премиум");
       if (item && !item.premium && !this.one("SELECT 1 AS x FROM inventory WHERE tg_id = ? AND item = ?", uid, item.id)) throw new ApiError("Сначала купи");
       this.sql.exec(`UPDATE players SET ${kind} = ? WHERE tg_id = ?`, item?.id ?? null, uid);
       return { ok: true };
+    }
+
+    if (method === "POST" && path === "/shop/color") {
+      const p = requirePlayer();
+      if (!this.isPremium(p)) throw new ApiError("Цвет ника — функция премиума");
+      const c = body.color ? String(body.color) : null;
+      if (c && !NICK_COLORS.includes(c)) throw new ApiError("Нет такого цвета");
+      this.sql.exec("UPDATE players SET nick_color = ? WHERE tg_id = ?", c, uid);
+      return { ok: true };
+    }
+    if (method === "POST" && path === "/daily") {
+      const p = requirePlayer(), day = Math.floor(now() / 86400);
+      if (p.daily_at === day) throw new ApiError("Бонус уже получен, приходи завтра");
+      const n = this.isPremium(p) ? COINS.daily_premium : COINS.daily;
+      this.sql.exec("UPDATE players SET daily_at = ?, coins = coins + ? WHERE tg_id = ?", day, n, uid);
+      return { ok: true, amount: n };
     }
 
     // ----- поддержка -----
@@ -980,7 +1018,7 @@ export class Arena extends DurableObject {
         const pp = this.publicPlayer(p);
         const am = this.activeMatchOf(id), st = am ? this.one("SELECT status FROM matches WHERE id = ?", am).status : null;
         return { tg_id: id, nick: pp.nick, photo: pp.photo, game_id: pp.game_id, level: pp.level, elo: pp.elo, calibrated: pp.calibrated,
-          calib_played: pp.calib_played, online: pp.online, frame: pp.frame, chevron: pp.chevron, premium: pp.premium, last_seen: p.last_seen, in_lobby: st === "open" || st === "ready", in_match: ["veto", "live", "pending"].includes(st) };
+          calib_played: pp.calib_played, online: pp.online, frame: pp.frame, chevron: pp.chevron, nick_color: pp.nick_color, premium: pp.premium, last_seen: p.last_seen, in_lobby: st === "open" || st === "ready", in_match: ["veto", "live", "pending"].includes(st) };
       };
       const pick = (f) => rows.filter(f).map(r => card(r.from_id === uid ? r.to_id : r.from_id)).filter(Boolean);
       const friends = pick(r => r.status === "accepted").sort((a, b) => (b.online - a.online) || ((b.last_seen || 0) - (a.last_seen || 0)));
@@ -1043,7 +1081,7 @@ export class Arena extends DurableObject {
             const n = Math.round(Number(body.amount));
             if (!n || Math.abs(n) > 100000) throw new ApiError("Укажи количество");
             this.sql.exec("UPDATE players SET coins = MAX(0, coins + ?) WHERE tg_id = ?", n, id);
-            await this.send(id, `🪙 Админ ${n > 0 ? "начислил" : "списал"} ${Math.abs(n)} монет.`);
+            await this.send(id, `🪙 Админ ${n > 0 ? "начислил" : "списал"} ${Math.abs(n)} TC.`);
             return { ok: true };
           }
           case "premium": {

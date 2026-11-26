@@ -234,7 +234,52 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .av.f-frame_ice{box-shadow:0 0 0 2px #9be7ff,0 0 0 4px #2f7cff}
 .av.f-frame_toxic{box-shadow:0 0 0 2px #b6ff3a,0 0 0 4px #2f7a12}
 .av.f-frame_gold{box-shadow:0 0 0 2px #ffe27a,0 0 0 4px #c48a00}
-.av.f-frame_prem{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00}
+.av.f-frame_mint{box-shadow:0 0 0 2px #b9ffe4,0 0 0 4px #1aa077}
+.av.f-frame_violet{box-shadow:0 0 0 2px #e2c6ff,0 0 0 4px #7a3fd1}
+.av.f-frame_ruby{box-shadow:0 0 0 2px #ff9aa8,0 0 0 4px #b3122b,0 0 0 5px #ff9aa8}
+.av.f-frame_emerald{box-shadow:0 0 0 2px #a8ffb8,0 0 0 4px #0f7d3c,0 0 0 5px #a8ffb8}
+.av.f-frame_dual{box-shadow:-2px -2px 0 2px #2f7cff,2px 2px 0 2px #ff5236}
+.av.f-frame_prem{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00;animation:premf 2.4s linear infinite}
+@keyframes premf{0%,100%{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00}50%{box-shadow:0 0 0 2px #ffc400,0 0 0 4px #fff,0 0 0 6px #ff8a00}}
+/* баннеры профиля */
+.bn{height:84px;position:relative;overflow:hidden;background:var(--s2)}
+.bn-bn_night{background:linear-gradient(180deg,#0c1330 0%,#1b2350 60%,#2a1a3f 100%)}
+.bn-bn_night::after{content:"";position:absolute;left:0;right:0;bottom:0;height:46px;background:repeating-linear-gradient(90deg,#090b14 0 18px,transparent 18px 22px,#090b14 22px 34px,transparent 34px 37px);clip-path:polygon(0 40%,6% 40%,6% 10%,12% 10%,12% 55%,20% 55%,20% 0,27% 0,27% 35%,36% 35%,36% 15%,44% 15%,44% 60%,52% 60%,52% 5%,60% 5%,60% 45%,70% 45%,70% 20%,78% 20%,78% 50%,88% 50%,88% 25%,100% 25%,100% 100%,0 100%)}
+.bn-bn_camo{background:radial-gradient(circle at 20% 30%,#4b5a2a 0 18%,transparent 19%),radial-gradient(circle at 70% 60%,#2f3a1c 0 22%,transparent 23%),radial-gradient(circle at 45% 80%,#6b6a3a 0 16%,transparent 17%),radial-gradient(circle at 88% 20%,#4b5a2a 0 14%,transparent 15%),#3a4424}
+.bn-bn_sand{background:repeating-linear-gradient(170deg,#c99a55 0 12px,#b5843f 12px 20px,#d8ad6a 20px 34px)}
+.bn-bn_sakura{background:radial-gradient(circle at 15% 40%,#ffd1e3 0 6%,transparent 7%),radial-gradient(circle at 55% 25%,#ffb3cf 0 5%,transparent 6%),radial-gradient(circle at 80% 70%,#ffd1e3 0 7%,transparent 8%),radial-gradient(circle at 35% 75%,#ff9ec2 0 4%,transparent 5%),linear-gradient(135deg,#5a2a45,#2a1424)}
+.bn-bn_ice{background:linear-gradient(120deg,transparent 40%,#ffffff33 41%,transparent 47%),linear-gradient(60deg,transparent 60%,#ffffff26 61%,transparent 66%),linear-gradient(135deg,#bfe9ff,#3f7fbf 60%,#1d3c66)}
+.bn-bn_lava{background:radial-gradient(ellipse at 30% 110%,#ffb000 0 20%,transparent 40%),radial-gradient(ellipse at 75% 120%,#ff5a1f 0 25%,transparent 45%),linear-gradient(180deg,#1a0a06,#4a1208)}
+.bn-bn_grid{background:linear-gradient(#00e0ff22 1px,transparent 1px) 0 0/16px 16px,linear-gradient(90deg,#00e0ff22 1px,transparent 1px) 0 0/16px 16px,linear-gradient(180deg,#0a0f1f,#1a0b2e)}
+.bn-bn_carbon{background:repeating-linear-gradient(45deg,#1b1d21 0 6px,#25282d 6px 12px)}
+.bn-bn_storm{background:linear-gradient(115deg,transparent 46%,#fff8 47%,#fff 48%,transparent 49%) ,linear-gradient(180deg,#232a3a,#3d4660 70%,#1a1f2b)}
+.bn-bn_prem{background:repeating-linear-gradient(135deg,#ffc40022 0 10px,transparent 10px 20px),linear-gradient(135deg,#3a2c00,#8a6a00 50%,#2a2000)}
+.pc.has-bn{padding-top:0}
+.pc.has-bn .bn{margin:0 -16px 0;height:84px}
+.pc.has-bn .row.top2{margin-top:-30px}
+.pc.has-bn .row.top2>.grow{padding-top:38px}
+.secs .opt{flex-shrink:0;white-space:nowrap}
+/* магазин v2 */
+.tcoin{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#ffc400;color:#4a3500;font:900 10px "Fira Sans Condensed",sans-serif;box-shadow:inset 0 0 0 2px #c48a00;flex-shrink:0}
+.secs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:12px 0 0}
+.secs::-webkit-scrollbar{display:none}
+.daily{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#16263f;border-left:3px solid var(--a);margin-top:12px}
+.item2{background:var(--s1);border:1px solid var(--line);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.item2 .pv{height:92px;display:grid;place-items:center;background:var(--s2);position:relative}
+.item2 .pv .bn{position:absolute;inset:0;height:auto}
+.item2 .body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.item2 b{font:700 16px "Fira Sans Condensed",sans-serif}
+.item2 .d{font-size:12px;color:var(--mute);flex:1}
+.item2 .btn{min-height:40px;font-size:15px}
+.item2.eq{border-color:var(--ink)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:12px}
+.plan{background:#2c250c;border:1px solid #6b5400;border-radius:6px;padding:10px 6px;text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center}
+.plan b{font:800 22px/1 "Fira Sans Condensed",sans-serif}
+.plan .tag2{font:700 11px "Fira Sans Condensed";color:#1a1400;background:var(--gold);padding:1px 5px;border-radius:2px}
+.colors{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.colors button{width:32px;height:32px;border-radius:50%;border:2px solid transparent}
+.colors button.on{border-color:#fff;box-shadow:0 0 0 2px var(--bg)}
 .av.xl[class*=f-frame]{outline:0}
 .chev2{display:inline-block;width:16px;height:16px;vertical-align:-2px;margin-left:4px}
 .prem{color:var(--gold)!important}
@@ -374,11 +419,15 @@ const CHEV = {
   chev_skull: ['#e8ecf0', '<path d="M12 3a8 8 0 0 0-8 8c0 2.6 1.3 4.4 3 5.4V20h10v-3.6c1.7-1 3-2.8 3-5.4a8 8 0 0 0-8-8z" fill="currentColor"/><circle cx="9" cy="11.5" r="1.8" fill="#111316"/><circle cx="15" cy="11.5" r="1.8" fill="#111316"/>'],
   chev_wings: ['#b48cff', '<path d="M12 9c-2-4-6-5-10-4 1 5 4 8 8 8M12 9c2-4 6-5 10-4-1 5-4 8-8 8M12 9v10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>'],
   chev_crown: ['#ffc400', '<path d="m3 8 4 4 5-7 5 7 4-4-2 11H5z" fill="currentColor"/>'],
+  chev_heart: ['#ff5a8a', '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="currentColor"/>'],
+  chev_shield: ['#7fb0ff', '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" fill="currentColor"/>'],
+  chev_fire: ['#ff7a1f', '<path d="M12 2c4 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-2.4 1.2-4.2 2.6-5.6.2 2 1.2 3.2 2.4 3.6-.4-3.4.2-6.2 1-9z" fill="currentColor"/>'],
+  chev_diamond: ['#7fe8ff', '<path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor"/><path d="M2 9h20M9 3 7 9l5 12 5-12-2-6" fill="none" stroke="#0d3b4a" stroke-width="1.2"/>'],
   chev_prem: ['#ffc400', '<path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z" fill="currentColor"/><path d="m12 7 1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z" fill="#1a1400"/>'],
 };
 const chevSvg = (id, cls = 'chev2') => CHEV[id] ? `<svg class="${cls}" viewBox="0 0 24 24" style="color:${CHEV[id][0]}">${CHEV[id][1]}</svg>` : '';
-const nickH = p => `<span class="${p.premium ? 'prem' : ''}">${esc(p.nick)}</span>${chevSvg(p.chevron)}`;
-const coinSvg = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#ffc400"/><circle cx="12" cy="12" r="6" fill="none" stroke="#7a5a00" stroke-width="2"/></svg>';
+const nickH = p => `<span class="${p.premium && !p.nick_color ? 'prem' : ''}" ${p.premium && p.nick_color ? `style="color:${esc(p.nick_color)}"` : ''}>${esc(p.nick)}</span>${chevSvg(p.chevron)}`;
+const coinSvg = '<span class="tcoin">TC</span>';
 const ACH = {
   first_win: '<path d="M12 3c3 4 5 6.5 5 10a5 5 0 0 1-10 0c0-3.5 2-6 5-10z"/>',
   calibrated: '<circle cx="12" cy="12" r="8"/><path d="m8 12 3 3 5-6"/>',
@@ -702,7 +751,7 @@ async function openProfile(tgId, isTab) {
       incoming: `<div class="btns" style="margin:0"><button class="btn" onclick="friendAct('accept',${tgId})">Принять в друзья</button><button class="btn ghost sm" onclick="friendAct('decline',${tgId})">Нет</button></div>`,
       friends: `<button class="btn ghost" onclick="confirmDo('Удалить из друзей?',()=>friendAct('remove',${tgId}))">В друзьях · удалить</button>`,
     }[fs];
-    const card = `<div class="panel" style="overflow:hidden"><div class="pc"><div class="row" style="gap:14px">${av(p, 'xl', false, true)}
+    const card = `<div class="panel" style="overflow:hidden"><div class="pc ${p.banner ? 'has-bn' : ''}">${p.banner ? `<div class="bn bn-${esc(p.banner)}"></div>` : ''}<div class="row top2" style="gap:14px;align-items:flex-end">${av(p, 'xl', false, true)}
         <div class="grow"><div class="nick ell">${nickH(p)}</div>${p.premium ? '<span class="ptag">PREMIUM</span>' : ''}
           ${p.game_id ? `<button class="idrow" onclick="copyText('${esc(p.game_id)}')">ID ${esc(p.game_id)} ${I.copy}</button>` : '<div class="idrow">ID не указан</div>'}
           <div class="mute">${p.online ? '<span class="p">в сети</span>' : `был в сети ${ago(p.last_seen)}`}</div></div></div>
@@ -806,33 +855,79 @@ function banLeft(u) { const s = u - Date.now() / 1000; return s < 3600 ? `${Math
 function goTab(t) { document.querySelector(`#tabs [data-tab=${t}]`)?.click(); }
 
 // ---------- магазин ----------
+const SECS = [['premium', 'Премиум'], ['frame', 'Рамки'], ['chevron', 'Шевроны'], ['banner', 'Баннеры'], ['bundle', 'Комплекты']];
+const DESC = { frame: 'Рамка вокруг аватара в профиле, лобби и рейтинге', chevron: 'Значок рядом с ником везде, где тебя видно', banner: 'Широкий баннер в шапке профиля' };
+function itemPreview(it, p) {
+  const base = { ...p, frame: null, chevron: null };
+  if (it.kind === 'frame') return av({ ...base, frame: it.id }, 'xl', false);
+  if (it.kind === 'chevron') return chevSvg(it.id, 'chevbig');
+  if (it.kind === 'banner') return `<div class="bn bn-${it.id}"></div>`;
+  if (it.kind === 'bundle') {
+    const [f, c, b] = it.items.map(id => S.cfg.shop.find(x => x.id === id));
+    return `<div class="bn bn-${b.id}"></div><div class="row" style="position:relative;gap:6px">${av({ ...base, frame: f.id }, '', false)}${chevSvg(c.id, 'chevbig')}</div>`;
+  }
+  return '';
+}
 async function shopTab() {
   await loadMe();
-  const p = S.me.player, inv = new Set(S.me.inventory), items = S.cfg.shop;
-  const prem = p.premium ? `Активен до ${new Date(p.premium_until * 1000).toLocaleDateString('ru')}` : 'Не активен';
-  const card = it => {
-    const own = it.premium ? p.premium : inv.has(it.id), eq = p[it.kind] === it.id;
-    const pic = it.kind === 'frame' ? `<div class="av f-${it.id}" style="--h:hsl(${hue(p.nick)} 30% 28%)">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : esc(p.nick.slice(0, 2).toUpperCase())}</div>` : chevSvg(it.id, 'chevbig');
-    const btn = eq ? `<button class="btn ghost" onclick="equip('${it.kind}',null)">Снять</button>`
-      : own ? `<button class="btn" onclick="equip('${it.kind}','${it.id}')">Надеть</button>`
-      : it.premium ? '<span class="mute">с премиумом</span>'
-      : `<button class="btn ${p.coins < it.price ? 'ghost' : ''}" onclick="buy('${it.id}')"><span class="coins" style="color:inherit">${coinSvg}${it.price}</span></button>`;
-    return `<div class="item ${eq ? 'eq' : ''}">${pic}<b>${esc(it.title)}</b>${btn}</div>`;
-  };
-  $('#app').innerHTML = topbar() + `<div class="wrap">
-    <div class="panel wallet" style="margin-top:8px"><div class="grow"><div class="mute">Твой баланс</div><div class="big">${p.coins}</div></div>
-      <div class="mute" style="text-align:right">Победа +${S.cfg.coins.win}<br>Поражение +${S.cfg.coins.loss}<br>MVP +${S.cfg.coins.mvp}</div></div>
-    <div class="panel premc"><div class="row"><div class="grow"><h3>Премиум</h3><div class="mute">${prem}</div></div>${chevSvg('chev_prem', 'chevbig')}</div>
+  S.shopSec ||= 'premium'; S.shopSort ||= 'def';
+  const p = S.me.player, inv = new Set(S.me.inventory), sec = S.shopSec;
+  let items = S.cfg.shop.filter(i => i.kind === sec);
+  if (S.shopSort !== 'def') items = items.slice().sort((a, b) => (S.shopSort === 'up' ? 1 : -1) * (a.price - b.price));
+  const daily = S.me.daily_ready
+    ? `<div class="daily"><div class="grow"><b class="c" style="font-size:18px">Ежедневный бонус</b><div class="mute">+${p.premium ? S.cfg.coins.daily_premium : S.cfg.coins.daily} TC раз в сутки${p.premium ? '' : ` · с премиумом ${S.cfg.coins.daily_premium}`}</div></div><button class="btn sm" onclick="claimDaily()">Забрать</button></div>` : '';
+  let body = '';
+  if (sec === 'premium') {
+    const until = p.premium ? `Активен до ${new Date(p.premium_until * 1000).toLocaleDateString('ru')}` : 'Не активен';
+    body = `<div class="panel premc"><div class="row"><div class="grow"><h3>Премиум</h3><div class="mute">${until}</div></div>${chevSvg('chev_prem', 'chevbig')}</div>
       <ul>${S.cfg.premium_perks.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
-      <div class="btns">${items.filter(i => i.kind === 'premium').map(i => `<button class="btn" style="background:var(--gold)" onclick="buy('${i.id}')">${i.days} дн. · ${i.price}</button>`).join('')}</div></div>
-    <h2>Рамки <small>вокруг аватара</small></h2><div class="shopgrid">${items.filter(i => i.kind === 'frame').map(card).join('')}</div>
-    <h2>Шевроны <small>рядом с ником</small></h2><div class="shopgrid">${items.filter(i => i.kind === 'chevron').map(card).join('')}</div></div>`;
+      <div class="plans">${items.map(i => `<div class="plan"><span class="mute">${i.days} дн.</span><b class="coins" style="font-size:20px">${coinSvg}${i.price}</b>
+        ${i.tag ? `<span class="tag2">${esc(i.tag)}</span>` : '<span style="height:14px"></span>'}<button class="btn" style="background:var(--gold);min-height:36px;font-size:14px" onclick="buy('${i.id}')">Купить</button></div>`).join('')}</div>
+      ${p.premium ? `<label class="f" style="color:var(--gold)">Цвет ника</label><div class="colors">${S.cfg.nick_colors.map(c => `<button aria-label="Цвет" style="background:${c}" class="${p.nick_color === c ? 'on' : ''}" onclick="setColor('${c}')"></button>`).join('')}
+        <button class="chip" onclick="setColor(null)">Сброс</button></div>` : ''}</div>`;
+  } else {
+    const card = it => {
+      const parts = it.kind === 'bundle' ? it.items.map(id => S.cfg.shop.find(x => x.id === id)) : null;
+      const own = it.premium ? p.premium : it.kind === 'bundle' ? parts.every(x => inv.has(x.id)) : inv.has(it.id);
+      const eq = it.kind !== 'bundle' && p[it.kind] === it.id;
+      const full = parts ? parts.reduce((s2, x) => s2 + x.price, 0) : 0;
+      const btn = it.kind === 'bundle' ? (own ? '<button class="btn ghost" disabled>Уже есть</button>' : `<button class="btn ${p.coins < it.price ? 'ghost' : ''}" onclick="buy('${it.id}')"><span class="coins" style="color:inherit">${coinSvg}${it.price}</span></button>`)
+        : eq ? `<button class="btn ghost" onclick="equip('${it.kind}',null)">Снять</button>`
+        : own ? `<button class="btn" onclick="equip('${it.kind}','${it.id}')">Надеть</button>`
+        : it.premium ? `<button class="btn" style="background:var(--gold)" onclick="S.shopSec='premium';shopTab()">С премиумом</button>`
+        : `<button class="btn ${p.coins < it.price ? 'ghost' : ''}" onclick="buy('${it.id}')"><span class="coins" style="color:inherit">${coinSvg}${it.price}</span></button>`;
+      return `<div class="item2 ${eq ? 'eq' : ''}"><div class="pv">${itemPreview(it, p)}</div><div class="body"><b>${esc(it.title)}</b>
+        <div class="d">${parts ? parts.map(x => esc(x.title)).join(' + ') + ` · <s>${full}</s> −${Math.round((1 - it.price / full) * 100)}%` : esc(DESC[it.kind] || '')}</div>
+        ${btn}<button class="chip" style="justify-content:center" onclick="tryOn('${it.id}')">Примерить</button></div></div>`;
+    };
+    body = `<div class="opts" style="margin:10px 0">${[['def', 'По умолчанию'], ['up', 'Цена ↑'], ['down', 'Цена ↓']].map(([k, t]) => `<button class="opt ${S.shopSort === k ? 'on' : ''}" onclick="S.shopSort='${k}';shopTab()">${t}</button>`).join('')}</div>
+      <div class="grid2">${items.map(card).join('')}</div>`;
+  }
+  $('#app').innerHTML = topbar() + `<div class="wrap">
+    <div class="panel wallet" style="margin-top:8px"><div class="grow"><div class="mute">Баланс Timoha Coin</div><div class="row" style="gap:8px"><span class="tcoin" style="width:30px;height:30px;font-size:14px">TC</span><span class="big">${p.coins}</span></div></div>
+      <div class="mute" style="text-align:right">Победа +${S.cfg.coins.win}<br>Поражение +${S.cfg.coins.loss}<br>MVP +${S.cfg.coins.mvp}</div></div>
+    ${daily}
+    <div class="secs">${SECS.map(([k, t]) => `<button class="opt ${sec === k ? 'on' : ''}" onclick="S.shopSec='${k}';shopTab()">${t}</button>`).join('')}</div>
+    <h2 style="margin-top:16px">${SECS.find(x => x[0] === sec)[1]} <small>${sec === 'premium' ? '' : items.length + ' ' + plural(items.length, 'товар', 'товара', 'товаров')}</small></h2>${body}</div>`;
+}
+function tryOn(id) {
+  const it = S.cfg.shop.find(x => x.id === id), p = { ...S.me.player };
+  const apply = x => { if (x.kind !== 'bundle') p[x.kind] = x.id; };
+  if (it.kind === 'bundle') it.items.forEach(i => apply(S.cfg.shop.find(x => x.id === i))); else apply(it);
+  if (it.premium) p.premium = true;
+  sheet(`<h3>Примерка: ${esc(it.title)}</h3><div class="mute">Так тебя увидят другие игроки</div>
+    <div class="panel" style="overflow:hidden;margin-top:12px"><div class="pc ${p.banner ? 'has-bn' : ''}">${p.banner ? `<div class="bn bn-${esc(p.banner)}"></div>` : ''}
+      <div class="row top2" style="gap:14px;align-items:flex-end">${av(p, 'xl', false)}<div class="grow"><div class="nick ell">${nickH(p)}</div><div class="mute">${p.calibrated ? p.elo + ' ELO' : 'калибровка'}</div></div></div></div></div>
+    <div class="panel list"><div class="it">${av(p, 'sm')}<div class="grow"><div class="n ell">${nickH(p)}</div><div class="mute">так в рейтинге и лобби</div></div></div></div>
+    <div class="btns"><button class="btn ghost" onclick="closeSheet()">Закрыть</button></div>`);
 }
 async function buy(id) {
   const it = S.cfg.shop.find(i => i.id === id);
-  confirmDo(`Купить «${it.title}» за ${it.price} монет?`, async () => { try { await api('/shop/buy', { item: id }); toast('Куплено', true); shopTab(); } catch (e) { toast(e.message); } });
+  confirmDo(`Купить «${it.title}» за ${it.price} TC?`, async () => { try { await api('/shop/buy', { item: id }); toast('Куплено', true); shopTab(); } catch (e) { toast(e.message); } });
 }
 async function equip(kind, id) { try { await api('/shop/equip', { kind, item: id }); toast(id ? 'Надето' : 'Снято', true); shopTab(); } catch (e) { toast(e.message); } }
+async function setColor(c) { try { await api('/shop/color', { color: c }); toast('Цвет ника обновлён', true); shopTab(); } catch (e) { toast(e.message); } }
+async function claimDaily() { try { const r = await api('/daily', {}); toast(`+${r.amount} TC`, true); shopTab(); } catch (e) { toast(e.message); } }
 
 // ---------- поддержка ----------
 async function compressImage(file, maxSide = 1280, square = false) {
@@ -995,7 +1090,7 @@ function openAdminPlayer(id) {
     <label class="f" for="a-days">Бан, дней (0 — снять)</label>
     <div class="row"><input id="a-days" type="number" inputmode="decimal" value="${p.banned ? 0 : 1}"><button class="btn red sm" id="a-ban-go">${p.banned ? 'Применить' : 'Забанить'}</button></div>
     <input id="a-reason" style="margin-top:8px" placeholder="Причина: вышел из матча">
-    <label class="f" for="a-coins">Монеты (сейчас ${p.coins ?? 0}; минус — списать)</label>
+    <label class="f" for="a-coins">Timoha Coin (сейчас ${p.coins ?? 0}; минус — списать)</label>
     <div class="row"><input id="a-coins" type="number" inputmode="numeric" placeholder="500"><button class="btn sm" id="a-coins-go">Начислить</button></div>
     <label class="f" for="a-prem">Премиум, дней (0 — снять)${p.premium ? ' · сейчас активен' : ''}</label>
     <div class="row"><input id="a-prem" type="number" inputmode="numeric" placeholder="30"><button class="btn sm" id="a-prem-go" style="background:var(--gold)">Выдать</button></div>
@@ -1096,7 +1191,7 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------
