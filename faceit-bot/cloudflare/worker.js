@@ -7,7 +7,9 @@ const MODES = { "5x5": 10, "2x2": 4 };
 const K_FACTOR = 50;
 // [уровень, нижняя граница ELO]
 const LEVELS = [[1, 0], [2, 800], [3, 950], [4, 1100], [5, 1250], [6, 1400], [7, 1550], [8, 1700], [9, 1850], [10, 2000]];
-const DEFAULT_MAPS = "Sandstone,Rust,Province,Zone 7,Dune,Breeze,Hanami,Sakura";
+const DEFAULT_MAPS = "Sandstone,Rust,Province,Hanami,Prison,Dune,Breeze";
+const CALIBRATION_GAMES = 10;
+const CALIBRATION_MULT = 2; // на калибровке ELO меняется в 2 раза сильнее
 const START_ELO = 1000;
 const NICK_RE = /^[\p{L}\p{N}_\-.\[\]|★☆ ]{2,20}$/u;
 
@@ -35,12 +37,16 @@ function balance(players) {
   return Object.fromEntries(ps.map(p => [p.tg_id, ids.has(p.tg_id) ? 1 : 2]));
 }
 
+// players: [{tg_id, team, elo_before, calibrating}]
 function deltas(players, winner) {
   const avg = t => { const e = players.filter(p => p.team === t).map(p => p.elo_before); return e.reduce((a, b) => a + b, 0) / e.length; };
   const [w, l] = winner === 1 ? [avg(1), avg(2)] : [avg(2), avg(1)];
   const expected = 1 / (1 + 10 ** ((l - w) / 400));
   const gain = Math.max(5, Math.min(45, Math.round(K_FACTOR * (1 - expected))));
-  return Object.fromEntries(players.map(p => [p.tg_id, p.team === winner ? gain : -gain]));
+  return Object.fromEntries(players.map(p => {
+    const g = gain * (p.calibrating ? CALIBRATION_MULT : 1);
+    return [p.tg_id, p.team === winner ? g : -g];
+  }));
 }
 
 // ---------- utils ----------
@@ -98,6 +104,7 @@ export class Arena extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS match_players (
       match_id INTEGER NOT NULL, tg_id INTEGER NOT NULL, team INTEGER, elo_before INTEGER, elo_delta INTEGER,
       joined_at REAL NOT NULL, PRIMARY KEY (match_id, tg_id))`);
+    try { this.sql.exec("ALTER TABLE match_players ADD COLUMN calibrating INTEGER NOT NULL DEFAULT 0"); } catch {}
     this.maps = (env.MAPS || DEFAULT_MAPS).split(",").map(s => s.trim()).filter(Boolean);
     this.admins = new Set((env.ADMIN_IDS || "").split(",").map(s => Number(s.trim())).filter(Boolean));
   }
@@ -109,12 +116,14 @@ export class Arena extends DurableObject {
   player(id) { return this.one("SELECT * FROM players WHERE tg_id = ?", id); }
   rankOf(id) {
     const p = this.player(id);
-    return p ? this.one("SELECT COUNT(*) AS n FROM players WHERE elo > ?", p.elo).n + 1 : null;
+    if (!p || !this.isCalibrated(p)) return null;
+    return this.one(`SELECT COUNT(*) AS n FROM players WHERE elo > ? AND wins + losses >= ${CALIBRATION_GAMES}`, p.elo).n + 1;
   }
   match(id) {
     const m = this.one("SELECT * FROM matches WHERE id = ?", id);
     if (!m) return null;
-    m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, p.nick, p.elo, p.game_id, p.tg_username
+    m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, p.nick, p.elo, p.game_id, p.tg_username,
+        p.wins + p.losses AS games
       FROM match_players mp JOIN players p ON p.tg_id = mp.tg_id WHERE mp.match_id = ? ORDER BY mp.joined_at`, id);
     return m;
   }
@@ -123,8 +132,30 @@ export class Arena extends DurableObject {
       WHERE mp.tg_id = ? AND m.status IN ('open','live')`, id);
     return r ? r.id : null;
   }
-  publicPlayer(p) { return { ...p, level: level(p.elo), next_level_at: nextLevelAt(p.elo) }; }
-  publicMatch(m) { m.players.forEach(p => (p.level = level(p.elo))); m.size = MODES[m.mode]; return m; }
+  // До конца калибровки ELO и уровень скрыты
+  publicPlayer(p) {
+    const games = p.wins + p.losses, calibrated = games >= CALIBRATION_GAMES;
+    return {
+      ...p, games, calibrated, calib_played: Math.min(games, CALIBRATION_GAMES), calib_total: CALIBRATION_GAMES,
+      elo: calibrated ? p.elo : null, level: calibrated ? level(p.elo) : null,
+      next_level_at: calibrated ? nextLevelAt(p.elo) : null,
+    };
+  }
+  publicMatch(m) {
+    m.team_avg = {};
+    for (const t of [1, 2]) {
+      const ps = m.players.filter(p => p.team === t);
+      if (ps.length) m.team_avg[t] = Math.round(ps.reduce((s, p) => s + (p.elo_before ?? p.elo), 0) / ps.length);
+    }
+    m.players = m.players.map(p => {
+      const calibrated = p.games >= CALIBRATION_GAMES;
+      return { tg_id: p.tg_id, team: p.team, nick: p.nick, calibrated, calib_played: Math.min(p.games, CALIBRATION_GAMES),
+        level: calibrated ? level(p.elo) : null, elo: calibrated ? p.elo : null };
+    });
+    m.size = MODES[m.mode];
+    return m;
+  }
+  isCalibrated(p) { return p.wins + p.losses >= CALIBRATION_GAMES; }
 
   // ----- telegram -----
   async tg(method, params) {
@@ -153,7 +184,8 @@ export class Arena extends DurableObject {
     return [1, 2].map(t => {
       const ps = m.players.filter(p => p.team === t);
       const avg = ps.length ? Math.round(ps.reduce((s, p) => s + p.elo, 0) / ps.length) : 0;
-      return [`<b>Команда ${t}</b> (ср. ${avg} ELO)`, ...ps.map(p => `  • ${esc(p.nick)} — ${p.elo}`)].join("\n");
+      return [`<b>Команда ${t}</b> (ср. ${avg} ELO)`, ...ps.map(p => `  • ${esc(p.nick)} — ${
+        p.games >= CALIBRATION_GAMES ? `${level(p.elo)} lvl` : `калибровка ${p.games}/${CALIBRATION_GAMES}`}`)].join("\n");
     }).join("\n");
   }
 
@@ -193,7 +225,7 @@ export class Arena extends DurableObject {
     const requireHost = m => { if (m.creator_id !== uid && !isAdmin) throw new ApiError("Это может сделать только хост лобби или админ"); };
     let mm;
 
-    if (method === "GET" && path === "/config") return { maps: this.maps, modes: MODES, levels: LEVELS };
+    if (method === "GET" && path === "/config") return { maps: this.maps, modes: MODES, levels: LEVELS, calibration_games: CALIBRATION_GAMES };
 
     if (method === "GET" && path === "/me") {
       const p = this.player(uid);
@@ -232,16 +264,21 @@ export class Arena extends DurableObject {
     }
 
     if (method === "GET" && path === "/leaderboard") {
-      return this.q("SELECT tg_id, nick, elo, wins, losses FROM players ORDER BY elo DESC, wins DESC LIMIT 100").map(r => ({ ...r, level: level(r.elo) }));
+      // вся база игроков: сначала откалиброванные по ELO, потом те, кто на калибровке
+      return this.q("SELECT tg_id, nick, game_id, elo, wins, losses, created_at FROM players ORDER BY elo DESC, wins DESC")
+        .map(r => this.publicPlayer(r))
+        .sort((a, b) => (b.calibrated - a.calibrated) || (a.calibrated ? 0 : b.calib_played - a.calib_played));
     }
 
     if (method === "GET" && (mm = path.match(/^\/players\/(\d+)$/))) {
       const id = +mm[1];
       const p = this.player(id);
       if (!p) throw new ApiError("Игрок не найден");
-      const history = this.q(`SELECT m.id, m.mode, m.map, m.score, m.winner, m.finished_at, mp.team, mp.elo_delta
+      const history = this.q(`SELECT m.id, m.mode, m.map, m.score, m.winner, m.finished_at, mp.team, mp.elo_delta, mp.calibrating
         FROM match_players mp JOIN matches m ON m.id = mp.match_id
-        WHERE mp.tg_id = ? AND m.status = 'finished' ORDER BY m.finished_at DESC LIMIT 20`, id);
+        WHERE mp.tg_id = ? AND m.status = 'finished' ORDER BY m.finished_at DESC, m.id DESC LIMIT 20`, id);
+      // дельты калибровочных матчей не показываем, пока игрок не откалиброван
+      if (!this.isCalibrated(p)) history.forEach(h => (h.elo_delta = null));
       return { player: this.publicPlayer(p), rank: this.rankOf(id), history };
     }
 
@@ -289,8 +326,9 @@ export class Arena extends DurableObject {
         if (m.players.length !== MODES[m.mode]) throw new ApiError(`Нужно ${MODES[m.mode]} игроков`);
         const teams = balance(m.players);
         for (const [id, team] of Object.entries(teams)) {
-          this.sql.exec(`UPDATE match_players SET team = ?, elo_before = (SELECT elo FROM players WHERE tg_id = ?)
-            WHERE match_id = ? AND tg_id = ?`, team, +id, mid, +id);
+          this.sql.exec(`UPDATE match_players SET team = ?, elo_before = (SELECT elo FROM players WHERE tg_id = ?),
+            calibrating = (SELECT wins + losses < ${CALIBRATION_GAMES} FROM players WHERE tg_id = ?)
+            WHERE match_id = ? AND tg_id = ?`, team, +id, +id, mid, +id);
         }
         this.sql.exec("UPDATE matches SET status = 'live', started_at = ? WHERE id = ?", now(), mid);
         const m2 = this.match(mid);
@@ -317,9 +355,18 @@ export class Arena extends DurableObject {
         this.sql.exec("UPDATE matches SET status = 'finished', winner = ?, score = ?, finished_at = ? WHERE id = ?", winner, score, now(), mid);
         const m2 = this.match(mid);
         await Promise.all(m2.players.map(p => {
-          const won = p.team === winner, up = level(p.elo) > level(p.elo_before);
-          return this.send(p.tg_id, `${won ? "🏆 Победа" : "💀 Поражение"} в матче #${mid} (${esc(m2.map)} ${score})\n` +
-            `ELO: ${p.elo_before} → <b>${p.elo}</b> (${p.elo_delta >= 0 ? "+" : ""}${p.elo_delta})` + (up ? `\n🎉 Новый уровень: ${level(p.elo)}!` : ""));
+          const won = p.team === winner;
+          let text = `${won ? "🏆 Победа" : "💀 Поражение"} в матче #${mid} (${esc(m2.map)} ${score})\n`;
+          if (p.games < CALIBRATION_GAMES) {
+            text += `🎯 Калибровка: ${p.games}/${CALIBRATION_GAMES}`;
+          } else if (p.calibrating) {
+            text += `🎖 <b>Калибровка пройдена!</b>\nТвой уровень: <b>${level(p.elo)}</b> · ${p.elo} ELO`;
+          } else {
+            const up = level(p.elo) > level(p.elo_before), down = level(p.elo) < level(p.elo_before);
+            text += `ELO: ${p.elo_before} → <b>${p.elo}</b> (${p.elo_delta >= 0 ? "+" : ""}${p.elo_delta})` +
+              (up ? `\n🎉 Новый уровень: ${level(p.elo)}!` : down ? `\n📉 Уровень понижен до ${level(p.elo)}` : "");
+          }
+          return this.send(p.tg_id, text);
         }));
         const names = m2.players.filter(p => p.team === winner).map(p => esc(p.nick)).join(", ");
         await this.notifyGroup(`🏁 Матч #${mid} (${esc(m2.map)} ${score}) — победили: ${names}`);
@@ -353,14 +400,16 @@ export class Arena extends DurableObject {
     if (cmd === "/start") {
       if (!isPrivate) return this.send(chatId, "Напиши мне в личку, чтобы открыть приложение 🙂");
       const p = this.player(uid);
-      const hello = p ? `С возвращением, <b>${esc(p.nick)}</b>! ${level(p.elo)} lvl · ${p.elo} ELO`
+      const hello = p ? `С возвращением, <b>${esc(p.nick)}</b>! ` + (this.isCalibrated(p)
+          ? `${level(p.elo)} lvl · ${p.elo} ELO` : `Калибровка ${p.wins + p.losses}/${CALIBRATION_GAMES}`)
         : "Привет! Это наша площадка для матчей <b>Standoff 2</b> с ELO и рейтингом.";
       return this.send(chatId, `${hello}\n\nВ приложении можно:\n• создать лобби 5x5 или 2x2 и собрать друзей\n` +
-        "• автоматически поделить команды по ELO\n• записать результат и получить ±ELO\n• смотреть рейтинг и свою историю", this.appButton());
+        "• автоматически поделить команды по ELO\n• записать результат и получить ±ELO\n• смотреть рейтинг и свою историю\n\n" +
+        `Первые ${CALIBRATION_GAMES} матчей — калибровка, после неё получишь уровень.`, this.appButton());
     }
     if (cmd === "/top") {
-      const rows = this.q("SELECT nick, elo FROM players ORDER BY elo DESC, wins DESC LIMIT 10");
-      if (!rows.length) return this.send(chatId, "Пока никто не зарегистрирован.");
+      const rows = this.q(`SELECT nick, elo FROM players WHERE wins + losses >= ${CALIBRATION_GAMES} ORDER BY elo DESC, wins DESC LIMIT 10`);
+      if (!rows.length) return this.send(chatId, "Пока никто не прошёл калибровку.");
       const medals = ["🥇", "🥈", "🥉"];
       return this.send(chatId, "<b>Топ-10</b>\n\n" + rows.map((r, i) => `${medals[i] || i + 1 + "."} ${esc(r.nick)} — <b>${r.elo}</b> (${level(r.elo)} lvl)`).join("\n"),
         isPrivate ? this.appButton("📊 Весь рейтинг") : null);
@@ -369,7 +418,9 @@ export class Arena extends DurableObject {
       const p = this.player(uid);
       if (!p) return this.send(chatId, "Ты ещё не зарегистрирован — открой приложение.", isPrivate ? this.appButton() : null);
       const games = p.wins + p.losses, wr = games ? Math.round(p.wins * 100 / games) : 0;
-      return this.send(chatId, `<b>${esc(p.nick)}</b>\n${level(p.elo)} lvl · <b>${p.elo}</b> ELO · #${this.rankOf(uid)} в рейтинге\nМатчей: ${games} · Побед: ${p.wins} · Винрейт: ${wr}%`);
+      const head = this.isCalibrated(p) ? `${level(p.elo)} lvl · <b>${p.elo}</b> ELO · #${this.rankOf(uid)} в рейтинге`
+        : `🎯 Калибровка: ${games}/${CALIBRATION_GAMES}`;
+      return this.send(chatId, `<b>${esc(p.nick)}</b>\n${head}\nМатчей: ${games} · Побед: ${p.wins} · Винрейт: ${wr}%`);
     }
     if (cmd === "/id") return this.send(chatId, `Твой ID: <code>${uid}</code>\nID чата: <code>${chatId}</code>`);
   }

@@ -38,10 +38,18 @@
   .tabs[hidden] { display: none; }
 
   /* level badge */
-  .lvl { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px;
-    flex-shrink: 0; border: 2.5px solid currentColor; background: rgba(255,255,255,.03); }
-  .lvl.big { width: 54px; height: 54px; font-size: 22px; border-width: 4px; }
-  .l1 { color: #cfd3db } .l2, .l3 { color: #1ce400 } .l4, .l5, .l6, .l7 { color: #ffc800 } .l8, .l9 { color: #ff6309 } .l10 { color: #fe1f00 }
+  .lvl { position: relative; width: 30px; height: 30px; display: grid; place-items: center; flex-shrink: 0; font-size: 13px; }
+  .lvl svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(135deg); }
+  .lvl .trk { fill: #14161b; stroke: rgba(255,255,255,.12); stroke-width: 3.2; }
+  .lvl .arc { fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; filter: drop-shadow(0 0 2px currentColor); }
+  .lvl b { position: relative; font-weight: 900; font-size: 1em; line-height: 1; }
+  .lvl.calib { color: #8b92a3; } .lvl.calib .trk { stroke-dasharray: 2.4 2.4; }
+  .lvl.big { width: 58px; height: 58px; font-size: 22px; }
+  .calbar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 12px; }
+  .calbar i { height: 6px; border-radius: 3px; background: var(--card2); }
+  .calbar i.w { background: var(--win); } .calbar i.l { background: var(--loss); } .calbar i.d { background: var(--accent); }
+  .search { margin: 0 0 10px; }
+  .sub { font-size: 12px; color: var(--muted); }
 
   /* header */
   .hero { background: linear-gradient(135deg, #22160f 0%, #181b22 60%); border: 1px solid #3a2617; }
@@ -69,7 +77,7 @@
   .lobby-title { font-weight: 800; font-size: 16px; }
   .slots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .slot { display: flex; align-items: center; gap: 6px; background: var(--card2); padding: 5px 9px 5px 5px; border-radius: 20px; font-size: 13px; max-width: 100%; }
-  .slot .lvl { width: 22px; height: 22px; font-size: 10px; border-width: 2px; }
+  .slot .lvl { width: 24px; height: 24px; font-size: 10px; }
   .slot.empty { color: var(--muted); padding: 5px 12px; border: 1px dashed var(--line); background: none; }
   .slot .x { background: none; color: var(--muted); padding: 0 0 0 4px; font-size: 15px; }
   .slot .host { font-size: 11px; }
@@ -77,7 +85,7 @@
   .team { background: var(--card2); border-radius: 10px; padding: 10px; border-top: 3px solid var(--t1); min-width: 0; }
   .team.t2 { border-top-color: var(--t2); }
   .team .tp { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; }
-  .team .tp .lvl { width: 20px; height: 20px; font-size: 9px; border-width: 2px; }
+  .team .tp .lvl { width: 22px; height: 22px; font-size: 9px; }
   .team .tp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .room { margin-top: 10px; background: var(--card2); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
   .room code { font-size: 16px; font-weight: 700; color: var(--accent2); }
@@ -129,7 +137,7 @@
 <div id="app"><div class="spin">Загрузка…</div></div>
 <div class="tabs" id="tabs" hidden>
   <button data-tab="lobby" class="on"><span class="ic">🎮</span>Лобби</button>
-  <button data-tab="top"><span class="ic">🏆</span>Рейтинг</button>
+  <button data-tab="top"><span class="ic">🏆</span>Игроки</button>
   <button data-tab="profile"><span class="ic">👤</span>Профиль</button>
 </div>
 
@@ -144,7 +152,16 @@ const S = { tab: 'lobby', me: null, cfg: null, lobbies: [], top: [], view: null,
 // ---------- utils ----------
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = sel => document.querySelector(sel);
-const lvl = (l, cls = '') => `<div class="lvl l${l} ${cls}">${l}</div>`;
+// Цвета уровней как на FACEIT: 1 — серый, 2–3 — зелёный, 4–7 — жёлтый, 8–9 — оранжевый, 10 — красный
+const LVL_COLORS = { 1: '#eeeeee', 2: '#1ce400', 3: '#1ce400', 4: '#ffc800', 5: '#ffc800', 6: '#ffc800', 7: '#ffc800', 8: '#ff6309', 9: '#ff6309', 10: '#fe1f00' };
+const RING = 2 * Math.PI * 15 * 0.75;  // кольцо на 270°, как у FACEIT
+function lvl(l, cls = '') {
+  const C = 2 * Math.PI * 15;
+  const track = `<circle cx="18" cy="18" r="15" class="trk" stroke-dasharray="${RING} ${C}"/>`;
+  if (!l) return `<div class="lvl calib ${cls}" title="Калибровка"><svg viewBox="0 0 36 36">${track}</svg><b>?</b></div>`;
+  return `<div class="lvl ${cls}" style="color:${LVL_COLORS[l]}" title="${l} уровень"><svg viewBox="0 0 36 36">${track}
+    <circle cx="18" cy="18" r="15" class="arc" stroke-dasharray="${RING * l / 10} ${C}"/></svg><b>${l}</b></div>`;
+}
 const haptic = t => { try { tg?.HapticFeedback?.[t === 'ok' || t === 'err' ? 'notificationOccurred' : 'impactOccurred'](t === 'ok' ? 'success' : t === 'err' ? 'error' : 'light'); } catch (e) {} };
 const fmtDate = ts => new Date(ts * 1000).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -196,19 +213,31 @@ function render() {
   if (S.tab === 'profile') openProfile(S.me.player.tg_id, true);
 }
 
-function heroView(p = S.me.player, rank = S.me.rank) {
+function heroView(p = S.me.player, rank = S.me.rank, hist = null) {
   const games = p.wins + p.losses;
   const wr = games ? Math.round(p.wins * 100 / games) : 0;
-  const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
-  const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
+  const idLine = p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : '';
+  let progress;
+  if (!p.calibrated) {
+    // 10 ячеек калибровки: зелёные — победы, красные — поражения (по истории, если она есть)
+    const res = hist ? hist.slice(0, p.calib_played).reverse().map(h => h.team === h.winner ? 'w' : 'l') : Array(p.calib_played).fill('d');
+    progress = `<div class="calbar">${Array.from({ length: p.calib_total }, (_, i) => `<i class="${res[i] || ''}"></i>`).join('')}</div>
+      <div class="muted" style="margin-top:6px">Сыграй ещё <b style="color:var(--text)">${p.calib_total - p.calib_played}</b> из ${p.calib_total} матчей, чтобы получить уровень</div>`;
+  } else {
+    const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
+    const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
+    progress = `<div class="bar"><i style="width:${pct}%;background:${LVL_COLORS[p.level]}"></i></div>
+      <div class="muted" style="margin-top:6px">${p.next_level_at ? `До ${p.level + 1} уровня: <b style="color:var(--text)">${p.next_level_at - p.elo}</b> ELO` : 'Максимальный уровень 🔥'}</div>`;
+  }
   return `<div class="card hero">
     <div class="row">${lvl(p.level, 'big')}
       <div class="grow"><div class="nick">${esc(p.nick)}</div>
-        <div class="muted">${p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : ''}#${rank} в рейтинге</div></div>
-      <div style="text-align:right"><div class="elo">${p.elo}</div><div class="muted">ELO</div></div>
+        <div class="muted">${idLine}${p.calibrated ? `#${rank} в рейтинге` : 'Калибровка'}</div></div>
+      <div style="text-align:right">${p.calibrated
+        ? `<div class="elo" style="color:${LVL_COLORS[p.level]}">${p.elo}</div><div class="muted">ELO</div>`
+        : `<div class="elo" style="color:var(--muted)">${p.calib_played}/${p.calib_total}</div><div class="muted">калибровка</div>`}</div>
     </div>
-    <div class="bar"><i style="width:${pct}%"></i></div>
-    <div class="muted" style="margin-top:6px">${p.next_level_at ? `До ${p.level + 1} уровня: <b style="color:var(--text)">${p.next_level_at - p.elo}</b> ELO` : 'Максимальный уровень 🔥'}</div>
+    ${progress}
     <div class="stats">
       <div class="stat"><b>${games}</b><span>матчей</span></div>
       <div class="stat"><b style="color:var(--win)">${p.wins}</b><span>побед</span></div>
@@ -225,7 +254,8 @@ function registerView() {
       <div class="muted">Привет, ${esc(u.name)}! Укажи свой игровой профиль.</div>
       <label class="f">Ник в Standoff 2</label><input id="r-nick" maxlength="20" placeholder="Например, Sn1per">
       <label class="f">ID в игре (необязательно)</label><input id="r-id" inputmode="numeric" maxlength="15" placeholder="123456789">
-      <button class="btn" id="r-go" style="margin-top:16px">Начать · 1000 ELO</button>
+      <div class="muted" style="margin-top:12px">🎯 Первые ${S.cfg.calibration_games || 10} матчей — калибровка. После неё получишь уровень от 1 до 10.</div>
+      <button class="btn" id="r-go" style="margin-top:14px">Начать калибровку</button>
     </div></div>`;
 }
 
@@ -275,7 +305,7 @@ function lobbyCard(m) {
   // live
   const team = t => {
     const ps = m.players.filter(p => p.team === t);
-    const avg = Math.round(ps.reduce((s, p) => s + p.elo_before, 0) / ps.length);
+    const avg = m.team_avg?.[t] ?? '';
     return `<div class="team t${t}"><div class="muted" style="margin-bottom:4px"><b style="color:var(--${t === 1 ? 't1' : 't2'})">Команда ${t}</b> · ${avg}</div>
       ${ps.map(p => `<div class="tp">${lvl(p.level)}<span>${esc(p.nick)}${p.tg_id === m.creator_id ? ' 👑' : ''}</span></div>`).join('')}</div>`;
   };
@@ -292,13 +322,28 @@ function roomView(m, inIt) {
 }
 
 function topTab() {
+  return `<h2>База игроков · ${S.top.length}</h2>
+    <input class="search" id="psearch" placeholder="🔍 Поиск по нику или ID" value="${esc(S.q || '')}" oninput="S.q=this.value;$('#plist').innerHTML=playersList()">
+    <div id="plist">${playersList()}</div>`;
+}
+
+function playersList() {
   if (!S.top.length) return `<div class="card empty">Загрузка…</div>`;
+  const q = (S.q || '').trim().toLowerCase();
+  const match = p => !q || p.nick.toLowerCase().includes(q) || String(p.game_id || '').includes(q);
   const medals = ['🥇', '🥈', '🥉'];
-  return `<h2>Рейтинг игроков</h2><div class="card lb" style="padding:0">${S.top.map((p, i) => `
-    <div class="r ${p.tg_id === S.me.user.id ? 'me' : ''}" onclick="openProfile(${p.tg_id})">
-      <div class="pos">${medals[i] || i + 1}</div>${lvl(p.level)}
-      <div class="grow"><div class="n">${esc(p.nick)}</div><div class="muted">${p.wins}W · ${p.losses}L</div></div>
-      <div class="e">${p.elo}</div></div>`).join('')}</div>`;
+  const row = (p, pos) => `<div class="r ${p.tg_id === S.me.user.id ? 'me' : ''}" onclick="openProfile(${p.tg_id})">
+      <div class="pos">${pos}</div>${lvl(p.level)}
+      <div class="grow"><div class="n">${esc(p.nick)}</div><div class="muted">${p.wins}W · ${p.losses}L${p.game_id ? ' · ID ' + esc(p.game_id) : ''}</div></div>
+      ${p.calibrated ? `<div class="e" style="color:${LVL_COLORS[p.level]}">${p.elo}</div>` : `<div class="sub">${p.calib_played}/${p.calib_total}</div>`}</div>`;
+  const ranked = S.top.filter(p => p.calibrated);
+  const calib = S.top.filter(p => !p.calibrated && match(p));
+  const rankedRows = ranked.map((p, i) => match(p) ? row(p, medals[i] || i + 1) : '').join('');
+  let html = '';
+  html += `<h2>Рейтинг</h2>` + (rankedRows ? `<div class="card lb" style="padding:0">${rankedRows}</div>`
+    : `<div class="card empty">${q ? 'Никого не найдено' : 'Пока никто не прошёл калибровку'}</div>`);
+  if (calib.length) html += `<h2>На калибровке · ${calib.length}</h2><div class="card lb" style="padding:0">${calib.map(p => row(p, '🎯')).join('')}</div>`;
+  return html;
 }
 
 async function openProfile(tgId, isTab) {
@@ -309,10 +354,12 @@ async function openProfile(tgId, isTab) {
       const won = h.team === h.winner;
       return `<div class="hist"><div class="res" style="background:var(--${won ? 'win' : 'loss'})"></div>
         <div class="grow"><b>${esc(h.map)}</b> <span class="muted">${h.mode}</span><div class="muted">${fmtDate(h.finished_at)} · #${h.id}</div></div>
-        <div style="text-align:right"><div>${esc(h.score) || (won ? 'W' : 'L')}</div><div class="d ${h.elo_delta >= 0 ? 'p' : 'm'}">${h.elo_delta >= 0 ? '+' : ''}${h.elo_delta}</div></div></div>`;
+        <div style="text-align:right"><div>${esc(h.score) || (won ? 'W' : 'L')}</div>${h.elo_delta == null
+          ? `<div class="sub">калибровка</div>`
+          : `<div class="d ${h.elo_delta >= 0 ? 'p' : 'm'}">${h.elo_delta >= 0 ? '+' : ''}${h.elo_delta}</div>`}</div></div>`;
     }).join('') : `<div class="empty"><div class="big">🕹</div>Ещё нет сыгранных матчей</div>`;
     const html = `${isTab ? '' : '<button class="back" onclick="S.view=null;render()">‹ Назад</button>'}
-      ${heroView(d.player, d.rank)}
+      ${heroView(d.player, d.rank, d.history)}
       ${mine ? '<button class="btn sec" onclick="openEdit()">✏️ Изменить ник / ID</button>' : ''}
       <h2>История матчей</h2><div class="card">${hist}</div>`;
     if (isTab) $('#app').innerHTML = `<div class="wrap">${html}</div>`;
