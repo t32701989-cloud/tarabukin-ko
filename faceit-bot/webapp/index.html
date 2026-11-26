@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SO2 Arena</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --card: #181b22; --card2: #1f232c; --line: #2a2f3a;
+    --text: #eef0f4; --muted: #8b92a3; --accent: #ff6a13; --accent2: #ff8c42;
+    --win: #2ecc71; --loss: #ff4d4f; --t1: #3d8bff; --t2: #ff6a13;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); min-height: 100vh; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  input, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 12px; width: 100%; outline: none; }
+  input:focus { border-color: var(--accent); }
+  .wrap { padding: 14px 16px; max-width: 560px; margin: 0 auto; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 2px 10px; font-weight: 600; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; border: 1px solid var(--line); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .grow { flex: 1; min-width: 0; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .btn { background: var(--accent); color: #fff; font-weight: 700; padding: 12px 16px; border-radius: 12px; width: 100%; }
+  .btn:active { transform: scale(.98); }
+  .btn.sec { background: var(--card2); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+  .btn.danger { background: transparent; color: var(--loss); border: 1px solid #4a2326; font-weight: 600; }
+  .btn.small { width: auto; padding: 8px 14px; font-size: 14px; border-radius: 10px; }
+  .btn:disabled { opacity: .45; }
+  .btns { display: flex; gap: 8px; margin-top: 12px; }
+  .btns > * { flex: 1; }
+  .btns > .small { flex: 0 0 auto; min-width: 48px; }
+  .tabs[hidden] { display: none; }
+
+  /* level badge */
+  .lvl { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px;
+    flex-shrink: 0; border: 2.5px solid currentColor; background: rgba(255,255,255,.03); }
+  .lvl.big { width: 54px; height: 54px; font-size: 22px; border-width: 4px; }
+  .l1 { color: #cfd3db } .l2, .l3 { color: #1ce400 } .l4, .l5, .l6, .l7 { color: #ffc800 } .l8, .l9 { color: #ff6309 } .l10 { color: #fe1f00 }
+
+  /* header */
+  .hero { background: linear-gradient(135deg, #22160f 0%, #181b22 60%); border: 1px solid #3a2617; }
+  .nick { font-size: 20px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .elo { font-size: 22px; font-weight: 800; color: var(--accent2); }
+  .bar { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), #ffb347); border-radius: 3px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+  .stat { background: var(--card2); border-radius: 10px; padding: 8px 4px; text-align: center; }
+  .stat b { display: block; font-size: 17px; }
+  .stat span { font-size: 11px; color: var(--muted); }
+
+  /* tabs */
+  .tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: rgba(15,17,21,.96);
+    border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); backdrop-filter: blur(10px); z-index: 5; }
+  .tabs button { flex: 1; background: none; padding: 6px 0; color: var(--muted); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .tabs button .ic { font-size: 21px; filter: grayscale(1); opacity: .7; }
+  .tabs button.on { color: var(--accent); }
+  .tabs button.on .ic { filter: none; opacity: 1; }
+
+  /* lobby */
+  .tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: var(--card2); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tag.open { background: rgba(46,204,113,.12); color: var(--win); }
+  .tag.live { background: rgba(255,106,19,.15); color: var(--accent); }
+  .lobby-title { font-weight: 800; font-size: 16px; }
+  .slots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .slot { display: flex; align-items: center; gap: 6px; background: var(--card2); padding: 5px 9px 5px 5px; border-radius: 20px; font-size: 13px; max-width: 100%; }
+  .slot .lvl { width: 22px; height: 22px; font-size: 10px; border-width: 2px; }
+  .slot.empty { color: var(--muted); padding: 5px 12px; border: 1px dashed var(--line); background: none; }
+  .slot .x { background: none; color: var(--muted); padding: 0 0 0 4px; font-size: 15px; }
+  .slot .host { font-size: 11px; }
+  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .team { background: var(--card2); border-radius: 10px; padding: 10px; border-top: 3px solid var(--t1); min-width: 0; }
+  .team.t2 { border-top-color: var(--t2); }
+  .team .tp { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; }
+  .team .tp .lvl { width: 20px; height: 20px; font-size: 9px; border-width: 2px; }
+  .team .tp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .room { margin-top: 10px; background: var(--card2); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+  .room code { font-size: 16px; font-weight: 700; color: var(--accent2); }
+
+  .seg { display: flex; background: var(--card2); border-radius: 10px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; background: none; padding: 9px; border-radius: 8px; font-weight: 700; color: var(--muted); }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg.teamsel button.on.t1 { background: var(--t1); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--card2); border: 1px solid var(--line); padding: 7px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+  .chip.on { border-color: var(--accent); color: var(--accent2); background: rgba(255,106,19,.1); }
+  label.f { display: block; font-size: 12px; color: var(--muted); margin: 12px 2px 6px; font-weight: 600; }
+  .score { display: flex; align-items: center; gap: 8px; }
+  .score input { text-align: center; font-size: 18px; font-weight: 700; }
+
+  /* leaderboard */
+  .lb { padding: 4px 0; }
+  .lb .r { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .lb .r:last-child { border-bottom: 0; }
+  .lb .r.me { background: rgba(255,106,19,.08); }
+  .lb .pos { width: 26px; text-align: center; font-weight: 800; color: var(--muted); }
+  .lb .n { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb .e { font-weight: 800; }
+
+  .hist { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .hist:last-child { border-bottom: 0; }
+  .hist .res { width: 4px; align-self: stretch; border-radius: 2px; }
+  .d { font-weight: 800; }
+  .d.p { color: var(--win); } .d.m { color: var(--loss); }
+  .empty { text-align: center; color: var(--muted); padding: 26px 10px; }
+  .empty .big { font-size: 40px; margin-bottom: 6px; }
+
+  /* sheet */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 10; display: flex; align-items: flex-end; animation: fade .15s; }
+  .sheet { background: var(--card); width: 100%; max-width: 560px; margin: 0 auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); animation: up .2s ease-out; max-height: 90vh; overflow: auto; }
+  .sheet h3 { margin: 0 0 4px; font-size: 18px; }
+  @keyframes up { from { transform: translateY(40px); opacity: 0 } }
+  @keyframes fade { from { opacity: 0 } }
+  .toast { position: fixed; left: 16px; right: 16px; top: 14px; background: #2a1414; border: 1px solid #5c2323; color: #ffb3b3; padding: 12px 14px; border-radius: 12px; z-index: 20; font-weight: 600; animation: fade .2s; }
+  .toast.ok { background: #12261a; border-color: #1f5c35; color: #9ff0bd; }
+  .back { background: none; color: var(--accent2); font-weight: 700; padding: 4px 0 10px; }
+  .logo { text-align: center; padding: 30px 0 10px; }
+  .logo .t { font-size: 30px; font-weight: 900; letter-spacing: -.02em; }
+  .logo .t span { color: var(--accent); }
+  .spin { text-align: center; padding: 60px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app"><div class="spin">Загрузка…</div></div>
+<div class="tabs" id="tabs" hidden>
+  <button data-tab="lobby" class="on"><span class="ic">🎮</span>Лобби</button>
+  <button data-tab="top"><span class="ic">🏆</span>Рейтинг</button>
+  <button data-tab="profile"><span class="ic">👤</span>Профиль</button>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+try { tg?.setHeaderColor('#0f1115'); tg?.setBackgroundColor('#0f1115'); } catch (e) {}
+
+const devUser = new URLSearchParams(location.search).get('dev');
+const S = { tab: 'lobby', me: null, cfg: null, lobbies: [], top: [], view: null, poll: null };
+
+// ---------- utils ----------
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = sel => document.querySelector(sel);
+const lvl = (l, cls = '') => `<div class="lvl l${l} ${cls}">${l}</div>`;
+const haptic = t => { try { tg?.HapticFeedback?.[t === 'ok' || t === 'err' ? 'notificationOccurred' : 'impactOccurred'](t === 'ok' ? 'success' : t === 'err' ? 'error' : 'light'); } catch (e) {} };
+const fmtDate = ts => new Date(ts * 1000).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+function toast(msg, ok = false) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'toast' + (ok ? ' ok' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  haptic(ok ? 'ok' : 'err');
+  setTimeout(() => el.remove(), 2600);
+}
+
+async function api(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (tg?.initData) headers['X-Init-Data'] = tg.initData;
+  else if (devUser) headers['X-Dev-User'] = devUser;
+  const r = await fetch('/api' + path, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await r.json().catch(() => ({ error: r.status === 401 ? 'Открой приложение через Telegram' : 'Ошибка сервера' }));
+  if (!r.ok) throw new Error(data.error || 'Ошибка');
+  return data;
+}
+
+async function act(path, body, okMsg) {
+  try {
+    const res = await api(path, body || {});
+    if (okMsg) toast(okMsg, true); else haptic('light');
+    await refresh();
+    return res;
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- data ----------
+async function refresh() {
+  const [me, lobbies] = await Promise.all([api('/me'), api('/lobbies')]);
+  S.me = me; S.lobbies = lobbies;
+  if (S.tab === 'top') S.top = await api('/leaderboard');
+  render();
+}
+
+// ---------- render ----------
+function render() {
+  const app = $('#app');
+  if (!S.me.player) { $('#tabs').hidden = true; app.innerHTML = registerView(); bindRegister(); return; }
+  $('#tabs').hidden = false;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
+  if (S.view) { app.innerHTML = `<div class="wrap">${S.view}</div>`; return; }
+  app.innerHTML = `<div class="wrap">${heroView()}${S.tab === 'lobby' ? lobbyTab() : S.tab === 'top' ? topTab() : ''}</div>`;
+  if (S.tab === 'profile') openProfile(S.me.player.tg_id, true);
+}
+
+function heroView(p = S.me.player, rank = S.me.rank) {
+  const games = p.wins + p.losses;
+  const wr = games ? Math.round(p.wins * 100 / games) : 0;
+  const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
+  const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
+  return `<div class="card hero">
+    <div class="row">${lvl(p.level, 'big')}
+      <div class="grow"><div class="nick">${esc(p.nick)}</div>
+        <div class="muted">${p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : ''}#${rank} в рейтинге</div></div>
+      <div style="text-align:right"><div class="elo">${p.elo}</div><div class="muted">ELO</div></div>
+    </div>
+    <div class="bar"><i style="width:${pct}%"></i></div>
+    <div class="muted" style="margin-top:6px">${p.next_level_at ? `До ${p.level + 1} уровня: <b style="color:var(--text)">${p.next_level_at - p.elo}</b> ELO` : 'Максимальный уровень 🔥'}</div>
+    <div class="stats">
+      <div class="stat"><b>${games}</b><span>матчей</span></div>
+      <div class="stat"><b style="color:var(--win)">${p.wins}</b><span>побед</span></div>
+      <div class="stat"><b style="color:var(--loss)">${p.losses}</b><span>поражений</span></div>
+      <div class="stat"><b>${wr}%</b><span>винрейт</span></div>
+    </div></div>`;
+}
+
+function registerView() {
+  const u = S.me.user;
+  return `<div class="wrap"><div class="logo"><div class="t">SO2 <span>ARENA</span></div>
+    <div class="muted">Матчи Standoff 2 с друзьями · ELO · рейтинг</div></div>
+    <div class="card"><h3 style="margin:0 0 4px">Регистрация</h3>
+      <div class="muted">Привет, ${esc(u.name)}! Укажи свой игровой профиль.</div>
+      <label class="f">Ник в Standoff 2</label><input id="r-nick" maxlength="20" placeholder="Например, Sn1per">
+      <label class="f">ID в игре (необязательно)</label><input id="r-id" inputmode="numeric" maxlength="15" placeholder="123456789">
+      <button class="btn" id="r-go" style="margin-top:16px">Начать · 1000 ELO</button>
+    </div></div>`;
+}
+
+function bindRegister(edit) {
+  $('#r-go').onclick = async () => {
+    try {
+      await api('/register', { nick: $('#r-nick').value, game_id: $('#r-id').value });
+      closeSheet(); toast(edit ? 'Сохранено' : 'Добро пожаловать! 🔥', true); await refresh();
+    } catch (e) { toast(e.message); }
+  };
+}
+
+function lobbyTab() {
+  const mine = S.me.active_match;
+  const list = [...S.lobbies].sort((a, b) => (b.id === mine) - (a.id === mine));
+  const create = mine ? '' : `<button class="btn" onclick="openCreate()">＋ Создать лобби</button>`;
+  const cards = list.length ? list.map(lobbyCard).join('') :
+    `<div class="card empty"><div class="big">🎯</div>Открытых лобби нет.<br>Создай своё и позови друзей!</div>`;
+  return `${create}<h2>Лобби и матчи</h2>${cards}`;
+}
+
+function lobbyCard(m) {
+  const me = S.me.user.id;
+  const inIt = m.players.some(p => p.tg_id === me);
+  const host = m.creator_id === me || S.me.is_admin;
+  const full = m.players.length === m.size;
+  const head = `<div class="row">
+      <div class="grow"><div class="lobby-title">#${m.id} · ${esc(m.map)}</div>
+      <div class="muted">${m.mode} · ${m.players.length}/${m.size} игроков</div></div>
+      <span class="tag ${m.status}">${m.status === 'open' ? 'набор' : 'идёт матч'}</span></div>`;
+
+  if (m.status === 'open') {
+    const slots = m.players.map(p => `<div class="slot">${lvl(p.level)}<span>${esc(p.nick)}</span>
+        ${p.tg_id === m.creator_id ? '<span class="host">👑</span>' : ''}
+        ${host && inIt && p.tg_id !== m.creator_id ? `<button class="x" onclick="kick(${m.id},${p.tg_id})">✕</button>` : ''}</div>`).join('')
+      + Array(m.size - m.players.length).fill('<div class="slot empty">свободно</div>').join('');
+    let btns = '';
+    if (!inIt) btns = `<button class="btn" ${full || S.me.active_match ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби!')">Войти</button>`;
+    else if (host) btns = `<button class="btn" ${full ? '' : 'disabled'} onclick="startMatch(${m.id})">${full ? '🚀 Старт' : `Ждём игроков (${m.players.length}/${m.size})`}</button>
+        <button class="btn sec small" onclick="openRoom(${m.id})">🔑</button>
+        <button class="btn danger small" onclick="cancelMatch(${m.id})">✕</button>`;
+    else btns = `<button class="btn sec" onclick="act('/lobbies/${m.id}/leave')">Выйти из лобби</button>`;
+    const leaveHost = inIt && m.creator_id === me ? `<button class="btn sec" style="margin-top:8px" onclick="act('/lobbies/${m.id}/leave')">Выйти (хост перейдёт другому)</button>` : '';
+    return `<div class="card">${head}<div class="slots">${slots}</div>${roomView(m, inIt)}<div class="btns">${btns}</div>${leaveHost}</div>`;
+  }
+
+  // live
+  const team = t => {
+    const ps = m.players.filter(p => p.team === t);
+    const avg = Math.round(ps.reduce((s, p) => s + p.elo_before, 0) / ps.length);
+    return `<div class="team t${t}"><div class="muted" style="margin-bottom:4px"><b style="color:var(--${t === 1 ? 't1' : 't2'})">Команда ${t}</b> · ${avg}</div>
+      ${ps.map(p => `<div class="tp">${lvl(p.level)}<span>${esc(p.nick)}${p.tg_id === m.creator_id ? ' 👑' : ''}</span></div>`).join('')}</div>`;
+  };
+  const btns = host && (inIt || S.me.is_admin) ? `<div class="btns"><button class="btn" onclick="openResult(${m.id})">🏁 Внести результат</button>
+      <button class="btn sec small" onclick="openRoom(${m.id})">🔑</button>
+      <button class="btn danger small" onclick="cancelMatch(${m.id})">✕</button></div>` : '';
+  return `<div class="card" style="${inIt ? 'border-color:#4a2c18' : ''}">${head}<div class="teams">${team(1)}${team(2)}</div>${roomView(m, inIt)}${btns}</div>`;
+}
+
+function roomView(m, inIt) {
+  if (!m.room || !inIt) return '';
+  return `<div class="room"><span class="muted">Комната:</span><code class="grow">${esc(m.room)}</code>
+    <button class="btn sec small" onclick="copyRoom(${m.id})">Копировать</button></div>`;
+}
+
+function topTab() {
+  if (!S.top.length) return `<div class="card empty">Загрузка…</div>`;
+  const medals = ['🥇', '🥈', '🥉'];
+  return `<h2>Рейтинг игроков</h2><div class="card lb" style="padding:0">${S.top.map((p, i) => `
+    <div class="r ${p.tg_id === S.me.user.id ? 'me' : ''}" onclick="openProfile(${p.tg_id})">
+      <div class="pos">${medals[i] || i + 1}</div>${lvl(p.level)}
+      <div class="grow"><div class="n">${esc(p.nick)}</div><div class="muted">${p.wins}W · ${p.losses}L</div></div>
+      <div class="e">${p.elo}</div></div>`).join('')}</div>`;
+}
+
+async function openProfile(tgId, isTab) {
+  try {
+    const d = await api('/players/' + tgId);
+    const mine = tgId === S.me.user.id;
+    const hist = d.history.length ? d.history.map(h => {
+      const won = h.team === h.winner;
+      return `<div class="hist"><div class="res" style="background:var(--${won ? 'win' : 'loss'})"></div>
+        <div class="grow"><b>${esc(h.map)}</b> <span class="muted">${h.mode}</span><div class="muted">${fmtDate(h.finished_at)} · #${h.id}</div></div>
+        <div style="text-align:right"><div>${esc(h.score) || (won ? 'W' : 'L')}</div><div class="d ${h.elo_delta >= 0 ? 'p' : 'm'}">${h.elo_delta >= 0 ? '+' : ''}${h.elo_delta}</div></div></div>`;
+    }).join('') : `<div class="empty"><div class="big">🕹</div>Ещё нет сыгранных матчей</div>`;
+    const html = `${isTab ? '' : '<button class="back" onclick="S.view=null;render()">‹ Назад</button>'}
+      ${heroView(d.player, d.rank)}
+      ${mine ? '<button class="btn sec" onclick="openEdit()">✏️ Изменить ник / ID</button>' : ''}
+      <h2>История матчей</h2><div class="card">${hist}</div>`;
+    if (isTab) $('#app').innerHTML = `<div class="wrap">${html}</div>`;
+    else { S.view = html; render(); window.scrollTo(0, 0); }
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- sheets ----------
+function sheet(html) {
+  closeSheet();
+  const o = document.createElement('div');
+  o.className = 'overlay';
+  o.innerHTML = `<div class="sheet">${html}</div>`;
+  o.onclick = e => { if (e.target === o) closeSheet(); };
+  document.body.appendChild(o);
+  return o;
+}
+function closeSheet() { document.querySelector('.overlay')?.remove(); }
+
+function openCreate() {
+  const st = { mode: '5x5', map: 'random' };
+  const draw = () => sheet(`<h3>Новое лобби</h3><div class="muted">Команды поделятся по ELO автоматически</div>
+    <label class="f">Режим</label>
+    <div class="seg">${Object.keys(S.cfg.modes).map(m => `<button class="${st.mode === m ? 'on' : ''}" data-mode="${m}">${m}</button>`).join('')}</div>
+    <label class="f">Карта</label>
+    <div class="chips">${['random', ...S.cfg.maps].map(m => `<button class="chip ${st.map === m ? 'on' : ''}" data-map="${esc(m)}">${m === 'random' ? '🎲 Случайная' : esc(m)}</button>`).join('')}</div>
+    <button class="btn" id="c-go" style="margin-top:18px">Создать</button>`);
+  const bind = () => {
+    document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { st.mode = b.dataset.mode; draw(); bind(); });
+    document.querySelectorAll('[data-map]').forEach(b => b.onclick = () => { st.map = b.dataset.map; draw(); bind(); });
+    $('#c-go').onclick = async () => { closeSheet(); await act('/lobbies', st, 'Лобби создано!'); };
+  };
+  draw(); bind();
+}
+
+function copyRoom(id) {
+  const room = S.lobbies.find(x => x.id === id)?.room || '';
+  navigator.clipboard?.writeText(room).then(() => toast('Скопировано', true), () => toast('Не удалось скопировать'));
+}
+
+function openRoom(id) {
+  const cur = esc(S.lobbies.find(x => x.id === id)?.room || '');
+  sheet(`<h3>Комната в игре</h3><div class="muted">Код или пароль комнаты — увидят только участники</div>
+    <input id="room" style="margin-top:12px" maxlength="60" value="${cur}" placeholder="Например: 4821 / пароль 123">
+    <button class="btn" id="room-go" style="margin-top:14px">Сохранить</button>`);
+  $('#room').focus();
+  $('#room-go').onclick = async () => { const room = $('#room').value; closeSheet(); await act(`/lobbies/${id}/room`, { room }, 'Сохранено'); };
+}
+
+function openResult(id) {
+  const m = S.lobbies.find(x => x.id === id);
+  let winner = 0;
+  const draw = () => {
+    const o = sheet(`<h3>Результат матча #${id}</h3><div class="muted">${esc(m.map)} · кто победил?</div>
+      <label class="f">Победитель</label>
+      <div class="seg teamsel"><button class="${winner === 1 ? 'on t1' : ''}" data-w="1">Команда 1</button><button class="${winner === 2 ? 'on' : ''}" data-w="2">Команда 2</button></div>
+      <label class="f">Счёт (необязательно)</label>
+      <div class="score"><input id="s1" type="number" inputmode="numeric" min="0" max="99" placeholder="К1"><b>:</b><input id="s2" type="number" inputmode="numeric" min="0" max="99" placeholder="К2"></div>
+      <button class="btn" id="res-go" style="margin-top:18px" ${winner ? '' : 'disabled'}>Подтвердить</button>`);
+    o.querySelectorAll('[data-w]').forEach(b => b.onclick = () => {
+      const s1 = $('#s1').value, s2 = $('#s2').value;
+      winner = +b.dataset.w; draw(); $('#s1').value = s1; $('#s2').value = s2;
+    });
+    $('#res-go').onclick = async () => {
+      const body = { winner, score1: +$('#s1').value || 0, score2: +$('#s2').value || 0 };
+      try { await api(`/lobbies/${id}/result`, body); closeSheet(); toast('Результат записан, ELO обновлено', true); await refresh(); }
+      catch (e) { toast(e.message); }
+    };
+  };
+  draw();
+}
+
+function openEdit() {
+  const p = S.me.player;
+  sheet(`<h3>Профиль</h3>
+    <label class="f">Ник в Standoff 2</label><input id="r-nick" maxlength="20" value="${esc(p.nick)}">
+    <label class="f">ID в игре</label><input id="r-id" inputmode="numeric" maxlength="15" value="${esc(p.game_id || '')}">
+    <button class="btn" id="r-go" style="margin-top:16px">Сохранить</button>`);
+  bindRegister(true);
+}
+
+function confirmDo(text, fn) {
+  if (tg?.showConfirm && tg.initData) tg.showConfirm(text, ok => ok && fn());
+  else if (confirm(text)) fn();
+}
+const startMatch = id => confirmDo('Начать матч? Команды будут поделены по ELO.', () => act(`/lobbies/${id}/start`, null, 'Матч начался! Команды в чате бота'));
+const cancelMatch = id => confirmDo('Отменить матч? ELO не изменится.', () => act(`/lobbies/${id}/cancel`, null, 'Матч отменён'));
+const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
+
+// ---------- tabs / boot ----------
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = async () => {
+  S.tab = b.dataset.tab; S.view = null; haptic('light'); window.scrollTo(0, 0);
+  render();
+  if (S.tab === 'top') { S.top = await api('/leaderboard'); render(); }
+});
+
+(async () => {
+  try {
+    S.cfg = await api('/config');
+    await refresh();
+    S.poll = setInterval(() => { if (S.tab === 'lobby' && !S.view && !document.querySelector('.overlay') && S.me?.player) refresh().catch(() => {}); }, 4000);
+  } catch (e) {
+    $('#app').innerHTML = `<div class="wrap"><div class="card empty"><div class="big">⚠️</div>${esc(e.message)}</div></div>`;
+  }
+})();
+</script>
+</body>
+</html>
