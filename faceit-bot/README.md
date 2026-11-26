@@ -25,22 +25,26 @@
 
 Пороги меняются в `elo.py`.
 
-## Запуск
-Mini App работает только по **HTTPS**, поэтому нужен сервер с публичным адресом.
+## Бесплатный запуск на PythonAnywhere (без карты, работает 24/7)
+1. Зарегистрируйся на **pythonanywhere.com** (план *Beginner*, бесплатный). Логин станет адресом сайта: `ЛОГИН.pythonanywhere.com`.
+2. Вкладка **Web** → **Add a new web app** → Next → **Flask** → **Python 3.10** → Next. Путь можно оставить любой.
+3. Вкладка **Consoles** → **Bash**. Вставь и нажми Enter:
+   ```bash
+   git clone -b claude/amazing-feynman-hulb43 https://github.com/t32701989-cloud/tarabukin-ko.git && bash tarabukin-ko/faceit-bot/setup_pythonanywhere.sh
+   ```
+   Скрипт спросит токен бота и (по желанию) твой Telegram ID, после чего сам всё настроит.
+4. Открой бота в Telegram и нажми **/start**.
 
+Обновить бота после изменений в коде: `cd ~/tarabukin-ko && git pull && touch /var/www/*_wsgi.py`.
+Раз в 3 месяца PythonAnywhere попросит нажать **Run until 3 months from today** на вкладке Web (придёт письмо), иначе сайт уснёт.
+
+## Запуск на своём сервере / VPS
 ```bash
-cd faceit-bot
 pip install -r requirements.txt
-cp .env.example .env      # BOT_TOKEN, WEBAPP_URL, ADMIN_IDS
-python bot.py             # бот + веб-сервер на порту 8080
+cp .env.example .env      # BOT_TOKEN, WEBAPP_URL (https), ADMIN_IDS
+python run_polling.py     # Mini App на порту 8080 + опрос Telegram
 ```
-
-Варианты, как получить HTTPS-адрес:
-- **VPS + домен + Caddy:** `your-domain.com { reverse_proxy localhost:8080 }`, сертификат Caddy выпустит сам.
-- **VPS без домена:** `cloudflared tunnel --url http://localhost:8080` выдаст адрес `https://….trycloudflare.com`. Его нужно вписать в `WEBAPP_URL` и перезапустить бота. Адрес меняется при каждом перезапуске туннеля, поэтому подходит для теста.
-- **Docker:** `docker build -t so2arena . && docker run -d --env-file .env -p 8080:8080 -v so2data:/data so2arena`.
-
-База хранится в SQLite (`bot.db`). Не теряй её при переезде, там весь рейтинг.
+Или через WSGI (gunicorn `app:app`) с webhook: заполни `WEBHOOK_SECRET` и запусти `python setup_bot.py`.
 
 ## Локальная разработка без Telegram
-`DEV_MODE=1 python bot.py`, потом открыть `http://localhost:8080/?dev=123`. Можно войти как любой пользователь. **Не включай DEV_MODE на сервере.**
+`DEV_MODE=1 python run_polling.py`, затем открой `http://localhost:8080/?dev=123`. **Не включай DEV_MODE на сервере.**

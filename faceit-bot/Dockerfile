@@ -6,4 +6,4 @@ COPY . .
 ENV DB_PATH=/data/bot.db
 VOLUME /data
 EXPOSE 8080
-CMD ["python", "bot.py"]
+CMD ["python", "run_polling.py"]
