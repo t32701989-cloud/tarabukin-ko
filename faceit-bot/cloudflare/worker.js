@@ -19,6 +19,9 @@ const LEVELS = [[1, 0], [2, 800], [3, 950], [4, 1100], [5, 1250], [6, 1400], [7,
 const DEFAULT_MAPS = "Sandstone,Rust,Province,Hanami,Prison,Dune,Breeze";
 const CALIBRATION_GAMES = 10;
 const CALIBRATION_MULT = 2;    // на калибровке ELO меняется в 2 раза сильнее
+const PLACEMENT_MIN = 700, PLACEMENT_MAX = 1700; // после калибровки: от 1 до 8 уровня
+const PLACEMENT_KD_MAX = 100;  // бонус/штраф за K/D на калибровке
+const AVATAR_MAX = 220 * 1024;
 const START_ELO = 1000;
 const READY_SEC = 30;          // время на «Готов»
 const VETO_TURN_SEC = 45;      // время на один бан, потом — случайный автобан
@@ -94,7 +97,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/") {
       return new Response(INDEX_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
     }
-    if (url.pathname.startsWith("/api/") || url.pathname === "/webhook") {
+    if (url.pathname.startsWith("/api/") || url.pathname === "/webhook" || url.pathname.startsWith("/avatar/")) {
       return env.ARENA.get(env.ARENA.idFromName("main")).fetch(request);
     }
     return new Response("Not found", { status: 404 });
@@ -119,6 +122,7 @@ export class Arena extends DurableObject {
       joined_at REAL NOT NULL, PRIMARY KEY (match_id, tg_id))`);
     this.sql.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS admins (tg_id INTEGER PRIMARY KEY)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS avatars (tg_id INTEGER PRIMARY KEY, data BLOB NOT NULL, updated INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS seasons (season TEXT NOT NULL, place INTEGER NOT NULL, tg_id INTEGER, nick TEXT, elo INTEGER, PRIMARY KEY (season, place))");
     for (const ddl of [
       "ALTER TABLE match_players ADD COLUMN calibrating INTEGER NOT NULL DEFAULT 0",
@@ -138,6 +142,8 @@ export class Arena extends DurableObject {
       "ALTER TABLE players ADD COLUMN photo TEXT",
       "ALTER TABLE players ADD COLUMN banned_until INTEGER",
       "ALTER TABLE players ADD COLUMN badges TEXT NOT NULL DEFAULT '[]'",
+      "ALTER TABLE players ADD COLUMN tg_photo TEXT",
+      "ALTER TABLE players ADD COLUMN custom_photo INTEGER NOT NULL DEFAULT 0",
     ]) { try { this.sql.exec(ddl); } catch {} }
     this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
 
@@ -301,6 +307,11 @@ export class Arena extends DurableObject {
         streak: cur, streak_win: curWin, best_streak: bestStreak,
       },
       maps: mapsStat, achievements: ach,
+      calibration: {
+        wins: rows.filter(r => r.calibrating && r.team === r.winner).length,
+        losses: rows.filter(r => r.calibrating && r.team !== r.winner).length,
+        with_stats: rows.filter(r => r.calibrating && r.kills != null).length,
+      },
     };
   }
 
@@ -428,6 +439,22 @@ export class Arena extends DurableObject {
     await this.scheduleAlarm();
   }
 
+  // ----- calibration -----
+  // Итог калибровки: ELO, набранное за 10 матчей (с удвоенным K и учётом силы соперников),
+  // плюс бонус/штраф за K/D (если вписан хотя бы в 3 матчах), в пределах 1–8 уровня.
+  placement(id) {
+    const rows = this.q(`SELECT mp.kills, mp.deaths, mp.team, m.winner FROM match_players mp JOIN matches m ON m.id = mp.match_id
+      WHERE mp.tg_id = ? AND mp.calibrating = 1 AND m.status = 'finished'`, id);
+    const st = rows.filter(r => r.kills != null);
+    const kills = st.reduce((s, r) => s + r.kills, 0), deaths = st.reduce((s, r) => s + r.deaths, 0);
+    const kd = st.length >= 3 ? kills / Math.max(1, deaths) : null;
+    const bonus = kd == null ? 0 : Math.max(-PLACEMENT_KD_MAX, Math.min(PLACEMENT_KD_MAX, Math.round((kd - 1) * 100)));
+    const p = this.player(id);
+    const elo = Math.max(PLACEMENT_MIN, Math.min(PLACEMENT_MAX, p.elo + bonus));
+    this.sql.exec("UPDATE players SET elo = ? WHERE tg_id = ?", elo, id);
+    return { elo, kd: kd == null ? null : +kd.toFixed(2), kd_bonus: elo - p.elo, wins: rows.filter(r => r.team === r.winner).length, losses: rows.filter(r => r.team !== r.winner).length };
+  }
+
   // ----- result -----
   computeMvp(mid) {
     const r = this.one("SELECT tg_id FROM match_players WHERE match_id = ? AND kills IS NOT NULL ORDER BY kills DESC, deaths ASC LIMIT 1", mid);
@@ -468,12 +495,22 @@ export class Arena extends DurableObject {
     this.sql.exec(`UPDATE matches SET status = 'finished', winner = ?, score = ?, finished_at = ?, pending_winner = NULL, pending_score = NULL
       WHERE id = ?`, winner, score || "", now(), mid);
     const mvp = this.computeMvp(mid);
+    const placed = {};
+    for (const p of m.players.filter(p => p.calibrating)) {
+      const pl = this.player(p.tg_id);
+      if (pl.wins + pl.losses === CALIBRATION_GAMES) placed[p.tg_id] = this.placement(p.tg_id);
+    }
     const m2 = this.match(mid);
     await Promise.all(m2.players.map(p => {
       const won = p.team === winner;
       let text = `${won ? "🏆 Победа" : "💀 Поражение"} в матче #${mid} (${esc(m2.map)} ${score || ""})\n`;
       if (p.games < CALIBRATION_GAMES) text += `🎯 Калибровка: ${p.games}/${CALIBRATION_GAMES}`;
-      else if (p.calibrating) text += `🎖 <b>Калибровка пройдена!</b>\nТвой уровень: <b>${level(p.elo)}</b> · ${p.elo} ELO`;
+      else if (placed[p.tg_id]) {
+        const pl = placed[p.tg_id];
+        text += `🎖 <b>Калибровка пройдена!</b>\n${pl.wins}W · ${pl.losses}L` +
+          (pl.kd != null ? ` · K/D ${pl.kd} (${pl.kd_bonus >= 0 ? "+" : ""}${pl.kd_bonus})` : "") +
+          `\nТвой уровень: <b>${level(p.elo)}</b> · ${p.elo} ELO`;
+      }
       else {
         const up = level(p.elo) > level(p.elo_before), down = level(p.elo) < level(p.elo_before);
         text += `ELO: ${p.elo_before} → <b>${p.elo}</b> (${p.elo_delta >= 0 ? "+" : ""}${p.elo_delta})` +
@@ -506,6 +543,11 @@ export class Arena extends DurableObject {
     if (this.setting("origin") !== url.origin) this.setSetting("origin", url.origin);
     await this.checkSeason();
     if (url.pathname === "/webhook") return this.webhook(request);
+    if (url.pathname.startsWith("/avatar/")) {
+      const r = this.one("SELECT data FROM avatars WHERE tg_id = ?", Number(url.pathname.split("/")[2]));
+      if (!r) return new Response("Not found", { status: 404 });
+      return new Response(r.data, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
+    }
 
     let user;
     const initData = request.headers.get("X-Init-Data");
@@ -552,12 +594,15 @@ export class Arena extends DurableObject {
       const season = this.setting("season");
       const d = new Date(), end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
       return { maps: this.maps, levels: LEVELS, calibration_games: CALIBRATION_GAMES, lobby_size: LOBBY_SIZE, veto_turn_sec: VETO_TURN_SEC,
-        ready_sec: READY_SEC, season, season_name: seasonName(season), season_days_left: Math.ceil((end - Date.now()) / 86400000) };
+        ready_sec: READY_SEC, placement_max_level: level(PLACEMENT_MAX), calibration_mult: CALIBRATION_MULT, season, season_name: seasonName(season), season_days_left: Math.ceil((end - Date.now()) / 86400000) };
     }
 
     if (method === "GET" && path === "/me") {
       let p = this.player(uid);
-      if (p && user.photo && p.photo !== user.photo) { this.sql.exec("UPDATE players SET photo = ? WHERE tg_id = ?", user.photo, uid); p = this.player(uid); }
+      if (p && user.photo && p.tg_photo !== user.photo) {
+        this.sql.exec("UPDATE players SET tg_photo = ?, photo = CASE WHEN custom_photo = 1 THEN photo ELSE ? END WHERE tg_id = ?", user.photo, user.photo, uid);
+        p = this.player(uid);
+      }
       const pendingCount = isAdmin ? this.one("SELECT COUNT(*) AS n FROM matches WHERE status = 'pending'").n : 0;
       return { user, player: p ? this.publicPlayer(p) : null, rank: this.rankOf(uid), active_match: this.activeMatchOf(uid), is_admin: isAdmin, pending_count: pendingCount };
     }
@@ -567,11 +612,30 @@ export class Arena extends DurableObject {
       const gameId = String(body.game_id || "").replace(/\D/g, "").slice(0, 15);
       if (!NICK_RE.test(nick)) throw new ApiError("Ник: 2–20 символов");
       if (this.one("SELECT 1 AS x FROM players WHERE lower(nick) = lower(?) AND tg_id != ?", nick, uid)) throw new ApiError("Этот ник уже занят");
-      this.sql.exec(`INSERT INTO players (tg_id, tg_username, tg_name, nick, game_id, elo, created_at, photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      this.sql.exec(`INSERT INTO players (tg_id, tg_username, tg_name, nick, game_id, elo, created_at, photo, tg_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(tg_id) DO UPDATE SET nick = excluded.nick, game_id = excluded.game_id, tg_username = excluded.tg_username,
-          tg_name = excluded.tg_name, photo = COALESCE(excluded.photo, players.photo)`,
-        uid, user.username, user.name, nick, gameId, START_ELO, now(), user.photo || null);
+          tg_name = excluded.tg_name, photo = CASE WHEN players.custom_photo = 1 THEN players.photo ELSE COALESCE(excluded.photo, players.photo) END,
+          tg_photo = COALESCE(excluded.tg_photo, players.tg_photo)`,
+        uid, user.username, user.name, nick, gameId, START_ELO, now(), user.photo || null, user.photo || null);
       return { ok: true };
+    }
+
+    if (method === "POST" && path === "/avatar") {
+      requirePlayer();
+      if (body.remove) {
+        this.sql.exec("DELETE FROM avatars WHERE tg_id = ?", uid);
+        this.sql.exec("UPDATE players SET custom_photo = 0, photo = tg_photo WHERE tg_id = ?", uid);
+        return { ok: true };
+      }
+      const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(body.data || ""));
+      if (!m) throw new ApiError("Нужна картинка JPEG");
+      const bin = Uint8Array.from(atob(m[1]), c => c.charCodeAt(0));
+      if (bin.length > AVATAR_MAX) throw new ApiError("Картинка слишком большая");
+      if (bin[0] !== 0xff || bin[1] !== 0xd8) throw new ApiError("Это не JPEG");
+      const t = now();
+      this.sql.exec("INSERT INTO avatars (tg_id, data, updated) VALUES (?, ?, ?) ON CONFLICT(tg_id) DO UPDATE SET data = excluded.data, updated = excluded.updated", uid, bin.buffer, t);
+      this.sql.exec("UPDATE players SET custom_photo = 1, photo = ? WHERE tg_id = ?", `/avatar/${uid}?v=${t}`, uid);
+      return { ok: true, photo: `/avatar/${uid}?v=${t}` };
     }
 
     if (method === "GET" && path === "/lobbies") {
@@ -640,6 +704,7 @@ export class Arena extends DurableObject {
                 WHERE mp.tg_id = ? AND m.status IN ('veto','live','pending')`, id)) throw new ApiError("Игрок сейчас в матче");
             this.sql.exec("DELETE FROM match_players WHERE tg_id = ? AND match_id IN (SELECT id FROM matches WHERE status IN ('open','ready'))", id);
             this.sql.exec("DELETE FROM players WHERE tg_id = ?", id);
+            this.sql.exec("DELETE FROM avatars WHERE tg_id = ?", id);
             this.sql.exec("DELETE FROM admins WHERE tg_id = ?", id);
             return { ok: true };
           }

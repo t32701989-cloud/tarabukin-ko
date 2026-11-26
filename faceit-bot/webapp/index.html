@@ -2,313 +2,275 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>SO2 Arena</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Russo+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@500;600;700;800&family=Fira+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0b0d12; --bg2: #10131a; --card: #151922; --card2: #1c212c; --card3: #232937; --line: #262c39; --line2: #313848;
-    --text: #f1f3f7; --muted: #8890a2; --dim: #5d6476;
-    --accent: #ff5a1f; --accent2: #ff8a3d; --glow: rgba(255,90,31,.35);
-    --win: #22d36b; --loss: #ff4757; --t1: #4d8dff; --t2: #ff5a1f; --gold: #ffc800;
-    --r: 18px; --display: "Russo One", "Inter", sans-serif;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { padding-bottom: calc(84px + env(safe-area-inset-bottom)); min-height: 100vh;
-    background: radial-gradient(120% 50% at 50% -10%, #2a160c 0%, transparent 60%), var(--bg); background-attachment: fixed; }
-  button { font: inherit; color: inherit; border: 0; cursor: pointer; background: none; }
-  input { font: inherit; color: var(--text); background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; width: 100%; outline: none; transition: border-color .15s; }
-  input:focus { border-color: var(--accent); }
-  .wrap { padding: 0 16px; max-width: 560px; margin: 0 auto; }
-  .display { font-family: var(--display); font-weight: 400; letter-spacing: .01em; }
-  .muted { color: var(--muted); font-size: 13px; }
-  .dim { color: var(--dim); }
-  .row { display: flex; align-items: center; gap: 10px; }
-  .grow { flex: 1; min-width: 0; }
-  .ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* VOICE  игра, но как рабочий инструмент: табло трансляции, без свечения и градиентов
+   IDEA   графика киберспортивного эфира: плоские поля команд, срезанные углы, узкий шрифт табло
+   PICTURE само лобби (10 слотов) и табло матча (синие и красные поля, K/D колонками)
+   COLOUR графит #111316, белый как главный цвет действия, синий/красный — только команды, зелёный — готовность
+   TYPE   Fira Sans Condensed (заголовки, цифры) + Fira Sans (текст), оба с кириллицей
+   LAYOUT одна колонка телефона: полоса игрока, затем лобби/матч, снизу плоская панель вкладок */
+:root{--bg:#111316;--s1:#181b1f;--s2:#1f2328;--s3:#272c32;--line:#2c3138;--ink:#eef0f2;--mute:#8b939d;--dim:#5b636d;
+  --a:#2f7cff;--b:#ff5236;--go:#27c96f;--bad:#ff4a55;--gold:#ffc400}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Fira Sans",system-ui,sans-serif}
+body{padding-bottom:calc(70px + env(safe-area-inset-bottom));min-height:100vh}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input{font:16px "Fira Sans",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:12px;width:100%;outline:none}
+input:focus{border-color:var(--ink)}
+.c{font-family:"Fira Sans Condensed",sans-serif}
+.wrap{padding:0 16px;max-width:560px;margin:0 auto}
+.mute{color:var(--mute);font-size:13px}
+.dim{color:var(--dim)}
+.row{display:flex;align-items:center;gap:10px}
+.grow{flex:1}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.num{font-family:"Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+h2{font:600 22px/1.1 "Fira Sans Condensed",sans-serif;margin:26px 0 10px;display:flex;align-items:baseline;gap:8px}
+h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
+.panel{background:var(--s1);border:1px solid var(--line);border-radius:6px;margin-bottom:12px}
+.pad{padding:14px}
 
-  /* section title */
-  .stitle { display: flex; align-items: center; gap: 8px; margin: 22px 2px 10px; font-family: var(--display); font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--text); }
-  .stitle::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 10px var(--glow); }
-  .stitle .cnt { color: var(--muted); font-family: Inter; font-weight: 700; font-size: 12px; }
+/* кнопки */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:0 16px;background:var(--ink);color:#0d0f11;
+  font:700 17px "Fira Sans Condensed",sans-serif;letter-spacing:.02em;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:var(--s3);color:var(--ink)}
+.btn.red{background:var(--bad);color:#fff}
+.btn.go{background:var(--go);color:#062312;font-size:20px;min-height:56px}
+.btn.sm{width:auto;min-height:44px;padding:0 14px;font-size:15px;flex:0 0 auto}
+.btn:disabled{opacity:.4}
+.btns{display:flex;gap:8px;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--s3);border-radius:4px;padding:6px 10px;font-weight:600;font-size:13px;white-space:nowrap}
+.ico{width:16px;height:16px;flex-shrink:0}
 
-  .card { background: linear-gradient(180deg, var(--card) 0%, #131720 100%); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; margin-bottom: 12px; position: relative; }
-  .card.mine { border-color: rgba(255,90,31,.45); box-shadow: 0 0 0 1px rgba(255,90,31,.12), 0 10px 30px -12px var(--glow); }
+/* уровень (как FACEIT) */
+.lvl{position:relative;width:28px;height:28px;display:grid;place-items:center;flex-shrink:0;font-size:12px}
+.lvl svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(135deg)}
+.lvl .trk{fill:#0c0d10;stroke:#ffffff1f;stroke-width:3.4}
+.lvl .arc{fill:none;stroke:currentColor;stroke-width:3.4;stroke-linecap:round}
+.lvl b{position:relative;font:700 1em "Fira Sans Condensed",sans-serif}
+.lvl.q{color:#7a828c}.lvl.q .trk{stroke-dasharray:2.2 2.2}
+.lvl.xl{width:60px;height:60px;font-size:26px}
+.lvl.xs{width:20px;height:20px;font-size:10px}
 
-  /* buttons */
-  .btn { background: linear-gradient(180deg, #ff6a2b, #f0480f); color: #fff; font-weight: 800; padding: 14px 16px; border-radius: 14px; width: 100%;
-    box-shadow: 0 8px 20px -8px var(--glow), inset 0 1px 0 rgba(255,255,255,.2); letter-spacing: .01em; transition: transform .08s, opacity .15s; }
-  .btn:active { transform: scale(.98); }
-  .btn.sec { background: var(--card2); border: 1px solid var(--line2); box-shadow: none; font-weight: 700; }
-  .btn.danger { background: rgba(255,71,87,.08); color: var(--loss); border: 1px solid rgba(255,71,87,.3); box-shadow: none; font-weight: 700; }
-  .btn.small { width: auto; padding: 12px 14px; font-size: 14px; }
-  .btn:disabled { opacity: .4; box-shadow: none; }
-  .btns { display: flex; gap: 8px; margin-top: 14px; }
-  .btns > * { flex: 1; }
-  .btns > .small { flex: 0 0 auto; }
+/* аватар */
+.av{position:relative;width:44px;height:44px;border-radius:4px;flex-shrink:0;display:grid;place-items:center;background:var(--h,#2a3038);
+  font:700 17px "Fira Sans Condensed",sans-serif;color:#fff}
+.av img{width:100%;height:100%;object-fit:cover;border-radius:4px}
+.av .lvl{position:absolute;right:-6px;bottom:-6px}
+.av.sm{width:34px;height:34px;font-size:14px}
+.av.xl{width:88px;height:88px;font-size:34px;border-radius:6px}
+.av.xl img{border-radius:6px}
 
-  /* top bar */
-  .topbar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 12px 16px; max-width: 560px; margin: 0 auto;
-    background: linear-gradient(180deg, rgba(11,13,18,.96) 70%, rgba(11,13,18,0)); backdrop-filter: blur(8px); }
-  .logo { font-family: var(--display); font-size: 20px; letter-spacing: .02em; }
-  .logo span { color: var(--accent); text-shadow: 0 0 14px var(--glow); }
-  .mechip { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 30px; padding: 4px 12px 4px 4px; }
-  .mechip b { font-family: var(--display); font-weight: 400; font-size: 15px; }
+/* верхняя полоса игрока */
+.top{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;max-width:560px;margin:0 auto}
+.logo{font:800 21px "Fira Sans Condensed",sans-serif;letter-spacing:.01em}
+.logo i{font-style:normal;color:var(--mute);font-weight:600}
+.mebar{display:flex;align-items:center;gap:8px;background:var(--s1);border:1px solid var(--line);border-radius:4px;padding:4px 10px 4px 4px}
+.mebar b{font:700 17px "Fira Sans Condensed",sans-serif}
 
-  /* level badge (FACEIT-style) */
-  .lvl { position: relative; width: 30px; height: 30px; display: grid; place-items: center; flex-shrink: 0; font-size: 13px; }
-  .lvl svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(135deg); }
-  .lvl .trk { fill: #0e1016; stroke: rgba(255,255,255,.12); stroke-width: 3.2; }
-  .lvl .arc { fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; filter: drop-shadow(0 0 2px currentColor); }
-  .lvl b { position: relative; font-family: var(--display); font-weight: 400; font-size: 1em; line-height: 1; }
-  .lvl.calib { color: #7d8497; } .lvl.calib .trk { stroke-dasharray: 2.4 2.4; }
-  .lvl.big { width: 64px; height: 64px; font-size: 24px; }
-  .lvl.xs { width: 20px; height: 20px; font-size: 9px; }
+/* лобби */
+.lob{padding:14px}
+.lob .h{display:flex;align-items:flex-end;gap:10px}
+.lob .t{font:700 26px/1 "Fira Sans Condensed",sans-serif}
+.cnt{font:700 34px/1 "Fira Sans Condensed",sans-serif}.cnt span{color:var(--dim);font-size:20px}
+.ticks{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin-top:12px}
+.ticks i{height:4px;background:var(--s3)}.ticks i.on{background:var(--ink)}.ticks i.rd{background:var(--go)}
+.slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:12px}
+.slot{background:var(--s2);padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:7px;position:relative;
+  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.slot .n{font:600 13px "Fira Sans Condensed",sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.slot.me{background:var(--s3);box-shadow:inset 0 -2px 0 var(--ink)}
+.slot.free{background:transparent;outline:1px dashed var(--line);outline-offset:-1px;clip-path:none}
+.slot.free .av{background:transparent;color:var(--dim);font-size:22px}
+.slot.wait .av{opacity:.4}
+.slot .ok{position:absolute;top:5px;left:5px;width:16px;height:16px;background:var(--go);color:#062312;display:grid;place-items:center;border-radius:2px;z-index:1}
+.slot .x{position:absolute;top:2px;right:8px;color:var(--bad);font-weight:800;font-size:18px}
+.readyband{display:flex;align-items:center;gap:12px;margin-top:12px;background:#163322;padding:10px 12px;border-left:3px solid var(--go)}
+.timer{font:700 30px/1 "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums;min-width:46px;text-align:right}
+.timer.low{color:var(--bad)}
+.state{display:inline-block;font:700 13px "Fira Sans Condensed",sans-serif;letter-spacing:.04em;padding:3px 8px;border-radius:3px;background:var(--s3);color:var(--mute)}
+.state.live{background:var(--bad);color:#fff}.state.veto{background:var(--s3);color:var(--ink)}.state.pending{background:var(--gold);color:#1a1400}
 
-  /* avatar */
-  .av { position: relative; width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
-    font-family: var(--display); font-size: 16px; color: #fff; background: var(--c, #2a3040); overflow: visible; }
-  .av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-  .av .lvl { position: absolute; right: -5px; bottom: -5px; }
-  .av.sm { width: 34px; height: 34px; font-size: 13px; }
-  .av.lg { width: 76px; height: 76px; font-size: 28px; }
+/* табло матча */
+.board{overflow:hidden}
+.mhead{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;min-height:76px}
+.mhead .ta,.mhead .tb{display:flex;flex-direction:column;justify-content:center;padding:10px 12px;font:700 20px/1.05 "Fira Sans Condensed",sans-serif}
+.mhead .ta{background:var(--a);clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+.mhead .tb{background:var(--b);text-align:right;clip-path:polygon(14px 0,100% 0,100% 100%,0 100%)}
+.mhead .ta small,.mhead .tb small{font:600 13px "Fira Sans",sans-serif;opacity:.85}
+.mhead .mid{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 10px;text-align:center}
+.mhead .map{font:800 22px/1 "Fira Sans Condensed",sans-serif;margin-top:6px}
+.mhead .win{box-shadow:inset 0 -4px 0 #fff}
+.sb{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.sb .col{background:var(--s1)}
+.pr{display:flex;align-items:center;gap:6px;padding:7px 10px;border-top:1px solid var(--line);font-weight:600;font-size:14px}
+.pr:first-child{border-top:0}
+.col.b .pr{flex-direction:row-reverse;text-align:right}
+.pr .kd{font:600 15px "Fira Sans Condensed",sans-serif;color:var(--mute);font-variant-numeric:tabular-nums}
+.tagC{font:800 11px "Fira Sans Condensed",sans-serif;background:var(--gold);color:#1a1400;padding:0 4px;border-radius:2px}
+.tagH{width:15px;height:15px;color:var(--mute);flex-shrink:0}
+.info{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+.info .k{font-size:12px;color:var(--mute);font-weight:600}
+.info .v{font:700 18px "Fira Sans Condensed",sans-serif}
+.callout{padding:10px 12px;border-top:1px solid var(--line);border-left:3px solid var(--gold);background:#2a2410;font-size:14px}
+.callout.me{border-left-color:var(--ink);background:var(--s2)}
+.foot{padding:12px;border-top:1px solid var(--line)}
+.foot .btns{margin-top:0}
 
-  /* hero */
-  .hero { padding: 18px; overflow: hidden; }
-  .hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(80% 90% at 100% 0%, var(--lc, transparent) 0%, transparent 55%); opacity: .16; pointer-events: none; }
-  .hero .nick { font-family: var(--display); font-size: 22px; }
-  .hero .elo { font-family: var(--display); font-size: 30px; line-height: 1; text-align: right; }
-  .bar { height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; margin-top: 16px; }
-  .bar > i { display: block; height: 100%; border-radius: 4px; box-shadow: 0 0 12px currentColor; }
-  .calbar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 16px; }
-  .calbar i { height: 8px; border-radius: 3px; background: var(--bg2); border: 1px solid var(--line); }
-  .calbar i.w { background: var(--win); border-color: var(--win); } .calbar i.l { background: var(--loss); border-color: var(--loss); } .calbar i.d { background: var(--accent); border-color: var(--accent); }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
-  .stat { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; text-align: center; }
-  .stat b { display: block; font-family: var(--display); font-weight: 400; font-size: 18px; }
-  .stat span { font-size: 11px; color: var(--muted); }
+/* вето */
+.veto{padding:12px;border-top:1px solid var(--line)}
+.maps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
+.map{height:56px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;background:var(--m);text-align:left;
+  font:700 19px "Fira Sans Condensed",sans-serif;color:#fff;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.map small{font:600 12px "Fira Sans",sans-serif;opacity:.85}
+.map.can{box-shadow:inset 0 0 0 2px #fff}
+.map.out{background:var(--s2);color:var(--dim)}
+.map.out s{text-decoration-color:var(--bad);text-decoration-thickness:2px}
+.map:disabled{cursor:default}
 
-  /* lobby */
-  .lhead { display: flex; align-items: flex-start; gap: 10px; }
-  .ltitle { font-family: var(--display); font-size: 19px; }
-  .count { font-family: var(--display); font-size: 28px; line-height: 1; } .count span { font-size: 15px; color: var(--muted); }
-  .segs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin-top: 12px; }
-  .segs i { height: 5px; border-radius: 3px; background: var(--card3); }
-  .segs i.on { background: var(--win); box-shadow: 0 0 8px rgba(34,211,107,.5); }
-  .grid10 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px 6px; margin-top: 16px; }
-  .pl { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; position: relative; }
-  .pl .nm { font-size: 11px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cfd3dc; }
-  .pl.me .nm { color: var(--accent2); }
-  .pl .empty { width: 44px; height: 44px; border-radius: 50%; border: 1.5px dashed var(--line2); display: grid; place-items: center; color: var(--dim); font-size: 20px; }
-  .pl .kick { position: absolute; top: -4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--loss); color: #fff; font-size: 11px; line-height: 18px; }
+/* профиль */
+.hero{padding:16px}
+.hero .nick{font:800 30px/1 "Fira Sans Condensed",sans-serif}
+.elo{font:800 44px/1 "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.bar{height:6px;background:var(--s3);margin-top:8px}.bar i{display:block;height:100%}
+.cal{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:10px}
+.cal i{height:28px;background:var(--s3);display:grid;place-items:center;font:700 13px "Fira Sans Condensed",sans-serif;color:var(--dim);font-style:normal}
+.cal i.w{background:var(--go);color:#062312}.cal i.l{background:var(--bad);color:#fff}
+.nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);margin-top:14px}
+.nums.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.nums div{padding:10px 4px 6px;text-align:center}
+.nums b{display:block;font:700 24px/1 "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.nums span{font-size:12px;color:var(--mute)}
+.medal{display:inline-flex;font:700 13px "Fira Sans Condensed",sans-serif;padding:2px 8px;border:1px solid var(--gold);color:var(--gold);border-radius:3px;margin:8px 6px 0 0}
+.mrow{display:grid;grid-template-columns:84px minmax(0,1fr) 78px;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line)}
+.mrow:first-child{border-top:0}
+.mrow .nm{font:700 16px "Fira Sans Condensed",sans-serif;border-left:4px solid var(--m);padding-left:8px}
+.mrow .b{height:8px;background:var(--s3)}.mrow .b i{display:block;height:100%}
+.mrow .v{text-align:right;font-size:13px;color:var(--mute);white-space:nowrap}
+.ach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line)}
+.ach>div{background:var(--s1);padding:10px 12px;display:flex;gap:10px;align-items:center}
+.ach svg{width:24px;height:24px;flex-shrink:0;color:var(--dim)}
+.ach .on svg{color:var(--gold)}
+.ach b{display:block;font:700 15px "Fira Sans Condensed",sans-serif}
+.ach span{font-size:12px;color:var(--mute);line-height:1.2}
+.ach .off b{color:var(--mute)}
+.ach>div:last-child:nth-child(odd){grid-column:span 2}
+.hist{display:grid;grid-template-columns:4px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px 10px 0;border-top:1px solid var(--line)}
+.hist:first-child{border-top:0}
+.hist .r{align-self:stretch}
+.hist .d{font:700 20px "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums;text-align:right}
+.p{color:var(--go)}.m{color:var(--bad)}
 
-  .tag { font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
-  .tag.veto { background: rgba(77,141,255,.14); color: #8fb6ff; }
-  .tag.live { background: rgba(255,90,31,.14); color: var(--accent2); }
-  .tag.live::before { content: "● "; animation: blink 1.2s infinite; }
-  @keyframes blink { 50% { opacity: .2 } }
+/* рейтинг */
+.season{display:flex;align-items:center;gap:12px;padding:14px;background:var(--ink);color:#0d0f11;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%)}
+.season b{font:800 22px/1 "Fira Sans Condensed",sans-serif}
+.season span{font-size:13px;opacity:.7}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:12px;align-items:end}
+.pod{background:var(--s1);border:1px solid var(--line);padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.pod .pl{font:800 28px/1 "Fira Sans Condensed",sans-serif;color:var(--dim)}
+.pod.first{border-color:var(--gold);padding-top:18px}.pod.first .pl{color:var(--gold)}
+.pod .n{font:700 15px "Fira Sans Condensed",sans-serif;max-width:100%}
+.list .it{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--line);cursor:pointer}
+.list .it:first-child{border-top:0}
+.list .it.me{background:var(--s2)}
+.list .pos{width:24px;font:700 17px "Fira Sans Condensed",sans-serif;color:var(--mute);text-align:center}
+.list .n{font:700 17px "Fira Sans Condensed",sans-serif}
+.list .e{font:700 20px "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.search{padding-left:38px;background:var(--s1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%238b939d' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 12px center no-repeat;margin-bottom:10px}
 
-  /* map banner */
-  .banner { margin: -14px -14px 14px; height: 92px; border-radius: var(--r) var(--r) 0 0; position: relative; overflow: hidden; padding: 14px; display: flex; flex-direction: column; justify-content: flex-end;
-    background: var(--mapbg); }
-  .banner::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0 2px, transparent 2px 12px); }
-  .banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 20%, rgba(11,13,18,.85)); }
-  .banner > * { position: relative; z-index: 1; }
-  .banner .mapn { font-family: var(--display); font-size: 26px; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
-  .banner .tag { position: absolute; top: 12px; right: 12px; z-index: 1; background: rgba(0,0,0,.45); backdrop-filter: blur(4px); }
+/* вкладки */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:#0d0f11;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs nav{display:flex;max-width:560px;margin:0 auto}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;color:var(--dim);font:600 13px "Fira Sans Condensed",sans-serif;position:relative}
+.tabs button svg{width:22px;height:22px}
+.tabs button.on{color:var(--ink)}
+.tabs button.on::before{content:"";position:absolute;top:-1px;left:25%;right:25%;height:2px;background:var(--ink)}
+.tabs .dot{position:absolute;top:5px;left:calc(50% + 8px);min-width:16px;height:16px;padding:0 4px;background:var(--bad);color:#fff;border-radius:8px;font:700 11px/16px "Fira Sans",sans-serif}
+.tabs[hidden],[hidden]{display:none!important}
 
-  /* veto */
-  .veto-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .cd { font-family: var(--display); font-size: 26px; color: var(--accent2); min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
-  .cd.low { color: var(--loss); animation: blink .8s infinite; }
-  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .mapc { height: 64px; border-radius: 12px; position: relative; overflow: hidden; text-align: left; padding: 10px 12px; display: flex; flex-direction: column; justify-content: flex-end;
-    background: var(--mapbg); border: 1.5px solid transparent; transition: transform .1s; }
-  .mapc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(0,0,0,.55)); }
-  .mapc > * { position: relative; z-index: 1; }
-  .mapc .mn { font-family: var(--display); font-size: 16px; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
-  .mapc .by { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.75); }
-  .mapc.can { border-color: rgba(255,255,255,.35); }
-  .mapc.can:active { transform: scale(.96); }
-  .mapc.banned { filter: grayscale(1) brightness(.45); }
-  .mapc.banned::before { content: "✕"; position: absolute; right: 10px; top: 4px; z-index: 2; font-size: 30px; font-weight: 900; color: var(--loss); filter: none; }
-  .mapc:disabled { cursor: default; }
-  .vturn { font-weight: 700; }
-
-  /* host + room */
-  .hostline { margin-top: 12px; display: flex; align-items: center; gap: 10px; background: rgba(255,90,31,.07); border: 1px solid rgba(255,90,31,.3); border-radius: 14px; padding: 10px 12px; }
-  .hostline .lbl { font-size: 11px; color: var(--accent2); font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
-  .hostline .hn { font-weight: 800; }
-  .chipbtn { background: var(--card3); border: 1px solid var(--line2); padding: 6px 10px; border-radius: 10px; font-weight: 700; font-size: 13px; color: var(--accent2); white-space: nowrap; }
-  .you { margin-top: 4px; color: var(--text); font-size: 12px; }
-  .room { margin-top: 10px; display: flex; align-items: center; gap: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
-  .room code { font-family: var(--display); font-size: 17px; color: var(--accent2); }
-
-  /* teams vs */
-  .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; margin-top: 14px; align-items: start; }
-  .vs .mid { font-family: var(--display); color: var(--dim); font-size: 14px; padding-top: 8px; }
-  .team { min-width: 0; }
-  .team .th { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding-bottom: 6px; border-bottom: 2px solid var(--t1); margin-bottom: 4px; }
-  .team.t2 .th { border-color: var(--t2); flex-direction: row-reverse; }
-  .team.t1 .th b { color: var(--t1); } .team.t2 .th b { color: var(--t2); }
-  .team .th span { color: var(--muted); font-weight: 600; }
-  .tp { display: flex; align-items: center; gap: 6px; padding: 5px 0; font-size: 13px; font-weight: 600; min-width: 0; }
-  .team.t2 .tp { flex-direction: row-reverse; text-align: right; }
-  .tp .ell { flex: 1; }
-  .tp i { font-style: normal; font-size: 10px; font-weight: 900; flex-shrink: 0; }
-  .tp i.cap { background: var(--gold); color: #000; border-radius: 4px; padding: 1px 5px; }
-
-  /* players */
-  .search { margin-bottom: 4px; padding-left: 40px; background: var(--bg2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%238890a2' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 14px center no-repeat; }
-  .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 8px; align-items: end; margin-bottom: 12px; }
-  .pod { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 16px; padding: 14px 6px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
-  .pod.p1 { padding-top: 20px; border-color: rgba(255,200,0,.45); box-shadow: 0 10px 30px -14px rgba(255,200,0,.5); }
-  .pod .place { font-family: var(--display); font-size: 13px; color: var(--muted); }
-  .pod.p1 .place { color: var(--gold); }
-  .pod .n { font-weight: 800; font-size: 13px; max-width: 100%; }
-  .pod .e { font-family: var(--display); font-size: 17px; }
-  .lb { padding: 0; overflow: hidden; }
-  .lb .r { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  .lb .r:last-child { border-bottom: 0; }
-  .lb .r.me { background: rgba(255,90,31,.07); }
-  .lb .pos { width: 22px; text-align: center; font-family: var(--display); color: var(--muted); font-size: 14px; }
-  .lb .n { font-weight: 700; }
-  .lb .e { font-family: var(--display); font-size: 17px; }
-  .sub { font-size: 12px; color: var(--muted); font-weight: 600; }
-
-  /* history */
-  .hist { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-  .hist:last-child { border-bottom: 0; }
-  .hmap { width: 46px; height: 46px; border-radius: 12px; background: var(--mapbg); display: grid; place-items: center; font-family: var(--display); font-size: 17px; flex-shrink: 0; position: relative; overflow: hidden; }
-  .hmap::after { content: ""; position: absolute; inset: auto 0 0 0; height: 4px; background: var(--res); }
-  .d { font-family: var(--display); font-size: 16px; }
-  .d.p { color: var(--win); } .d.m { color: var(--loss); }
-  .wl { font-weight: 800; font-size: 12px; }
-
-  .empty { text-align: center; color: var(--muted); padding: 28px 10px; }
-  .empty .big { font-size: 38px; margin-bottom: 8px; }
-
-  /* ready */
-  .readybox { margin-top: 14px; display: flex; align-items: center; gap: 12px; background: rgba(34,211,107,.07); border: 1px solid rgba(34,211,107,.35); border-radius: 14px; padding: 12px; }
-  .readybox .cd { color: var(--win); }
-  .pl .rdy { position: absolute; left: 50%; top: 0; margin-left: 8px; width: 18px; height: 18px; border-radius: 50%; background: var(--win); color: #04140a; font-size: 11px; font-weight: 900; display: grid; place-items: center; border: 2px solid var(--card); }
-  .pl.notready .av { opacity: .45; }
-  .btn.go { background: linear-gradient(180deg, #2fe07a, #16b257); box-shadow: 0 8px 20px -8px rgba(34,211,107,.6); color: #04140a; font-size: 17px; animation: pulse 1.4s infinite; }
-  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(34,211,107,.15), 0 8px 20px -8px rgba(34,211,107,.6); } }
-  .tag.pending { background: rgba(255,200,0,.14); color: var(--gold); }
-  .pendbox { margin-top: 12px; background: rgba(255,200,0,.07); border: 1px solid rgba(255,200,0,.35); border-radius: 14px; padding: 12px; font-size: 14px; }
-  .kd { font-size: 11px; color: var(--muted); font-weight: 700; flex-shrink: 0; }
-  .star { color: var(--gold); }
-  /* profile extras */
-  .kgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .kgrid .stat b { font-size: 17px; }
-  .mrow { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
-  .mrow .mt { width: 34px; height: 34px; border-radius: 9px; background: var(--mapbg); display: grid; place-items: center; font-family: var(--display); font-size: 14px; flex-shrink: 0; }
-  .mrow .mb { flex: 1; height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
-  .mrow .mb i { display: block; height: 100%; border-radius: 4px; }
-  .mrow .mv { width: 96px; white-space: nowrap; text-align: right; font-size: 12px; font-weight: 700; color: var(--muted); }
-  .achs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .ach { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 6px; text-align: center; }
-  .ach .ai { font-size: 26px; line-height: 1.2; }
-  .ach .at { font-size: 12px; font-weight: 800; margin-top: 2px; }
-  .ach .ad { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.25; }
-  .ach.off { opacity: .35; filter: grayscale(1); }
-  .ach.on { border-color: rgba(255,200,0,.35); background: linear-gradient(180deg, rgba(255,200,0,.08), var(--bg2)); }
-  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-  .badge { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 20px; background: rgba(255,200,0,.1); border: 1px solid rgba(255,200,0,.35); color: var(--gold); }
-  .streak { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-size: 12px; padding: 3px 9px; border-radius: 20px; }
-  .streak.w { background: rgba(34,211,107,.12); color: var(--win); } .streak.l { background: rgba(255,71,87,.12); color: var(--loss); }
-  .season { display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, rgba(255,90,31,.15), rgba(255,200,0,.06)); border: 1px solid rgba(255,90,31,.3); border-radius: 16px; padding: 12px 14px; margin-top: 4px; }
-  .season .sn { font-family: var(--display); font-size: 17px; }
-  .tabs button .dot { position: absolute; margin-left: 16px; margin-top: -2px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--loss); color: #fff; font-size: 10px; line-height: 16px; padding: 0 4px; }
-  .tabs button { position: relative; }
-  .adm-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  .adm-row:last-child { border-bottom: 0; }
-
-  /* tabs */
-  .tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; padding: 8px 16px calc(10px + env(safe-area-inset-bottom)); z-index: 5;
-    background: linear-gradient(0deg, rgba(11,13,18,1) 60%, rgba(11,13,18,0)); }
-  .tabs[hidden] { display: none; }
-  .tabs nav { display: flex; width: 100%; max-width: 420px; background: rgba(21,25,34,.95); border: 1px solid var(--line); border-radius: 22px; padding: 6px; backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
-  .tabs button { flex: 1; padding: 8px 0 6px; color: var(--dim); font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 3px; border-radius: 16px; transition: color .15s, background .15s; }
-  .tabs button svg { width: 22px; height: 22px; }
-  .tabs button.on { color: var(--accent); background: rgba(255,90,31,.1); }
-
-  /* sheet / toast */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 10; display: flex; align-items: flex-end; animation: fade .15s; backdrop-filter: blur(2px); }
-  .sheet { background: var(--card); border-top: 1px solid var(--line2); width: 100%; max-width: 560px; margin: 0 auto; border-radius: 22px 22px 0 0; padding: 10px 16px calc(18px + env(safe-area-inset-bottom)); animation: up .22s cubic-bezier(.2,.9,.3,1); max-height: 90vh; overflow: auto; }
-  .sheet::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line2); margin: 0 auto 14px; }
-  .sheet h3 { margin: 0 0 4px; font-family: var(--display); font-weight: 400; font-size: 20px; }
-  label.f { display: block; font-size: 12px; color: var(--muted); margin: 14px 2px 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-  .seg { display: flex; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 4px; gap: 4px; }
-  .seg button { flex: 1; padding: 11px; border-radius: 10px; font-weight: 800; color: var(--muted); }
-  .seg button.on.t1 { background: var(--t1); color: #fff; } .seg button.on.t2 { background: var(--t2); color: #fff; }
-  .score { display: flex; align-items: center; gap: 10px; }
-  .score input { text-align: center; font-family: var(--display); font-size: 22px; }
-  @keyframes up { from { transform: translateY(60px); opacity: 0 } }
-  @keyframes fade { from { opacity: 0 } }
-  .toast { position: fixed; left: 16px; right: 16px; top: 12px; max-width: 528px; margin: 0 auto; background: #2a1216; border: 1px solid #5c2329; color: #ffb7bd; padding: 13px 16px; border-radius: 14px; z-index: 20; font-weight: 700; animation: up .2s; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
-  .toast.ok { background: #0f2619; border-color: #1d5a35; color: #9ff0bd; }
-  .back { color: var(--accent2); font-weight: 800; padding: 4px 0 12px; }
-
-  /* register */
-  .reg-logo { text-align: center; padding: 44px 0 22px; }
-  .reg-logo .t { font-family: var(--display); font-size: 40px; line-height: 1; }
-  .reg-logo .t span { color: var(--accent); text-shadow: 0 0 24px var(--glow); }
-  .note { margin-top: 14px; display: flex; gap: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; color: var(--muted); }
-  .spin { display: grid; place-items: center; height: 70vh; font-family: var(--display); font-size: 24px; color: var(--dim); }
+/* листы, тосты */
+.ov{position:fixed;inset:0;z-index:10;background:#000a;display:flex;align-items:flex-end}
+.sheet{width:100%;max-width:560px;margin:0 auto;background:var(--s1);border-top:2px solid var(--ink);padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto;animation:up .18s ease-out}
+.sheet h3{margin:0 0 4px;font:800 24px "Fira Sans Condensed",sans-serif}
+label.f{display:block;margin:14px 0 6px;font-size:13px;font-weight:600;color:var(--mute)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg button{min-height:48px;background:var(--s3);font:700 18px "Fira Sans Condensed",sans-serif}
+.seg button.on.a{background:var(--a)}.seg button.on.b{background:var(--b)}
+.toast{position:fixed;z-index:20;left:16px;right:16px;top:calc(12px + env(safe-area-inset-top));max-width:528px;margin:0 auto;padding:12px 14px;background:var(--bad);color:#fff;font:700 17px "Fira Sans Condensed",sans-serif;animation:up .18s}
+.toast.ok{background:var(--go);color:#062312}
+@keyframes up{from{transform:translateY(16px);opacity:0}}
+.back{display:flex;align-items:center;gap:4px;font:700 17px "Fira Sans Condensed",sans-serif;color:var(--mute);padding:6px 0 10px}
+.empty{padding:22px 14px;text-align:center;color:var(--mute)}
+.reg{padding-top:calc(40px + env(safe-area-inset-top))}
+.reg .logo{font-size:44px;line-height:1}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
-<div id="app"><div class="spin">SO2 ARENA</div></div>
+<div id="app"><div class="empty c" style="padding-top:40vh;font-size:22px">SO2 Arena</div></div>
+<input type="file" id="avfile" accept="image/*" hidden>
 <div class="tabs" id="tabs" hidden><nav>
-  <button data-tab="lobby" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>Лобби</button>
-  <button data-tab="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>Игроки</button>
-  <button data-tab="admin" id="tab-admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>Админ<span class="dot" id="adm-dot" hidden></span></button>
-  <button data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Профиль</button>
+  <button data-tab="lobby" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>Лобби</button>
+  <button data-tab="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Рейтинг</button>
+  <button data-tab="admin" id="tab-admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg>Админ<span class="dot" id="adm-dot" hidden></span></button>
+  <button data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Профиль</button>
 </nav></div>
 
 <script>
+{
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
-try { tg?.setHeaderColor('#0b0d12'); tg?.setBackgroundColor('#0b0d12'); tg?.setBottomBarColor?.('#0b0d12'); } catch (e) {}
+try { tg?.setHeaderColor('#111316'); tg?.setBackgroundColor('#111316'); tg?.setBottomBarColor?.('#0d0f11'); } catch (e) {}
 
 const devUser = new URLSearchParams(location.search).get('dev');
-const S = { tab: 'lobby', me: null, cfg: null, lobbies: [], top: [], view: null, poll: null };
+const S = window.S = { tab: 'lobby', me: null, cfg: null, lobbies: [], top: [], view: null };
 
-// ---------- utils ----------
+// ---------- утилиты ----------
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const $ = sel => document.querySelector(sel);
-const hashHue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const $ = window.$ = sel => document.querySelector(sel);
+const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const LVL = { 1: '#eeeeee', 2: '#1ce400', 3: '#1ce400', 4: '#ffc800', 5: '#ffc800', 6: '#ffc800', 7: '#ffc800', 8: '#ff6309', 9: '#ff6309', 10: '#fe1f00' };
+const MAPC = { Sandstone: '#a8792f', Rust: '#9a4a2c', Province: '#3f7d3c', Hanami: '#a8436f', Prison: '#3f5878', Dune: '#b0682a', Breeze: '#2f8a8f' };
+const mapColor = n => MAPC[n] || `hsl(${hue(n)} 40% 38%)`;
+const I = {
+  copy: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="1"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>',
+  pad: '<svg class="tagH" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="11" rx="3"/><path d="M7 11v3M5.5 12.5h3M15 12h.01M18 13h.01"/></svg>',
+  check: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="m4 12 5 5L20 6"/></svg>',
+  back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>',
+  trophy: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
+};
+const ACH = {
+  first_win: '<path d="M12 3c3 4 5 6.5 5 10a5 5 0 0 1-10 0c0-3.5 2-6 5-10z"/>',
+  calibrated: '<circle cx="12" cy="12" r="8"/><path d="m8 12 3 3 5-6"/>',
+  streak3: '<path d="M13 2 5 14h6l-1 8 8-12h-6z"/>', streak5: '<path d="M13 2 5 14h6l-1 8 8-12h-6z"/>',
+  streak10: '<path d="m3 8 4 4 5-7 5 7 4-4-2 11H5z"/>',
+  games50: '<rect x="2" y="7" width="20" height="11" rx="3"/><path d="M7 11v3M5.5 12.5h3"/>', games100: '<rect x="2" y="7" width="20" height="11" rx="3"/><path d="M7 11v3M5.5 12.5h3"/>',
+  mvp1: '<path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"/>', mvp10: '<path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"/>',
+  kills30: '<circle cx="12" cy="12" r="8"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>',
+  map10: '<path d="M3 6 9 3l6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/>',
+  lvl10: '<circle cx="12" cy="12" r="8"/><path d="M10 9v6M14 9v6"/>',
+  season: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/>',
+};
 
-// Цвета уровней как на FACEIT: 1 — серый, 2–3 — зелёный, 4–7 — жёлтый, 8–9 — оранжевый, 10 — красный
-const LVL_COLORS = { 1: '#eeeeee', 2: '#1ce400', 3: '#1ce400', 4: '#ffc800', 5: '#ffc800', 6: '#ffc800', 7: '#ffc800', 8: '#ff6309', 9: '#ff6309', 10: '#fe1f00' };
-const RING = 2 * Math.PI * 15 * 0.75;  // кольцо на 270°
 function lvl(l, cls = '') {
-  const C = 2 * Math.PI * 15;
-  const track = `<circle cx="18" cy="18" r="15" class="trk" stroke-dasharray="${RING} ${C}"/>`;
-  if (!l) return `<div class="lvl calib ${cls}" title="Калибровка"><svg viewBox="0 0 36 36">${track}</svg><b>?</b></div>`;
-  return `<div class="lvl ${cls}" style="color:${LVL_COLORS[l]}" title="${l} уровень"><svg viewBox="0 0 36 36">${track}
-    <circle cx="18" cy="18" r="15" class="arc" stroke-dasharray="${RING * l / 10} ${C}"/></svg><b>${l}</b></div>`;
+  const C = 2 * Math.PI * 15, R = C * .75;
+  const trk = `<circle cx="18" cy="18" r="15" class="trk" stroke-dasharray="${R} ${C}"/>`;
+  if (!l) return `<div class="lvl q ${cls}"><svg viewBox="0 0 36 36">${trk}</svg><b>?</b></div>`;
+  return `<div class="lvl ${cls}" style="color:${LVL[l]}"><svg viewBox="0 0 36 36">${trk}<circle cx="18" cy="18" r="15" class="arc" stroke-dasharray="${R * l / 10} ${C}"/></svg><b>${l}</b></div>`;
 }
-// аватар: фото из Telegram или инициалы на цветном фоне + значок уровня
 function av(p, size = '', badge = true) {
-  const h = hashHue(p.nick || p.tg_id);
   const inner = p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy" onerror="this.remove()">` : esc((p.nick || '?').slice(0, 2).toUpperCase());
-  return `<div class="av ${size}" style="--c:linear-gradient(135deg,hsl(${h} 45% 34%),hsl(${(h + 40) % 360} 50% 22%))">${inner}${badge ? lvl(p.level, 'xs') : ''}</div>`;
+  return `<div class="av ${size}" style="--h:hsl(${hue(p.nick || p.tg_id)} 30% 28%)">${inner}${badge ? lvl(p.level, 'xs') : ''}</div>`;
 }
-// у каждой карты свой цвет плитки
-const MAP_HUES = { Sandstone: [38, 25], Rust: [18, 8], Province: [140, 95], Hanami: [330, 300], Prison: [210, 230], Dune: [32, 12], Breeze: [190, 170] };
-function mapBg(name) {
-  const [a, b] = MAP_HUES[name] || [hashHue(name), (hashHue(name) + 30) % 360];
-  return `--mapbg:linear-gradient(135deg,hsl(${a} 55% 38%),hsl(${b} 50% 18%))`;
-}
-
 const haptic = t => { try { t === 'ok' || t === 'err' ? tg?.HapticFeedback?.notificationOccurred(t === 'ok' ? 'success' : 'error') : tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
 const fmtDate = ts => new Date(ts * 1000).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
 
 function toast(msg, ok = false) {
   document.querySelector('.toast')?.remove();
@@ -319,7 +281,6 @@ function toast(msg, ok = false) {
   haptic(ok ? 'ok' : 'err');
   setTimeout(() => el.remove(), 2600);
 }
-
 async function api(path, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (tg?.initData) headers['X-Init-Data'] = tg.initData;
@@ -329,17 +290,15 @@ async function api(path, body) {
   if (!r.ok) throw new Error(data.error || 'Ошибка');
   return data;
 }
-
-var act = async function (path, body, okMsg) {
+async function act(path, body, okMsg) {
   try {
     const res = await api(path, body || {});
     if (okMsg) toast(okMsg, true); else haptic('light');
-    await refresh();
+    if (S.tab === 'admin' && !S.view) { await loadMe(); adminTab(); } else await refresh();
     return res;
   } catch (e) { toast(e.message); }
 }
-
-// ---------- data ----------
+async function loadMe() { S.me = await api('/me'); }
 async function refresh() {
   const [me, lobbies] = await Promise.all([api('/me'), api('/lobbies')]);
   S.me = me; S.lobbies = lobbies;
@@ -347,418 +306,381 @@ async function refresh() {
   render();
 }
 
-// ---------- render ----------
+// ---------- каркас ----------
 function topbar() {
   const p = S.me.player;
   const right = p.calibrated
-    ? `<div class="mechip">${lvl(p.level)}<b style="color:${LVL_COLORS[p.level]}">${p.elo}</b></div>`
-    : `<div class="mechip">${lvl(null)}<b class="dim">${p.calib_played}/${p.calib_total}</b></div>`;
-  return `<div class="topbar"><div class="logo grow">SO2 <span>ARENA</span></div>${right}</div>`;
+    ? `<div class="mebar">${lvl(p.level)}<b style="color:${LVL[p.level]}">${p.elo}</b></div>`
+    : `<div class="mebar">${lvl(null)}<b class="dim">${p.calib_played}/${p.calib_total}</b></div>`;
+  return `<div class="top"><div class="logo grow ell">SO2 Arena <i>· ${esc(S.cfg.season_name)}</i></div>${right}</div>`;
 }
-
 function render() {
   const app = $('#app');
   if (!S.me.player) { $('#tabs').hidden = true; app.innerHTML = registerView(); bindRegister(); return; }
   $('#tabs').hidden = false;
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
   $('#tab-admin').hidden = !S.me.is_admin;
   $('#adm-dot').hidden = !S.me.pending_count; $('#adm-dot').textContent = S.me.pending_count || '';
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
   if (S.view) { app.innerHTML = topbar() + `<div class="wrap">${S.view}</div>`; return; }
-  if (S.tab === 'profile') { openProfile(S.me.player.tg_id, true); return; }
-  if (S.tab === 'admin') { adminTab(); return; }
+  if (S.tab === 'profile') return openProfile(S.me.player.tg_id, true);
+  if (S.tab === 'admin') return adminTab();
   app.innerHTML = topbar() + `<div class="wrap">${S.tab === 'lobby' ? lobbyTab() : topTab()}</div>`;
 }
 
-function heroView(p, rank, hist = null) {
-  const games = p.wins + p.losses;
-  const wr = games ? Math.round(p.wins * 100 / games) : 0;
-  const color = p.calibrated ? LVL_COLORS[p.level] : '#7d8497';
-  let progress;
-  if (!p.calibrated) {
-    const res = hist ? hist.slice(0, p.calib_played).reverse().map(h => h.team === h.winner ? 'w' : 'l') : Array(p.calib_played).fill('d');
-    progress = `<div class="calbar">${Array.from({ length: p.calib_total }, (_, i) => `<i class="${res[i] || ''}"></i>`).join('')}</div>
-      <div class="muted" style="margin-top:8px">Калибровка: ещё <b style="color:var(--text)">${p.calib_total - p.calib_played}</b> из ${p.calib_total} матчей до уровня</div>`;
-  } else {
-    const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
-    const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
-    progress = `<div class="bar"><i style="width:${pct}%;background:${color};color:${color}"></i></div>
-      <div class="row muted" style="margin-top:8px"><span class="grow">${p.level} lvl</span><span>${p.next_level_at ? `до ${p.level + 1} lvl: <b style="color:var(--text)">${p.next_level_at - p.elo}</b> ELO` : 'Максимальный уровень 🔥'}</span></div>`;
-  }
-  return `<div class="card hero" style="--lc:${color}">
-    <div class="row" style="gap:14px">${av(p, 'lg', false)}
-      <div class="grow"><div class="nick ell">${esc(p.nick)}</div>
-        <div class="muted">${p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : ''}${p.calibrated ? `#${rank} в рейтинге` : 'на калибровке'}</div></div>
-      ${lvl(p.level, 'big')}
-    </div>
-    ${p.calibrated ? `<div class="row" style="margin-top:14px;align-items:baseline"><div class="elo" style="color:${color}">${p.elo}</div><div class="muted grow">ELO</div></div>` : ''}
-    ${progress}
-    ${p.badges?.length ? `<div class="badges">${p.badges.map(b => `<span class="badge">${['🥇', '🥈', '🥉'][b.place - 1]} ${esc(seasonLabel(b.season))}</span>`).join('')}</div>` : ''}
-    <div class="stats">
-      <div class="stat"><b>${games}</b><span>матчей</span></div>
-      <div class="stat"><b style="color:var(--win)">${p.wins}</b><span>побед</span></div>
-      <div class="stat"><b style="color:var(--loss)">${p.losses}</b><span>поражений</span></div>
-      <div class="stat"><b>${wr}%</b><span>винрейт</span></div>
-    </div></div>`;
-}
-
+// ---------- регистрация ----------
 function registerView() {
-  const u = S.me.user;
-  return `<div class="wrap"><div class="reg-logo"><div class="t">SO2 <span>ARENA</span></div>
-    <div class="muted" style="margin-top:8px">Матчи Standoff 2 с друзьями · ELO · уровни 1–10</div></div>
-    <div class="card" style="padding:18px"><h3 class="display" style="margin:0 0 4px;font-weight:400;font-size:20px">Регистрация</h3>
-      <div class="muted">Привет, ${esc(u.name)}! Укажи свой игровой профиль.</div>
-      <label class="f">Ник в Standoff 2</label><input id="r-nick" maxlength="20" placeholder="Например, Sn1per">
-      <label class="f">ID в игре</label><input id="r-id" inputmode="numeric" maxlength="15" placeholder="123456789">
-      <div class="note"><span>🎯</span><span>Первые ${S.cfg.calibration_games || 10} матчей — калибровка. После неё получишь уровень от 1 до 10.</span></div>
-      <button class="btn" id="r-go" style="margin-top:16px">Начать калибровку</button>
-    </div></div>`;
+  return `<div class="wrap reg"><div class="logo">SO2 Arena</div>
+    <p class="mute" style="font-size:15px;margin:8px 0 22px">Матчи Standoff 2 с друзьями: лобби 5 на 5, бан карт, ELO и уровни как на FACEIT.</p>
+    <div class="panel pad"><div class="c" style="font-size:24px;font-weight:800">Привет, ${esc(S.me.user.name)}</div>
+      <label class="f" for="r-nick">Ник в Standoff 2</label><input id="r-nick" maxlength="20" placeholder="Sn1per">
+      <label class="f" for="r-id">ID в игре</label><input id="r-id" inputmode="numeric" maxlength="15" placeholder="51234567">
+      <p class="mute" style="margin:14px 0">Первые ${S.cfg.calibration_games} матчей — калибровка. Уровень появится после неё.</p>
+      <button class="btn" id="r-go">Начать калибровку</button></div></div>`;
 }
-
 function bindRegister(edit) {
   $('#r-go').onclick = async () => {
     try {
       await api('/register', { nick: $('#r-nick').value, game_id: $('#r-id').value });
-      closeSheet(); toast(edit ? 'Сохранено' : 'Добро пожаловать! 🔥', true); await refresh();
+      closeSheet(); toast(edit ? 'Сохранено' : 'Ты в базе. Заходи в лобби', true); await refresh();
     } catch (e) { toast(e.message); }
   };
 }
 
-function sec(title, cnt) { return `<div class="stitle">${title}${cnt != null ? `<span class="cnt">${cnt}</span>` : ''}</div>`; }
+// ---------- лобби ----------
+const timer = left => `<div class="timer" data-end="${Date.now() / 1000 + (left ?? 0)}">${left ?? ''}</div>`;
+const nickOf = (m, id) => esc(m.players.find(p => p.tg_id === id)?.nick ?? '?');
 
 function lobbyTab() {
   const me = S.me.user.id;
-  const open = S.lobbies.filter(m => m.status === 'open' || m.status === 'ready');
+  const open = S.lobbies.filter(m => m.status === 'open' || m.status === 'ready').sort((a, b) => a.lobby_no - b.lobby_no);
   const active = S.lobbies.filter(m => !open.includes(m));
   const mine = active.filter(m => m.players.some(p => p.tg_id === me));
   const others = active.filter(m => !mine.includes(m));
-  let html = '';
-  if (S.me.player.banned) html += `<div class="card" style="border-color:rgba(255,71,87,.4);margin-top:10px">⛔ <b>Ты забанен</b> до ${new Date(S.me.player.banned_until * 1000).toLocaleString('ru')}</div>`;
-  if (mine.length) html += sec('Твой матч') + mine.map(matchCard).join('');
-  html += sec('Лобби 5x5') + open.sort((a, b) => a.lobby_no - b.lobby_no).map(openLobbyCard).join('');
-  if (others.length) html += sec('Идут матчи', others.length) + others.map(matchCard).join('');
-  return html;
+  let h = '';
+  if (S.me.player.banned) h += `<div class="callout" style="margin-top:12px;border-left-color:var(--bad);background:#2b1418">Ты забанен до ${new Date(S.me.player.banned_until * 1000).toLocaleString('ru')}</div>`;
+  if (mine.length) h += `<h2>Твой матч</h2>${mine.map(matchCard).join('')}`;
+  h += `<h2>Лобби <small>5 на 5</small></h2>${open.map(lobbyCard).join('')}`;
+  if (others.length) h += `<h2>Сейчас играют <small>${others.length}</small></h2>${others.map(matchCard).join('')}`;
+  return h;
 }
 
-const nickOf = (m, id) => esc(m.players.find(p => p.tg_id === id)?.nick ?? '?');
-const cdHtml = left => `<div class="cd" data-end="${Date.now() / 1000 + (left ?? 0)}">${left ?? ''}с</div>`;
-
-function openLobbyCard(m) {
+function lobbyCard(m) {
   const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me), n = m.players.length;
-  const isReady = m.status === 'ready', meP = m.players.find(p => p.tg_id === me);
-  const readyCnt = m.players.filter(p => p.ready).length;
-  const cells = m.players.map(p => `<div class="pl ${p.tg_id === me ? 'me' : ''} ${isReady && !p.ready ? 'notready' : ''}">${av(p)}
-      ${isReady && p.ready ? '<span class="rdy">✓</span>' : ''}<div class="nm">${esc(p.nick)}</div>
-      ${S.me.is_admin && p.tg_id !== me ? `<button class="kick" onclick="kick(${m.id},${p.tg_id})">✕</button>` : ''}</div>`).join('')
-    + Array(m.size - n).fill('<div class="pl"><div class="empty">+</div><div class="nm dim">свободно</div></div>').join('');
+  const isReady = m.status === 'ready', meP = m.players.find(p => p.tg_id === me), rc = m.players.filter(p => p.ready).length;
+  const slots = m.players.map(p => `<div class="slot ${p.tg_id === me ? 'me' : ''} ${isReady && !p.ready ? 'wait' : ''}">
+      ${isReady && p.ready ? `<span class="ok">${I.check}</span>` : ''}${av(p)}<div class="n">${esc(p.nick)}</div>
+      ${S.me.is_admin && p.tg_id !== me ? `<button class="x" aria-label="Кикнуть" onclick="kick(${m.id},${p.tg_id})">×</button>` : ''}</div>`).join('')
+    + Array(m.size - n).fill('<div class="slot free"><div class="av">+</div><div class="n dim">пусто</div></div>').join('');
   let btn;
-  if (isReady && inIt) btn = meP.ready
-    ? `<button class="btn sec" disabled>Ждём остальных · ${readyCnt}/${m.size}</button>`
-    : `<button class="btn go" onclick="act('/lobbies/${m.id}/ready', null, 'Ты готов!')">✅ Я ГОТОВ</button>`;
-  else if (isReady) btn = `<button class="btn" disabled>Проверка готовности…</button>`;
-  else btn = inIt
-    ? `<button class="btn sec" onclick="act('/lobbies/${m.id}/leave', null, 'Ты вышел из лобби')">Выйти из лобби</button>`
-    : `<button class="btn" ${S.me.active_match || S.me.player.banned ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби! Ждём остальных')">Войти в лобби</button>`;
-  const readyBox = isReady ? `<div class="readybox"><div class="grow"><b>Лобби собрано!</b><div class="muted">Готовы ${readyCnt} из ${m.size} · кто не успеет — вылетит</div></div>${cdHtml(m.ready_left)}</div>` : '';
-  return `<div class="card ${inIt ? 'mine' : ''}">
-    <div class="lhead"><div class="grow"><div class="ltitle">Лобби ${m.lobby_no}</div>
-      <div class="muted">${isReady ? 'Подтверждение готовности' : inIt ? 'Ты в лобби · ждём игроков' : 'Капитаны и карта — когда соберётся 10'}</div></div>
-      <div class="count">${n}<span>/${m.size}</span></div></div>
-    <div class="segs">${Array.from({ length: m.size }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>
-    ${readyBox}<div class="grid10">${cells}</div><div class="btns">${btn}</div></div>`;
+  if (isReady && inIt) btn = meP.ready ? `<button class="btn ghost" disabled>Ждём остальных · ${rc} из ${m.size}</button>`
+    : `<button class="btn go" onclick="act('/lobbies/${m.id}/ready', null, 'Готов')">Я готов</button>`;
+  else if (isReady) btn = `<button class="btn ghost" disabled>Идёт проверка готовности</button>`;
+  else btn = inIt ? `<button class="btn ghost" onclick="act('/lobbies/${m.id}/leave', null, 'Ты вышел из лобби')">Выйти из лобби</button>`
+    : `<button class="btn" ${S.me.active_match || S.me.player.banned ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби')">Войти в лобби</button>`;
+  const ticks = Array.from({ length: m.size }, (_, i) => `<i class="${isReady ? (i < rc ? 'rd' : 'on') : i < n ? 'on' : ''}"></i>`).join('');
+  const sub = isReady ? 'Собрано. Подтверди готовность' : n ? `Ещё ${m.size - n} ${plural(m.size - n, 'игрок', 'игрока', 'игроков')} до старта` : 'Пусто. Зайди первым';
+  return `<div class="panel lob">
+    <div class="h"><div class="grow"><div class="t">Лобби ${m.lobby_no}</div><div class="mute">${sub}</div></div>
+      <div class="cnt">${n}<span>/${m.size}</span></div></div>
+    <div class="ticks">${ticks}</div>
+    ${isReady ? `<div class="readyband"><div class="grow"><b>Готовы ${rc} из ${m.size}</b><div class="mute">Кто не нажмёт, вылетит из лобби</div></div>${timer(m.ready_left)}</div>` : ''}
+    <div class="slots">${slots}</div><div class="btns">${btn}</div></div>`;
 }
 
 function matchCard(m) {
   const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me);
-  const isCap = m.captain1 === me || m.captain2 === me, admin = S.me.is_admin;
-  const meP = m.players.find(p => p.tg_id === me);
-  const tag = { veto: 'бан карт', live: 'идёт матч', pending: 'на проверке' }[m.status];
-  const banner = m.status !== 'veto'
-    ? `<div class="banner" style="${mapBg(m.map)}"><span class="tag ${m.status}">${tag}</span><div class="muted" style="color:rgba(255,255,255,.75)">Матч #${m.id} · Лобби ${m.lobby_no ?? '—'}</div><div class="mapn">${esc(m.map)}</div></div>`
-    : `<div class="lhead" style="margin-bottom:12px"><div class="grow"><div class="ltitle">Матч #${m.id}</div><div class="muted">Лобби ${m.lobby_no ?? '—'} · выбор карты</div></div><span class="tag veto">${tag}</span></div>`;
-  const team = t => {
+  const isCap = m.captain1 === me || m.captain2 === me, admin = S.me.is_admin, meP = m.players.find(p => p.tg_id === me);
+  const st = { veto: 'Бан карт', live: 'Идёт игра', pending: 'Проверка' }[m.status];
+  const head = `<div class="mhead">
+      <div class="ta ${m.pending_winner === 1 ? 'win' : ''}">Команда 1<small>ср. ${m.team_avg?.[1] ?? '—'}</small></div>
+      <div class="mid"><span class="state ${m.status}">${st}</span><div class="map">${m.map ? esc(m.map) : '———'}</div>
+        <div class="mute">#${m.id}${m.status === 'pending' && m.pending_score ? ` · ${esc(m.pending_score)}` : ''}</div></div>
+      <div class="tb ${m.pending_winner === 2 ? 'win' : ''}">Команда 2<small>ср. ${m.team_avg?.[2] ?? '—'}</small></div></div>`;
+  const col = t => {
     const cap = t === 1 ? m.captain1 : m.captain2;
-    const ps = m.players.filter(p => p.team === t);
-    return `<div class="team t${t}"><div class="th"><b>Команда ${t}</b><span>${m.team_avg?.[t] ?? ''}</span></div>
-      ${ps.map(p => `<div class="tp">${lvl(p.level, 'xs')}<span class="ell">${esc(p.nick)}</span>${p.kills != null ? `<span class="kd">${p.kills}/${p.deaths}</span>` : ''}${p.tg_id === cap ? '<i class="cap">C</i>' : ''}${p.tg_id === m.host_id ? '<i>🎮</i>' : ''}</div>`).join('')}</div>`;
+    return `<div class="col ${t === 1 ? 'a' : 'b'}">${m.players.filter(p => p.team === t).map(p => `<div class="pr">${lvl(p.level, 'xs')}
+      <span class="ell grow" style="${p.tg_id === me ? 'text-decoration:underline;text-underline-offset:3px' : ''}">${esc(p.nick)}</span>
+      ${p.tg_id === cap ? '<span class="tagC">C</span>' : ''}${p.tg_id === m.host_id ? I.pad : ''}
+      ${p.kills != null ? `<span class="kd">${p.kills}–${p.deaths}</span>` : ''}</div>`).join('')}</div>`;
   };
-  const hostLine = m.host_nick && m.status !== 'pending' ? `<div class="hostline"><div class="grow"><div class="lbl">🎮 Лобби в игре создаёт</div>
-      <div class="hn ell">${esc(m.host_nick)}</div>${m.host_id === me ? '<div class="you">Это ты! Создай комнату и впиши код 🔑</div>' : ''}</div>
-      ${m.host_game_id ? `<button class="chipbtn" onclick="copyText('${esc(m.host_game_id)}')">ID ${esc(m.host_game_id)} ⧉</button>` : ''}</div>` : '';
-  const pend = m.status === 'pending' ? `<div class="pendbox">📝 <b>${nickOf(m, m.reported_by)}</b>: победила <b>Команда ${m.pending_winner}</b> ${esc(m.pending_score || '')}
-      <div class="muted" style="margin-top:4px">${admin ? 'Проверь и подтверди результат' : 'Ждём подтверждения админа'}</div></div>` : '';
+  let body = '';
+  if (m.status === 'veto') body += vetoView(m);
+  if (m.status === 'pending') body += `<div class="callout"><b>${nickOf(m, m.reported_by)}</b> отправил результат: победила Команда ${m.pending_winner}${m.pending_score ? `, ${esc(m.pending_score)}` : ''}.
+      <span class="mute">${admin ? 'Проверь и подтверди.' : 'Ждём подтверждения админа.'}</span></div>`;
+  if (m.host_nick && m.status !== 'pending') body += `<div class="info">${I.pad}<div class="grow"><div class="k">Лобби в игре создаёт</div><div class="v ell">${esc(m.host_nick)}</div></div>
+      ${m.host_game_id ? `<button class="chip" onclick="copyText('${esc(m.host_game_id)}')">ID ${esc(m.host_game_id)} ${I.copy}</button>` : ''}</div>`;
+  if (m.host_id === me && m.status === 'live' && !m.room) body += `<div class="callout me">Ты создаёшь комнату. Сделай её на ${esc(m.map)} и впиши код кнопкой «Код».</div>`;
+  if (m.room && inIt && m.status !== 'pending') body += `<div class="info"><div class="grow"><div class="k">Комната</div><div class="v ell">${esc(m.room)}</div></div>
+      <button class="chip" onclick="copyRoom(${m.id})">Копировать ${I.copy}</button></div>`;
   const btns = [];
   if (m.status === 'pending' && admin) {
-    btns.push(`<button class="btn" onclick="act('/lobbies/${m.id}/confirm', null, 'Результат подтверждён')">✅ Подтвердить</button>`);
-    btns.push(`<button class="btn sec small" onclick="openResult(${m.id}, true)">✏️</button>`);
-    btns.push(`<button class="btn danger small" onclick="act('/lobbies/${m.id}/reject', null, 'Результат отклонён')">Отклонить</button>`);
+    btns.push(`<button class="btn" onclick="act('/lobbies/${m.id}/confirm', null, 'Результат подтверждён')">Подтвердить</button>`);
+    btns.push(`<button class="btn ghost sm" onclick="openResult(${m.id}, true)">Изменить</button>`);
+    btns.push(`<button class="btn red sm" onclick="act('/lobbies/${m.id}/reject', null, 'Отклонено')">Нет</button>`);
   } else {
-    if (m.status === 'live' && (isCap || admin)) btns.push(`<button class="btn" onclick="openResult(${m.id})">🏁 Результат</button>`);
-    if (m.status !== 'pending' && (inIt && (m.host_id === me || isCap) || admin)) btns.push(`<button class="btn sec small" onclick="openRoom(${m.id})">🔑 Код</button>`);
-    if (isCap || admin) btns.push(`<button class="btn danger small" onclick="cancelMatch(${m.id})">✕</button>`);
+    if (m.status === 'live' && (isCap || admin)) btns.push(`<button class="btn" onclick="openResult(${m.id})">Отправить результат</button>`);
+    if (m.status !== 'pending' && (inIt && (m.host_id === me || isCap) || admin)) btns.push(`<button class="btn ghost sm" onclick="openRoom(${m.id})">Код</button>`);
+    if (isCap || admin) btns.push(`<button class="btn red sm" aria-label="Отменить матч" onclick="cancelMatch(${m.id})">×</button>`);
   }
-  const statsBtn = inIt && (m.status === 'live' || m.status === 'pending')
-    ? `<button class="btn ${meP.kills == null ? '' : 'sec'}" style="margin-top:10px" onclick="openStats(${m.id})">📊 ${meP.kills == null ? 'Вписать свои убийства / смерти' : `Моя статистика: ${meP.kills}/${meP.deaths}`}</button>` : '';
-  return `<div class="card ${inIt ? 'mine' : ''}">${banner}
-    ${m.status === 'veto' ? vetoView(m) : ''}
-    ${pend}${hostLine}${roomView(m, inIt)}
-    <div class="vs">${team(1)}<div class="mid">VS</div>${team(2)}</div>
-    ${btns.length ? `<div class="btns">${btns.join('')}</div>` : ''}${statsBtn}</div>`;
+  const stats = inIt && (m.status === 'live' || m.status === 'pending')
+    ? `<button class="btn ${meP.kills == null ? '' : 'ghost'}" style="margin-top:${btns.length ? 8 : 0}px" onclick="openStats(${m.id})">${meP.kills == null ? 'Вписать свои убийства и смерти' : `Мои K/D: ${meP.kills}–${meP.deaths}`}</button>` : '';
+  return `<div class="panel board">${head}${body}<div class="sb">${col(1)}${col(2)}</div>
+    ${btns.length || stats ? `<div class="foot">${btns.length ? `<div class="btns">${btns.join('')}</div>` : ''}${stats}</div>` : ''}</div>`;
 }
 
 function vetoView(m) {
-  const me = S.me.user.id, canBan = m.veto_turn === me || S.me.is_admin;
-  const total = S.cfg.maps.length - 1;
-  const turn = m.veto_turn === me ? '<span style="color:var(--accent2)">Твой ход — забань карту</span>' : `Банит <b>${nickOf(m, m.veto_turn)}</b>`;
-  const maps = S.cfg.maps.map((map, i) => {
-    const ban = m.bans.find(b => b.map === map);
-    if (ban) return `<div class="mapc banned" style="${mapBg(map)}"><div class="mn">${esc(map)}</div><div class="by">${nickOf(m, ban.by)}${ban.auto ? ' · авто' : ''}</div></div>`;
-    return `<button class="mapc ${canBan ? 'can' : ''}" style="${mapBg(map)}" ${canBan ? '' : 'disabled'} onclick="banMap(${m.id}, ${i})"><div class="mn">${esc(map)}</div></button>`;
+  const me = S.me.user.id, can = m.veto_turn === me || S.me.is_admin, total = S.cfg.maps.length - 1;
+  const maps = S.cfg.maps.map((name, i) => {
+    const ban = m.bans.find(b => b.map === name);
+    if (ban) return `<div class="map out"><s>${esc(name)}</s><small>${nickOf(m, ban.by)}${ban.auto ? ', авто' : ''}</small></div>`;
+    return `<button class="map ${can ? 'can' : ''}" style="--m:${mapColor(name)}" ${can ? '' : 'disabled'} onclick="banMap(${m.id},${i})">${esc(name)}${can ? '<small>убрать</small>' : ''}</button>`;
   }).join('');
-  return `<div class="veto-h"><div class="grow"><div class="vturn">${turn}</div><div class="muted">Бан ${m.bans.length + 1} из ${total} · последняя карта играется</div></div>
-      ${cdHtml(m.veto_left)}</div>
-    <div class="maps">${maps}</div>`;
+  return `<div class="veto"><div class="row"><div class="grow">
+      <div class="c" style="font-size:20px;font-weight:700">${m.veto_turn === me ? 'Твой ход: убери карту' : `Банит ${nickOf(m, m.veto_turn)}`}</div>
+      <div class="mute">Бан ${m.bans.length + 1} из ${total}. Последняя оставшаяся карта играется</div></div>${timer(m.veto_left)}</div>
+    <div class="maps">${maps}</div></div>`;
 }
 
-function roomView(m, inIt) {
-  if (!m.room || !inIt || m.status === 'pending') return '';
-  return `<div class="room"><span class="muted">Комната</span><code class="grow ell">${esc(m.room)}</code>
-    <button class="chipbtn" onclick="copyRoom(${m.id})">Копировать</button></div>`;
-}
-
+// ---------- рейтинг ----------
 function topTab() {
-  return `<div class="season"><div style="font-size:26px">🏆</div><div class="grow"><div class="sn">Сезон ${esc(S.cfg.season_name)}</div>
-      <div class="muted">До конца: ${S.cfg.season_days_left} дн. · топ-3 получат значок сезона</div></div></div>
-    ${sec('База игроков', S.top.length || '')}
-    <input class="search" id="psearch" placeholder="Поиск по нику или ID" value="${esc(S.q || '')}" oninput="S.q=this.value;$('#plist').innerHTML=playersList()">
+  return `<div class="season" style="margin-top:8px">${I.trophy}<div class="grow"><b>Сезон ${esc(S.cfg.season_name)}</b><br>
+      <span>Осталось ${S.cfg.season_days_left} ${plural(S.cfg.season_days_left, 'день', 'дня', 'дней')}. Топ-3 получат медаль сезона</span></div></div>
+    <h2>Игроки <small>${S.top.length || ''}</small></h2>
+    <input class="search" id="psearch" placeholder="Ник или ID в игре" value="${esc(S.q || '')}" oninput="S.q=this.value;$('#plist').innerHTML=playersList()">
     <div id="plist">${playersList()}</div>`;
 }
-
 function playersList() {
-  if (!S.top.length) return `<div class="card empty">Загрузка…</div>`;
+  if (!S.top.length) return '<div class="panel empty">Загрузка…</div>';
   const q = (S.q || '').trim().toLowerCase();
-  const match = p => !q || p.nick.toLowerCase().includes(q) || String(p.game_id || '').includes(q);
-  const row = (p, pos) => `<div class="r ${p.tg_id === S.me.user.id ? 'me' : ''}" onclick="openProfile(${p.tg_id})">
+  const ok = p => !q || p.nick.toLowerCase().includes(q) || String(p.game_id || '').includes(q);
+  const row = (p, pos) => `<div class="it ${p.tg_id === S.me.user.id ? 'me' : ''}" onclick="openProfile(${p.tg_id})">
       <div class="pos">${pos}</div>${av(p, 'sm')}
-      <div class="grow" style="min-width:0"><div class="n ell">${esc(p.nick)}${p.badges?.length ? ' <span class="star">🏆</span>' : ''}${p.banned ? ' ⛔' : ''}</div><div class="sub">${p.wins}W · ${p.losses}L${p.game_id ? ' · ID ' + esc(p.game_id) : ''}</div></div>
-      ${p.calibrated ? `<div class="e" style="color:${LVL_COLORS[p.level]}">${p.elo}</div>` : `<div class="sub">${p.calib_played}/${p.calib_total}</div>`}</div>`;
-  const ranked = S.top.filter(p => p.calibrated);
-  const calib = S.top.filter(p => !p.calibrated && match(p));
-  let html = '';
+      <div class="grow"><div class="n ell">${esc(p.nick)}${p.banned ? ' <span class="m">бан</span>' : ''}</div><div class="mute">${p.wins}W ${p.losses}L${p.badges?.length ? ` · ${p.badges.length} ${plural(p.badges.length, 'медаль', 'медали', 'медалей')}` : ''}</div></div>
+      ${p.calibrated ? `<div class="e" style="color:${LVL[p.level]}">${p.elo}</div>` : `<div class="mute num" style="font-size:16px">${p.calib_played}/${p.calib_total}</div>`}</div>`;
+  const ranked = S.top.filter(p => p.calibrated), calib = S.top.filter(p => !p.calibrated && ok(p));
+  let h = '';
   if (!q && ranked.length >= 3) {
-    const pod = (p, place) => `<div class="pod p${place}" onclick="openProfile(${p.tg_id})"><div class="place">#${place}</div>${av(p, place === 1 ? 'lg' : '')}
-      <div class="n ell">${esc(p.nick)}</div><div class="e" style="color:${LVL_COLORS[p.level]}">${p.elo}</div></div>`;
-    html += `${sec('Топ-3')}<div class="podium">${pod(ranked[1], 2)}${pod(ranked[0], 1)}${pod(ranked[2], 3)}</div>`;
+    const pod = (p, i) => `<div class="pod ${i === 0 ? 'first' : ''}" onclick="openProfile(${p.tg_id})"><div class="pl">${i + 1}</div>${av(p, i === 0 ? '' : 'sm')}
+      <div class="n ell">${esc(p.nick)}</div><div class="num" style="font-size:20px;font-weight:700;color:${LVL[p.level]}">${p.elo}</div></div>`;
+    h += `<div class="podium">${pod(ranked[1], 1)}${pod(ranked[0], 0)}${pod(ranked[2], 2)}</div>`;
   }
-  const rest = ranked.map((p, i) => ({ p, i })).filter(({ p, i }) => match(p) && (q || ranked.length < 3 || i >= 3));
-  if (rest.length) html += `${sec('Рейтинг')}<div class="card lb">${rest.map(({ p, i }) => row(p, i + 1)).join('')}</div>`;
-  else if (!ranked.length || q) html += `${sec('Рейтинг')}<div class="card empty">${q ? 'Никого не найдено' : 'Пока никто не прошёл калибровку'}</div>`;
-  if (calib.length) html += `${sec('На калибровке', calib.length)}<div class="card lb">${calib.map(p => row(p, '🎯')).join('')}</div>`;
-  return html;
+  const rest = ranked.map((p, i) => ({ p, i })).filter(({ p, i }) => ok(p) && (q || ranked.length < 3 || i >= 3));
+  if (rest.length) h += `<div class="panel list">${rest.map(({ p, i }) => row(p, i + 1)).join('')}</div>`;
+  else if (!ranked.length || q) h += `<div class="panel empty">${q ? 'Никого не нашли' : 'Пока никто не прошёл калибровку'}</div>`;
+  if (calib.length) h += `<h2>На калибровке <small>${calib.length}</small></h2><div class="panel list">${calib.map(p => row(p, '–')).join('')}</div>`;
+  return h;
 }
 
-function seasonLabel(key) {
-  const M = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-  const [y, m] = String(key).split('-'); return `${M[+m - 1]} ${y}`;
+// ---------- профиль ----------
+function seasonLabel(k) { const M = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']; const [y, m] = String(k).split('-'); return `${M[+m - 1]} ${y}`; }
+
+function heroView(d, mine) {
+  const p = d.player, games = p.wins + p.losses, wr = games ? Math.round(p.wins * 100 / games) : 0;
+  let prog;
+  if (!p.calibrated) {
+    const res = d.history.slice(0, p.calib_played).reverse().map(h => h.team === h.winner ? 'w' : 'l');
+    const c = d.calibration;
+    prog = `<div class="row" style="margin-top:14px"><div class="grow c" style="font-size:20px;font-weight:700">Калибровка ${p.calib_played} из ${p.calib_total}</div>
+        <div class="num" style="font-size:18px"><span class="p">${c.wins}W</span> <span class="m">${c.losses}L</span></div></div>
+      <div class="cal">${Array.from({ length: p.calib_total }, (_, i) => `<i class="${res[i] || ''}">${res[i] ? res[i].toUpperCase() : i + 1}</i>`).join('')}</div>
+      <p class="mute" style="margin:10px 0 0">В калибровке ELO меняется в ${S.cfg.calibration_mult} раза сильнее и зависит от силы соперников. После 10-го матча добавится бонус за K/D до ±100, если он вписан хотя бы в 3 играх${mine ? ` (сейчас ${c.with_stats})` : ''}. Выше ${S.cfg.placement_max_level} уровня после калибровки не поставят.</p>`;
+  } else {
+    const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
+    const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
+    prog = `<div class="row" style="margin-top:12px;align-items:baseline"><div class="elo" style="color:${LVL[p.level]}">${p.elo}</div><div class="grow mute">ELO · место ${d.rank}</div>
+        <div class="mute">${p.next_level_at ? `до ${p.level + 1} уровня <b style="color:var(--ink)">${p.next_level_at - p.elo}</b>` : 'максимум'}</div></div>
+      <div class="bar"><i style="width:${pct}%;background:${LVL[p.level]}"></i></div>`;
+  }
+  return `<div class="panel hero"><div class="row" style="gap:14px">${av(p, 'xl', false)}
+      <div class="grow"><div class="nick ell">${esc(p.nick)}</div><div class="mute">${p.game_id ? 'ID ' + esc(p.game_id) : 'ID не указан'}</div>
+        ${p.badges?.map(b => `<span class="medal">${b.place} место · ${esc(seasonLabel(b.season))}</span>`).join('') || ''}</div>
+      ${lvl(p.level, 'xl')}</div>${prog}
+    <div class="nums"><div><b>${games}</b><span>матчей</span></div><div><b class="p">${p.wins}</b><span>побед</span></div><div><b class="m">${p.losses}</b><span>поражений</span></div><div><b>${wr}%</b><span>винрейт</span></div></div></div>`;
 }
 
 async function openProfile(tgId, isTab) {
   try {
-    const d = await api('/players/' + tgId);
-    const mine = tgId === S.me.user.id, st = d.stats;
+    const d = await api('/players/' + tgId), mine = tgId === S.me.user.id, st = d.stats;
+    const streak = st.streak >= 2 ? `<span class="${st.streak_win ? 'p' : 'm'}">${st.streak} ${st.streak_win ? plural(st.streak, 'победа', 'победы', 'побед') : plural(st.streak, 'поражение', 'поражения', 'поражений')} подряд</span>` : '';
+    const kd = `<h2>Стрельба ${streak ? `<small>${streak}</small>` : ''}</h2><div class="panel"><div class="nums three" style="border:0;margin:0">
+      <div><b>${st.kd ?? '—'}</b><span>K/D</span></div><div><b>${st.avg_kills ?? '—'}</b><span>убийств за матч</span></div><div><b style="color:var(--gold)">${st.mvps}</b><span>MVP</span></div>
+      <div><b>${st.best_kills ?? '—'}</b><span>лучший матч</span></div><div><b>${st.best_streak}</b><span>лучшая серия</span></div><div><b>${d.player.games}</b><span>всего игр</span></div></div></div>`;
+    const maps = `<h2>Карты</h2><div class="panel">${d.maps.map(m => {
+      const c = m.wr == null ? 'var(--s3)' : m.wr >= 55 ? 'var(--go)' : m.wr >= 45 ? 'var(--gold)' : 'var(--bad)';
+      return `<div class="mrow"><div class="nm" style="--m:${mapColor(m.map)}">${esc(m.map)}</div><div class="b"><i style="width:${m.wr ?? 0}%;background:${c}"></i></div>
+        <div class="v">${m.games ? `${m.wr}% · ${m.games} ${plural(m.games, 'игра', 'игры', 'игр')}` : 'не играл'}</div></div>`;
+    }).join('')}</div>`;
+    const got = d.achievements.filter(a => a.got).length;
+    const achs = `<h2>Достижения <small>${got} из ${d.achievements.length}</small></h2><div class="panel" style="overflow:hidden"><div class="ach">${d.achievements.map(a =>
+      `<div class="${a.got ? 'on' : 'off'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${ACH[a.id] || ''}</svg><div><b>${esc(a.title)}</b><span>${esc(a.desc)}</span></div></div>`).join('')}</div></div>`;
     const hist = d.history.length ? d.history.map(h => {
       const won = h.team === h.winner;
-      return `<div class="hist"><div class="hmap" style="${mapBg(h.map)};--res:var(--${won ? 'win' : 'loss'})">${esc(h.map[0] || '?')}</div>
-        <div class="grow" style="min-width:0"><b>${esc(h.map)}</b> <span class="wl" style="color:var(--${won ? 'win' : 'loss'})">${won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}</span>${h.is_mvp ? ' <span class="star">⭐ MVP</span>' : ''}
-          <div class="muted">${fmtDate(h.finished_at)}${h.kills != null ? ` · <b style="color:var(--text)">${h.kills}/${h.deaths}</b>` : ''}</div>
-          ${mine && h.can_stats ? `<button class="chipbtn" style="margin-top:6px" onclick="openStats(${h.id})">📊 Вписать K/D</button>` : ''}</div>
-        <div style="text-align:right"><div style="font-weight:700">${esc(h.score) || '—'}</div>${h.elo_delta == null
-          ? `<div class="sub">калибровка</div>`
-          : `<div class="d ${h.elo_delta >= 0 ? 'p' : 'm'}">${h.elo_delta >= 0 ? '+' : ''}${h.elo_delta}</div>`}</div></div>`;
-    }).join('') : `<div class="empty"><div class="big">🕹</div>Ещё нет сыгранных матчей</div>`;
-    const streak = st.streak >= 2 ? `<span class="streak ${st.streak_win ? 'w' : 'l'}">${st.streak_win ? '🔥' : '🥶'} ${st.streak} ${st.streak_win ? 'победы' : 'поражения'} подряд</span>` : '';
-    const kd = `${sec('Статистика')}${streak ? `<div style="margin:-2px 0 10px">${streak}</div>` : ''}<div class="kgrid">
-      <div class="stat"><b>${st.kd ?? '—'}</b><span>K/D</span></div>
-      <div class="stat"><b>${st.avg_kills ?? '—'}</b><span>убийств/матч</span></div>
-      <div class="stat"><b class="star">${st.mvps}</b><span>MVP</span></div>
-      <div class="stat"><b>${st.best_kills ?? '—'}</b><span>лучший матч</span></div>
-      <div class="stat"><b>${st.best_streak}</b><span>лучшая серия</span></div>
-      <div class="stat"><b>${d.player.games}</b><span>всего игр</span></div></div>`;
-    const played = d.maps.filter(m => m.games);
-    const maps = `${sec('Карты')}<div class="card" style="padding:8px 14px">${played.length ? d.maps.map(m => {
-      const c = m.wr == null ? 'var(--line2)' : m.wr >= 55 ? 'var(--win)' : m.wr >= 45 ? 'var(--gold)' : 'var(--loss)';
-      return `<div class="mrow"><div class="mt" style="${mapBg(m.map)}">${esc(m.map[0])}</div><div style="width:78px;font-weight:700;font-size:13px">${esc(m.map)}</div>
-        <div class="mb"><i style="width:${m.wr ?? 0}%;background:${c}"></i></div><div class="mv">${m.games ? `${m.wr}% · ${m.games} игр` : '—'}</div></div>`;
-    }).join('') : '<div class="empty" style="padding:16px">Пока нет матчей</div>'}</div>`;
-    const got = d.achievements.filter(a => a.got).length;
-    const achs = `${sec('Достижения', `${got}/${d.achievements.length}`)}<div class="achs">${d.achievements.map(a =>
-      `<div class="ach ${a.got ? 'on' : 'off'}"><div class="ai">${a.icon}</div><div class="at">${esc(a.title)}</div><div class="ad">${esc(a.desc)}</div></div>`).join('')}</div>`;
-    const html = `${isTab ? '' : '<button class="back" onclick="S.view=null;render()">‹ Назад</button>'}
-      ${heroView(d.player, d.rank, d.history)}
-      ${mine ? '<button class="btn sec" onclick="openEdit()">✏️ Изменить ник / ID</button>' : ''}
-      ${kd}${maps}${achs}
-      ${sec('История матчей')}<div class="card" style="padding:4px 14px">${hist}</div>`;
+      return `<div class="hist"><div class="r" style="background:${won ? 'var(--go)' : 'var(--bad)'}"></div>
+        <div><div class="c" style="font-size:18px;font-weight:700">${esc(h.map)} <span class="mute num" style="font-size:15px">${esc(h.score)}</span>${h.is_mvp ? ' <span style="color:var(--gold)">MVP</span>' : ''}</div>
+          <div class="mute">${fmtDate(h.finished_at)}${h.kills != null ? ` · ${h.kills}–${h.deaths}` : ''}</div>
+          ${mine && h.can_stats ? `<button class="chip" style="margin-top:6px" onclick="openStats(${h.id})">Вписать K/D</button>` : ''}</div>
+        <div class="d ${h.elo_delta == null ? '' : h.elo_delta >= 0 ? 'p' : 'm'}">${h.elo_delta == null ? '<span class="mute" style="font-size:14px">калибровка</span>' : (h.elo_delta >= 0 ? '+' : '') + h.elo_delta}</div></div>`;
+    }).join('') : '<div class="empty">Ещё нет сыгранных матчей</div>';
+    const html = `${isTab ? '' : `<button class="back" onclick="S.view=null;render()">${I.back}Назад</button>`}
+      ${heroView(d, mine)}${mine ? '<button class="btn ghost" onclick="openEdit()">Изменить профиль и аватар</button>' : ''}
+      ${kd}${maps}${achs}<h2>Матчи</h2><div class="panel" style="padding-left:0">${hist}</div>`;
     if (isTab) $('#app').innerHTML = topbar() + `<div class="wrap">${html}</div>`;
     else { S.view = html; render(); window.scrollTo(0, 0); }
   } catch (e) { toast(e.message); }
 }
 
-// ---------- admin ----------
+// ---------- админка ----------
 async function adminTab() {
-  const app = $('#app');
-  app.innerHTML = topbar() + `<div class="wrap"><div class="card empty" style="margin-top:10px">Загрузка…</div></div>`;
+  $('#app').innerHTML = topbar() + '<div class="wrap"><div class="panel empty" style="margin-top:10px">Загрузка…</div></div>';
   try {
     const [ov, players] = await Promise.all([api('/admin/overview'), api('/leaderboard')]);
     S.adm = { ov, players };
-    const pend = ov.pending.length ? ov.pending.map(matchCard).join('') : `<div class="card empty" style="padding:18px">Нет результатов на проверке ✅</div>`;
-    const grp = ov.group_set ? '' : `<div class="note"><span>💬</span><span>Чтобы бот постил итоги матчей в группу друзей: добавь бота в группу и напиши там <b>/setgroup</b></span></div>`;
-    app.innerHTML = topbar() + `<div class="wrap">
-      ${sec('На проверке', ov.pending.length)}${pend}${grp}
-      ${sec('Админы', ov.admins.length)}<div class="card lb">${ov.admins.map(a => `<div class="adm-row">🛡 <span class="grow">${esc(a.nick || a.tg_id)}</span><span class="sub">${a.env ? 'основной' : ''}</span></div>`).join('')}</div>
-      ${sec('Игроки', players.length)}
-      <input class="search" placeholder="Поиск игрока" value="${esc(S.aq || '')}" oninput="S.aq=this.value;$('#alist').innerHTML=adminList()">
-      <div id="alist" style="margin-top:8px">${adminList()}</div></div>`;
+    $('#app').innerHTML = topbar() + `<div class="wrap">
+      <h2>На проверке <small>${ov.pending.length}</small></h2>${ov.pending.length ? ov.pending.map(matchCard).join('') : '<div class="panel empty">Всё проверено</div>'}
+      ${ov.group_set ? '' : '<div class="callout" style="border:1px solid var(--line);border-left:3px solid var(--gold)">Чтобы итоги матчей приходили в группу друзей, добавь туда бота и напиши в группе /setgroup</div>'}
+      <h2>Админы <small>${ov.admins.length}</small></h2><div class="panel list">${ov.admins.map(a => `<div class="it"><div class="grow n">${esc(a.nick || a.tg_id)}</div><span class="mute">${a.env ? 'основной' : ''}</span></div>`).join('')}</div>
+      <h2>Игроки <small>${players.length}</small></h2>
+      <input class="search" placeholder="Ник или ID" value="${esc(S.aq || '')}" oninput="S.aq=this.value;$('#alist').innerHTML=adminList()">
+      <div id="alist">${adminList()}</div></div>`;
   } catch (e) { toast(e.message); }
 }
-
 function adminList() {
   const q = (S.aq || '').trim().toLowerCase();
   const list = S.adm.players.filter(p => !q || p.nick.toLowerCase().includes(q) || String(p.game_id || '').includes(q));
-  if (!list.length) return '<div class="card empty">Никого не найдено</div>';
-  return `<div class="card lb">${list.map(p => `<div class="r" onclick="openAdminPlayer(${p.tg_id})">${av(p, 'sm')}
-    <div class="grow" style="min-width:0"><div class="n ell">${esc(p.nick)}${p.banned ? ' ⛔' : ''}</div><div class="sub">${p.wins}W · ${p.losses}L${p.game_id ? ' · ID ' + esc(p.game_id) : ''}</div></div>
-    <div class="sub">${p.calibrated ? p.elo + ' ELO' : `калибр. ${p.calib_played}/10`}</div></div>`).join('')}</div>`;
+  return list.length ? `<div class="panel list">${list.map(p => `<div class="it" onclick="openAdminPlayer(${p.tg_id})">${av(p, 'sm')}
+    <div class="grow"><div class="n ell">${esc(p.nick)}${p.banned ? ' <span class="m">бан</span>' : ''}</div><div class="mute">${p.wins}W ${p.losses}L${p.game_id ? ' · ID ' + esc(p.game_id) : ''}</div></div>
+    <div class="mute num" style="font-size:16px">${p.calibrated ? p.elo : `${p.calib_played}/10`}</div></div>`).join('')}</div>` : '<div class="panel empty">Никого не нашли</div>';
 }
-
 function openAdminPlayer(id) {
-  const p = S.adm.players.find(x => x.tg_id === id);
-  const isAdm = S.adm.ov.admins.some(a => a.tg_id === id);
-  const o = sheet(`<h3>${esc(p.nick)}</h3><div class="muted">${p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : ''}${p.wins}W · ${p.losses}L${p.banned ? ' · ⛔ забанен' : ''}</div>
-    <label class="f">ELO ${p.calibrated ? '' : '(игрок на калибровке, ELO скрыто от других)'}</label>
-    <div class="row"><input id="a-elo" type="number" inputmode="numeric" placeholder="Новое ELO" value="${p.elo ?? ''}"><button class="btn small" id="a-elo-go">Сохранить</button></div>
-    <label class="f">Бан</label>
-    <div class="row"><input id="a-days" type="number" inputmode="decimal" placeholder="Дней (0 — снять)" value="${p.banned ? 0 : 1}"><button class="btn danger small" id="a-ban-go">${p.banned ? 'Изменить' : 'Забанить'}</button></div>
-    <input id="a-reason" style="margin-top:8px" placeholder="Причина (например, вышел из матча)">
-    <div class="btns"><button class="btn sec" id="a-adm">${isAdm ? 'Снять админа' : '🛡 Сделать админом'}</button></div>
-    <div class="btns"><button class="btn sec" onclick="closeSheet();openProfile(${id})">Профиль</button><button class="btn danger" id="a-del">Удалить игрока</button></div>`);
+  const p = S.adm.players.find(x => x.tg_id === id), isAdm = S.adm.ov.admins.some(a => a.tg_id === id);
+  sheet(`<h3>${esc(p.nick)}</h3><div class="mute">${p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : ''}${p.wins}W ${p.losses}L${p.banned ? ' · забанен' : ''}</div>
+    <label class="f" for="a-elo">ELO${p.calibrated ? '' : ' (на калибровке, скрыто от других)'}</label>
+    <div class="row"><input id="a-elo" type="number" inputmode="numeric" value="${p.elo ?? ''}" placeholder="1000"><button class="btn sm" id="a-elo-go">Сохранить</button></div>
+    <label class="f" for="a-days">Бан, дней (0 — снять)</label>
+    <div class="row"><input id="a-days" type="number" inputmode="decimal" value="${p.banned ? 0 : 1}"><button class="btn red sm" id="a-ban-go">${p.banned ? 'Применить' : 'Забанить'}</button></div>
+    <input id="a-reason" style="margin-top:8px" placeholder="Причина: вышел из матча">
+    <div class="btns"><button class="btn ghost" id="a-adm">${isAdm ? 'Снять админа' : 'Сделать админом'}</button></div>
+    <div class="btns"><button class="btn ghost" onclick="closeSheet();openProfile(${id})">Профиль</button><button class="btn red" id="a-del">Удалить</button></div>`);
   const call = async (path, body, msg) => { try { await api(`/admin/players/${id}/${path}`, body); closeSheet(); toast(msg, true); adminTab(); } catch (e) { toast(e.message); } };
   $('#a-elo-go').onclick = () => call('elo', { elo: +$('#a-elo').value }, 'ELO изменено');
   $('#a-ban-go').onclick = () => call('ban', { days: +$('#a-days').value, reason: $('#a-reason').value }, +$('#a-days').value > 0 ? 'Игрок забанен' : 'Бан снят');
-  $('#a-adm').onclick = () => call('admin', { on: !isAdm }, isAdm ? 'Админ снят' : 'Теперь админ');
+  $('#a-adm').onclick = () => call('admin', { on: !isAdm }, isAdm ? 'Права сняты' : 'Теперь админ');
   $('#a-del').onclick = () => confirmDo(`Удалить ${p.nick}? История матчей останется.`, () => call('delete', {}, 'Игрок удалён'));
 }
 
-function findMatch(id) { return S.lobbies.find(x => x.id === id) || S.adm?.ov.pending.find(x => x.id === id); }
-
-function openStats(id) {
-  sheet(`<h3>Моя статистика</h3><div class="muted">Матч #${id} · по ним считается MVP и твой K/D</div>
-    <div class="score" style="margin-top:14px"><div class="grow"><label class="f" style="margin-top:0">Убийства</label><input id="k" type="number" inputmode="numeric" min="0" max="99" placeholder="0"></div>
-    <div class="grow"><label class="f" style="margin-top:0">Смерти</label><input id="dd" type="number" inputmode="numeric" min="0" max="99" placeholder="0"></div></div>
-    <button class="btn" id="st-go" style="margin-top:16px">Сохранить</button>`);
-  $('#k').focus();
-  $('#st-go').onclick = async () => {
-    try { await api(`/lobbies/${id}/stats`, { kills: +$('#k').value || 0, deaths: +$('#dd').value || 0 }); closeSheet(); toast('Статистика сохранена', true);
-      if (S.tab === 'profile' || S.view) render(); else await refresh(); }
-    catch (e) { toast(e.message); }
-  };
-}
-
-// ---------- sheets ----------
+// ---------- листы ----------
 function sheet(html) {
   closeSheet();
   const o = document.createElement('div');
-  o.className = 'overlay';
+  o.className = 'ov';
   o.innerHTML = `<div class="sheet">${html}</div>`;
   o.onclick = e => { if (e.target === o) closeSheet(); };
   document.body.appendChild(o);
   return o;
 }
-function closeSheet() { document.querySelector('.overlay')?.remove(); }
-
-function banMap(id, i) {
-  const map = S.cfg.maps[i];
-  act(`/lobbies/${id}/ban`, { map }, `${map} забанена`);
-}
-
-function copyText(t) {
-  navigator.clipboard?.writeText(t).then(() => toast('Скопировано', true), () => toast('Не удалось скопировать'));
-}
-function copyRoom(id) { copyText(S.lobbies.find(x => x.id === id)?.room || ''); }
+function closeSheet() { document.querySelector('.ov')?.remove(); }
+function findMatch(id) { return S.lobbies.find(x => x.id === id) || S.adm?.ov.pending.find(x => x.id === id); }
+function banMap(id, i) { act(`/lobbies/${id}/ban`, { map: S.cfg.maps[i] }, `${S.cfg.maps[i]} убрана`); }
+function copyText(t) { navigator.clipboard?.writeText(t).then(() => toast('Скопировано', true), () => toast('Не удалось скопировать')); }
+function copyRoom(id) { copyText(findMatch(id)?.room || ''); }
 
 function openRoom(id) {
-  const cur = esc(S.lobbies.find(x => x.id === id)?.room || '');
-  sheet(`<h3>Комната в игре</h3><div class="muted">Код или пароль комнаты в Standoff 2 — бот отправит его всем 10 игрокам</div>
-    <input id="room" style="margin-top:14px" maxlength="60" value="${cur}" placeholder="Например: 4821 / пароль 123">
-    <button class="btn" id="room-go" style="margin-top:14px">Сохранить и разослать</button>`);
+  sheet(`<h3>Комната в игре</h3><div class="mute">Код или пароль придёт всем десятерым</div>
+    <input id="room" style="margin-top:14px" maxlength="60" value="${esc(findMatch(id)?.room || '')}" placeholder="4821, пароль 123">
+    <div class="btns"><button class="btn" id="room-go">Разослать</button></div>`);
   $('#room').focus();
-  $('#room-go').onclick = async () => { const room = $('#room').value; closeSheet(); await act(`/lobbies/${id}/room`, { room }, 'Код отправлен всем'); };
+  $('#room-go').onclick = async () => { const room = $('#room').value; closeSheet(); await act(`/lobbies/${id}/room`, { room }, 'Код отправлен'); };
 }
-
 function openResult(id, adminEdit = false) {
   const m = findMatch(id);
-  let winner = 0;
+  let w = adminEdit ? m.pending_winner || 0 : 0;
   const draw = () => {
-    const o = sheet(`<h3>Результат матча #${id}</h3><div class="muted">${esc(m.map)} · кто победил?</div>
-      <label class="f">Победитель</label>
-      <div class="seg"><button class="${winner === 1 ? 'on t1' : ''}" data-w="1">Команда 1</button><button class="${winner === 2 ? 'on t2' : ''}" data-w="2">Команда 2</button></div>
-      <label class="f">Счёт (необязательно)</label>
-      <div class="score"><input id="s1" type="number" inputmode="numeric" min="0" max="99" placeholder="К1"><b class="dim">:</b><input id="s2" type="number" inputmode="numeric" min="0" max="99" placeholder="К2"></div>
-      <button class="btn" id="res-go" style="margin-top:18px" ${winner ? '' : 'disabled'}>Подтвердить</button>`);
-    o.querySelectorAll('[data-w]').forEach(b => b.onclick = () => {
-      const s1 = $('#s1').value, s2 = $('#s2').value;
-      winner = +b.dataset.w; draw(); $('#s1').value = s1; $('#s2').value = s2;
-    });
+    const keep = [$('#s1')?.value, $('#s2')?.value];
+    const o = sheet(`<h3>Результат</h3><div class="mute">Матч #${id} · ${esc(m.map)}${adminEdit ? '' : '. Уйдёт админу на проверку'}</div>
+      <label class="f">Кто победил</label>
+      <div class="seg"><button class="${w === 1 ? 'on a' : ''}" data-w="1">Команда 1</button><button class="${w === 2 ? 'on b' : ''}" data-w="2">Команда 2</button></div>
+      <label class="f">Счёт, если помнишь</label>
+      <div class="row"><input id="s1" type="number" inputmode="numeric" placeholder="13" style="text-align:center"><b class="c" style="font-size:22px">:</b><input id="s2" type="number" inputmode="numeric" placeholder="9" style="text-align:center"></div>
+      <div class="btns"><button class="btn" id="res-go" ${w ? '' : 'disabled'}>${adminEdit ? 'Сохранить и засчитать' : 'Отправить'}</button></div>`);
+    if (keep[0] != null) { $('#s1').value = keep[0]; $('#s2').value = keep[1]; }
+    o.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { w = +b.dataset.w; draw(); });
     $('#res-go').onclick = async () => {
-      const body = { winner, score1: +$('#s1').value || 0, score2: +$('#s2').value || 0 };
       try {
-        const r = await api(`/lobbies/${id}/${adminEdit ? 'confirm' : 'result'}`, body); closeSheet();
-        toast(r.pending ? 'Отправлено админу на проверку' : 'Результат записан, ELO обновлено', true);
-        if (S.tab === 'admin') adminTab(); else await refresh();
-      }
-      catch (e) { toast(e.message); }
+        const r = await api(`/lobbies/${id}/${adminEdit ? 'confirm' : 'result'}`, { winner: w, score1: +$('#s1').value || 0, score2: +$('#s2').value || 0 });
+        closeSheet(); toast(r.pending ? 'Отправлено админу' : 'Засчитано, ELO обновлено', true);
+        if (S.tab === 'admin') { await loadMe(); adminTab(); } else await refresh();
+      } catch (e) { toast(e.message); }
     };
   };
   draw();
 }
-
+function openStats(id) {
+  sheet(`<h3>Твоя статистика</h3><div class="mute">Матч #${id}. Из неё считаются MVP, K/D и бонус калибровки</div>
+    <div class="row" style="margin-top:6px"><div class="grow"><label class="f" for="k">Убийства</label><input id="k" type="number" inputmode="numeric" placeholder="18"></div>
+      <div class="grow"><label class="f" for="dd">Смерти</label><input id="dd" type="number" inputmode="numeric" placeholder="12"></div></div>
+    <div class="btns"><button class="btn" id="st-go">Сохранить</button></div>`);
+  $('#k').focus();
+  $('#st-go').onclick = async () => {
+    try { await api(`/lobbies/${id}/stats`, { kills: +$('#k').value || 0, deaths: +$('#dd').value || 0 }); closeSheet(); toast('Сохранено', true);
+      if (S.tab === 'profile' || S.view) { S.view = null; render(); } else await refresh(); } catch (e) { toast(e.message); }
+  };
+}
 function openEdit() {
   const p = S.me.player;
   sheet(`<h3>Профиль</h3>
-    <label class="f">Ник в Standoff 2</label><input id="r-nick" maxlength="20" value="${esc(p.nick)}">
-    <label class="f">ID в игре</label><input id="r-id" inputmode="numeric" maxlength="15" value="${esc(p.game_id || '')}">
-    <button class="btn" id="r-go" style="margin-top:16px">Сохранить</button>`);
+    <div class="row" style="margin-top:10px;gap:14px">${av(p, 'xl', false)}<div class="grow">
+      <button class="btn ghost" onclick="$('#avfile').click()">Загрузить фото</button>
+      ${p.custom_photo ? '<button class="chip" style="margin-top:8px" onclick="removeAvatar()">Вернуть фото из Telegram</button>' : '<div class="mute" style="margin-top:6px">JPG или PNG, обрежем по квадрату</div>'}</div></div>
+    <label class="f" for="r-nick">Ник в Standoff 2</label><input id="r-nick" maxlength="20" value="${esc(p.nick)}">
+    <label class="f" for="r-id">ID в игре</label><input id="r-id" inputmode="numeric" maxlength="15" value="${esc(p.game_id || '')}">
+    <div class="btns"><button class="btn" id="r-go">Сохранить</button></div>`);
   bindRegister(true);
 }
+// аватар: обрезаем по центру в квадрат 320×320 и сжимаем в JPEG прямо на телефоне
+$('#avfile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error('Не удалось открыть картинку')); i.src = URL.createObjectURL(f); });
+    const side = Math.min(img.naturalWidth, img.naturalHeight), cv = document.createElement('canvas');
+    cv.width = cv.height = 320;
+    cv.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 320, 320);
+    let q = .85, data = cv.toDataURL('image/jpeg', q);
+    while (data.length > 280000 && q > .4) { q -= .15; data = cv.toDataURL('image/jpeg', q); }
+    await api('/avatar', { data });
+    closeSheet(); toast('Аватар обновлён', true); S.view = null; await refresh();
+  } catch (err) { toast(err.message || 'Не получилось загрузить фото'); }
+};
+async function removeAvatar() { try { await api('/avatar', { remove: true }); closeSheet(); toast('Вернули фото из Telegram', true); await refresh(); } catch (e) { toast(e.message); } }
 
-function confirmDo(text, fn) {
-  if (tg?.showConfirm && tg.initData) tg.showConfirm(text, ok => ok && fn());
-  else if (confirm(text)) fn();
-}
+function confirmDo(text, fn) { if (tg?.showConfirm && tg.initData) tg.showConfirm(text, ok => ok && fn()); else if (confirm(text)) fn(); }
 const cancelMatch = id => confirmDo('Отменить матч? ELO не изменится.', () => act(`/lobbies/${id}/cancel`, null, 'Матч отменён'));
-// действия из админки обновляют админку
-const _act = act;
-act = async (path, body, okMsg) => { const r = await _act(path, body, okMsg); if (S.tab === 'admin' && !S.view) adminTab(); return r; };
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
-// ---------- tabs / boot ----------
+// функции, которые вызываются из разметки
+Object.assign(window, { act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+  banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
+
+// ---------- запуск ----------
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = async () => {
   S.tab = b.dataset.tab; S.view = null; haptic('light'); window.scrollTo(0, 0);
   render();
   if (S.tab === 'top') { S.top = await api('/leaderboard'); render(); }
 });
-
 (async () => {
   try {
     S.cfg = await api('/config');
     await refresh();
-    S.poll = setInterval(() => { if (S.tab === 'lobby' && !S.view && !document.querySelector('.overlay') && S.me?.player) refresh().catch(() => {}); }, 3000);
-    setInterval(() => document.querySelectorAll('.cd[data-end]').forEach(el => {
+    setInterval(() => { if (S.tab === 'lobby' && !S.view && !document.querySelector('.ov') && S.me?.player) refresh().catch(() => {}); }, 3000);
+    setInterval(() => document.querySelectorAll('.timer[data-end]').forEach(el => {
       const left = Math.max(0, Math.round(+el.dataset.end - Date.now() / 1000));
-      el.textContent = left + 'с'; el.classList.toggle('low', left <= 10);
+      el.textContent = left; el.classList.toggle('low', left <= 10);
     }), 500);
   } catch (e) {
-    $('#app').innerHTML = `<div class="wrap"><div class="card empty" style="margin-top:40px"><div class="big">⚠️</div>${esc(e.message)}</div></div>`;
+    $('#app').innerHTML = `<div class="wrap"><div class="panel empty" style="margin-top:40vh">${esc(e.message)}</div></div>`;
   }
 })();
+}
 </script>
 </body>
 </html>
