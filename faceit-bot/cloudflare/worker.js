@@ -122,6 +122,8 @@ export class Arena extends DurableObject {
       joined_at REAL NOT NULL, PRIMARY KEY (match_id, tg_id))`);
     this.sql.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS admins (tg_id INTEGER PRIMARY KEY)");
+    // дружба: from_id отправил заявку to_id; status pending | accepted
+    this.sql.exec("CREATE TABLE IF NOT EXISTS friends (from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, status TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (from_id, to_id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS avatars (tg_id INTEGER PRIMARY KEY, data BLOB NOT NULL, updated INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS seasons (season TEXT NOT NULL, place INTEGER NOT NULL, tg_id INTEGER, nick TEXT, elo INTEGER, PRIMARY KEY (season, place))");
     for (const ddl of [
@@ -144,6 +146,8 @@ export class Arena extends DurableObject {
       "ALTER TABLE players ADD COLUMN badges TEXT NOT NULL DEFAULT '[]'",
       "ALTER TABLE players ADD COLUMN tg_photo TEXT",
       "ALTER TABLE players ADD COLUMN custom_photo INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE players ADD COLUMN last_seen INTEGER",
+      "ALTER TABLE match_players ADD COLUMN assists INTEGER",
     ]) { try { this.sql.exec(ddl); } catch {} }
     this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
 
@@ -205,7 +209,7 @@ export class Arena extends DurableObject {
     const m = this.one("SELECT * FROM matches WHERE id = ?", id);
     if (!m) return null;
     m.bans = JSON.parse(m.bans || "[]");
-    m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, mp.ready, mp.kills, mp.deaths,
+    m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, mp.ready, mp.kills, mp.deaths, mp.assists,
         p.nick, p.elo, p.game_id, p.tg_username, p.photo, p.wins + p.losses AS games
       FROM match_players mp JOIN players p ON p.tg_id = mp.tg_id WHERE mp.match_id = ? ORDER BY mp.joined_at`, id);
     return m;
@@ -225,6 +229,7 @@ export class Arena extends DurableObject {
       ...rest, games, calibrated, calib_played: Math.min(games, CALIBRATION_GAMES), calib_total: CALIBRATION_GAMES,
       elo: calibrated ? p.elo : null, level: calibrated ? level(p.elo) : null, next_level_at: calibrated ? nextLevelAt(p.elo) : null,
       badges: JSON.parse(badges || "[]"), banned: (p.banned_until || 0) > now(),
+      online: now() - (p.last_seen || 0) < 120,
     };
   }
   publicMatch(m) {
@@ -245,7 +250,8 @@ export class Arena extends DurableObject {
     out.players = m.players.map(p => {
       const calibrated = p.games >= CALIBRATION_GAMES;
       return { tg_id: p.tg_id, team: p.team, nick: p.nick, game_id: p.game_id, photo: p.photo, ready: !!p.ready,
-        kills: p.kills, deaths: p.deaths, elo_delta: m.status === "finished" ? p.elo_delta : null,
+        kills: p.kills, deaths: p.deaths, assists: p.assists, calibrating: !!p.calibrating,
+        elo_delta: m.status === "finished" && !p.calibrating ? p.elo_delta : null,
         calibrated, calib_played: Math.min(p.games, CALIBRATION_GAMES), level: calibrated ? level(p.elo) : null, elo: calibrated ? p.elo : null };
     });
     const host = m.players.find(p => p.tg_id === m.creator_id);
@@ -255,18 +261,23 @@ export class Arena extends DurableObject {
   }
 
   // профиль: K/D, карты, серии, достижения
-  profile(id) {
+  profile(id, viewer) {
     const p = this.player(id);
-    const rows = this.q(`SELECT m.id, m.mode, m.map, m.score, m.winner, m.finished_at, m.mvp, mp.team, mp.elo_delta, mp.calibrating, mp.kills, mp.deaths
+    const rows = this.q(`SELECT m.id, m.mode, m.map, m.score, m.winner, m.finished_at, m.mvp, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, mp.kills, mp.deaths, mp.assists
       FROM match_players mp JOIN matches m ON m.id = mp.match_id
       WHERE mp.tg_id = ? AND m.status = 'finished' ORDER BY m.finished_at DESC, m.id DESC`, id);
     const calibrated = this.isCalibrated(p);
-    const history = rows.slice(0, 30).map(h => ({
+    const history = rows.slice(0, 100).map(h => ({
       ...h, elo_delta: calibrated ? h.elo_delta : null, is_mvp: h.mvp === id,
       can_stats: h.kills == null && now() - h.finished_at < STATS_WINDOW,
     }));
     const withStats = rows.filter(r => r.kills != null);
     const kills = withStats.reduce((s, r) => s + r.kills, 0), deaths = withStats.reduce((s, r) => s + r.deaths, 0);
+    const assists = withStats.reduce((s, r) => s + (r.assists || 0), 0);
+    // история ELO: точки после каждого матча вне калибровки
+    const eloHistory = calibrated ? rows.slice().reverse().filter(r => !r.calibrating && r.elo_before != null)
+      .map(r => ({ t: r.finished_at, elo: r.elo_before + r.elo_delta, d: r.elo_delta })).slice(-40) : [];
+    if (eloHistory.length && eloHistory[eloHistory.length - 1].elo !== p.elo) eloHistory.push({ t: now(), elo: p.elo, d: p.elo - eloHistory[eloHistory.length - 1].elo });
     const best = withStats.reduce((b, r) => (!b || r.kills > b.kills ? r : b), null);
     const mvps = rows.filter(r => r.mvp === id).length;
     // серии
@@ -302,17 +313,28 @@ export class Arena extends DurableObject {
       player: this.publicPlayer(p), rank: this.rankOf(id), history,
       stats: {
         kd: withStats.length ? +(kills / Math.max(1, deaths)).toFixed(2) : null,
+        kills, deaths, assists, stat_games: withStats.length, wins, losses: games - wins,
         avg_kills: withStats.length ? +(kills / withStats.length).toFixed(1) : null,
         best_kills: best?.kills ?? null, best_map: best?.map ?? null, mvps,
         streak: cur, streak_win: curWin, best_streak: bestStreak,
       },
-      maps: mapsStat, achievements: ach,
+      maps: mapsStat, achievements: ach, elo_history: eloHistory,
+      friend: viewer && viewer !== id ? this.friendState(viewer, id) : null,
       calibration: {
         wins: rows.filter(r => r.calibrating && r.team === r.winner).length,
         losses: rows.filter(r => r.calibrating && r.team !== r.winner).length,
         with_stats: rows.filter(r => r.calibrating && r.kills != null).length,
       },
     };
+  }
+
+  // ----- friends -----
+  friendRow(a, b) { return this.one("SELECT * FROM friends WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)", a, b, b, a); }
+  friendState(me, other) {
+    const r = this.friendRow(me, other);
+    if (!r) return "none";
+    if (r.status === "accepted") return "friends";
+    return r.from_id === me ? "outgoing" : "incoming";
   }
 
   // ----- telegram -----
@@ -598,13 +620,15 @@ export class Arena extends DurableObject {
     }
 
     if (method === "GET" && path === "/me") {
+      this.sql.exec("UPDATE players SET last_seen = ? WHERE tg_id = ?", now(), uid);
       let p = this.player(uid);
       if (p && user.photo && p.tg_photo !== user.photo) {
         this.sql.exec("UPDATE players SET tg_photo = ?, photo = CASE WHEN custom_photo = 1 THEN photo ELSE ? END WHERE tg_id = ?", user.photo, user.photo, uid);
         p = this.player(uid);
       }
       const pendingCount = isAdmin ? this.one("SELECT COUNT(*) AS n FROM matches WHERE status = 'pending'").n : 0;
-      return { user, player: p ? this.publicPlayer(p) : null, rank: this.rankOf(uid), active_match: this.activeMatchOf(uid), is_admin: isAdmin, pending_count: pendingCount };
+      const friendReq = this.one("SELECT COUNT(*) AS n FROM friends WHERE to_id = ? AND status = 'pending'", uid).n;
+      return { user, player: p ? this.publicPlayer(p) : null, rank: this.rankOf(uid), active_match: this.activeMatchOf(uid), is_admin: isAdmin, pending_count: pendingCount, friend_requests: friendReq };
     }
 
     if (method === "POST" && path === "/register") {
@@ -655,11 +679,56 @@ export class Arena extends DurableObject {
 
     if (method === "GET" && (mm = path.match(/^\/players\/(\d+)$/))) {
       if (!this.player(+mm[1])) throw new ApiError("Игрок не найден");
-      return this.profile(+mm[1]);
+      return this.profile(+mm[1], uid);
     }
 
     if (method === "GET" && path === "/seasons") {
       return this.q("SELECT * FROM seasons ORDER BY season DESC, place").map(r => ({ ...r, season_name: seasonName(r.season) }));
+    }
+
+    // ----- friends -----
+    if (method === "GET" && path === "/friends") {
+      const rows = this.q("SELECT * FROM friends WHERE from_id = ? OR to_id = ?", uid, uid);
+      const card = id => {
+        const p = this.player(id);
+        if (!p) return null;
+        const pp = this.publicPlayer(p);
+        const am = this.activeMatchOf(id), st = am ? this.one("SELECT status FROM matches WHERE id = ?", am).status : null;
+        return { tg_id: id, nick: pp.nick, photo: pp.photo, game_id: pp.game_id, level: pp.level, elo: pp.elo, calibrated: pp.calibrated,
+          calib_played: pp.calib_played, online: pp.online, last_seen: p.last_seen, in_lobby: st === "open" || st === "ready", in_match: ["veto", "live", "pending"].includes(st) };
+      };
+      const pick = (f) => rows.filter(f).map(r => card(r.from_id === uid ? r.to_id : r.from_id)).filter(Boolean);
+      const friends = pick(r => r.status === "accepted").sort((a, b) => (b.online - a.online) || ((b.last_seen || 0) - (a.last_seen || 0)));
+      return { friends, incoming: pick(r => r.status === "pending" && r.to_id === uid), outgoing: pick(r => r.status === "pending" && r.from_id === uid) };
+    }
+    if (method === "POST" && (mm = path.match(/^\/friends\/(request|accept|decline|remove)$/))) {
+      const me = requirePlayer(), other = Number(body.tg_id);
+      const op = this.player(other);
+      if (!op || other === uid) throw new ApiError("Игрок не найден");
+      const row = this.friendRow(uid, other);
+      switch (mm[1]) {
+        case "request":
+          if (row?.status === "accepted") throw new ApiError("Вы уже друзья");
+          if (row && row.from_id === other) { // встречная заявка — сразу дружим
+            this.sql.exec("UPDATE friends SET status = 'accepted' WHERE from_id = ? AND to_id = ?", other, uid);
+            await this.send(other, `🤝 <b>${esc(me.nick)}</b> теперь у тебя в друзьях.`);
+            return { ok: true, state: "friends" };
+          }
+          if (row) throw new ApiError("Заявка уже отправлена");
+          this.sql.exec("INSERT INTO friends (from_id, to_id, status, created) VALUES (?, ?, 'pending', ?)", uid, other, now());
+          await this.send(other, `👋 <b>${esc(me.nick)}</b> хочет добавить тебя в друзья.`, this.appButton("Открыть заявки"));
+          return { ok: true, state: "outgoing" };
+        case "accept":
+          if (!row || row.status !== "pending" || row.from_id !== other) throw new ApiError("Заявки нет");
+          this.sql.exec("UPDATE friends SET status = 'accepted' WHERE from_id = ? AND to_id = ?", other, uid);
+          await this.send(other, `🤝 <b>${esc(me.nick)}</b> принял твою заявку в друзья.`);
+          return { ok: true, state: "friends" };
+        case "decline":
+        case "remove":
+          if (!row) throw new ApiError("Вы не друзья");
+          this.sql.exec("DELETE FROM friends WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)", uid, other, other, uid);
+          return { ok: true, state: "none" };
+      }
     }
 
     // ----- admin -----
@@ -705,6 +774,7 @@ export class Arena extends DurableObject {
             this.sql.exec("DELETE FROM match_players WHERE tg_id = ? AND match_id IN (SELECT id FROM matches WHERE status IN ('open','ready'))", id);
             this.sql.exec("DELETE FROM players WHERE tg_id = ?", id);
             this.sql.exec("DELETE FROM avatars WHERE tg_id = ?", id);
+            this.sql.exec("DELETE FROM friends WHERE from_id = ? OR to_id = ?", id, id);
             this.sql.exec("DELETE FROM admins WHERE tg_id = ?", id);
             return { ok: true };
           }
@@ -795,9 +865,9 @@ export class Arena extends DurableObject {
         if (!ids.includes(uid)) throw new ApiError("Ты не играл в этом матче");
         const okStatus = ["live", "pending"].includes(m.status) || (m.status === "finished" && now() - m.finished_at < STATS_WINDOW);
         if (!okStatus) throw new ApiError("Статистику можно вписать во время матча и 12 часов после");
-        const kills = Math.round(Number(body.kills)), deaths = Math.round(Number(body.deaths));
-        if (!(kills >= 0 && kills <= 99 && deaths >= 0 && deaths <= 99)) throw new ApiError("Убийства и смерти: от 0 до 99");
-        this.sql.exec("UPDATE match_players SET kills = ?, deaths = ? WHERE match_id = ? AND tg_id = ?", kills, deaths, mid, uid);
+        const kills = Math.round(Number(body.kills)), deaths = Math.round(Number(body.deaths)), assists = Math.round(Number(body.assists) || 0);
+        if (!(kills >= 0 && kills <= 99 && deaths >= 0 && deaths <= 99 && assists >= 0 && assists <= 99)) throw new ApiError("Значения от 0 до 99");
+        this.sql.exec("UPDATE match_players SET kills = ?, deaths = ?, assists = ? WHERE match_id = ? AND tg_id = ?", kills, deaths, assists, mid, uid);
         if (m.status === "finished") this.computeMvp(mid);
         return { ok: true };
       }

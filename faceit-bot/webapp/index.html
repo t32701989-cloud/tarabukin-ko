@@ -167,6 +167,66 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .hist .d{font:700 20px "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums;text-align:right}
 .p{color:var(--go)}.m{color:var(--bad)}
 
+/* профиль v2 */
+.pc{padding:16px;position:relative}
+.pc .edit{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:50%;background:var(--s3);display:grid;place-items:center}
+.pc .nick{font:800 28px/1.05 "Fira Sans Condensed",sans-serif;padding-right:40px}
+.idrow{display:inline-flex;align-items:center;gap:6px;color:var(--mute);font-size:14px;margin-top:4px}
+.onl{position:absolute;right:-4px;top:-4px;width:16px;height:16px;border-radius:50%;background:var(--go);border:3px solid var(--s1)}
+.av .onl{z-index:1}
+.av.sm .onl{width:12px;height:12px;border-width:2px;right:-3px;top:-3px}
+.rowlink{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line);width:100%;text-align:left}
+.rowlink .ic{width:40px;height:40px;border-radius:6px;background:var(--s3);display:grid;place-items:center;flex-shrink:0}
+.rowlink b{display:block;font:700 17px "Fira Sans Condensed",sans-serif}
+.chev{width:18px;height:18px;color:var(--dim);flex-shrink:0}
+.hd{display:flex;align-items:baseline;justify-content:space-between;margin:24px 0 10px}
+.hd h2{margin:0}
+.hd .lnk{font:600 15px "Fira Sans",sans-serif;color:var(--ink);display:flex;align-items:center;gap:2px}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.medal2{flex:0 0 auto;width:62px;height:70px;display:grid;place-items:center;background:var(--s1);border:1px solid var(--line);clip-path:polygon(50% 0,100% 16%,100% 74%,50% 100%,0 74%,0 16%)}
+.medal2 svg{width:26px;height:26px;color:var(--dim)}
+.medal2.on{background:#2c2610;border-color:var(--gold)}.medal2.on svg{color:var(--gold)}
+.lvc{display:flex;align-items:center;gap:16px;padding:16px}
+.lvc .elo2{font:800 34px/1 "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.lvc .bar{height:6px;margin-top:10px}
+.kdc{display:flex;align-items:center;gap:16px;padding:16px;border-bottom:1px solid var(--line)}
+.kdc svg{width:84px;height:84px;flex-shrink:0;transform:rotate(-90deg)}
+.kdc .big{font:800 44px/1 "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px}
+.tile{background:var(--s2);border:1px solid var(--line);border-radius:4px;padding:10px 12px}
+.tile span{display:block;font-size:12px;color:var(--mute);font-weight:600}
+.tile b{font:800 28px/1.1 "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums}
+.tile.w{border-color:#1d5a37}.tile.w b{color:var(--go)}
+.tile.l{border-color:#5c2329}.tile.l b{color:var(--bad)}
+.chart{padding:14px}
+.chart svg{display:block;width:100%;height:150px;margin-top:10px}
+.mrow2{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line);width:100%;text-align:left}
+.mrow2:first-child{border-top:0}
+.mt2{width:48px;height:48px;border-radius:6px;display:grid;place-items:center;background:var(--m);font:800 20px "Fira Sans Condensed",sans-serif;color:#fff;box-shadow:0 0 0 2px var(--r);flex-shrink:0}
+.mrow2 b{display:block;font:700 18px/1.1 "Fira Sans Condensed",sans-serif}
+.sc{font:700 20px "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* табло матча */
+.tm{margin-bottom:12px}
+.tm.won{border-color:#1d5a37}
+.tmh{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.tmh .tn{font:800 20px/1 "Fira Sans Condensed",sans-serif}
+.res{font:700 13px "Fira Sans Condensed",sans-serif;padding:3px 8px;border-radius:3px;letter-spacing:.03em}
+.res.w{background:#163322;color:var(--go)}.res.l{background:#2b1418;color:var(--bad)}
+.tgrid{display:grid;grid-template-columns:minmax(0,1fr) 26px 26px 26px 38px 40px;gap:4px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);font:700 16px "Fira Sans Condensed",sans-serif;font-variant-numeric:tabular-nums;text-align:center}
+.tgrid.head{border-top:0;font:600 12px "Fira Sans",sans-serif;color:var(--mute);padding-bottom:4px}
+.tgrid .who{display:flex;align-items:center;gap:8px;text-align:left}
+.tgrid .who b{display:block;font:700 15px "Fira Sans Condensed",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tgrid .who .sub2{display:flex;align-items:center;gap:4px;font:500 11px "Fira Sans",sans-serif;color:var(--mute)}
+.tgrid.mvp{background:#2a2410}
+.mvpb{font:800 10px "Fira Sans Condensed";border:1px solid var(--gold);color:var(--gold);padding:0 4px;border-radius:2px;margin-left:4px}
+/* друзья */
+.fr{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
+.fr:first-child{border-top:0}
+.fr b{display:block;font:700 17px "Fira Sans Condensed",sans-serif}
+.fr .st{font-size:13px;color:var(--mute)}
+.fr .st.on{color:var(--go)}
+
 /* рейтинг */
 .season{display:flex;align-items:center;gap:12px;padding:14px;background:var(--ink);color:#0d0f11;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%)}
 .season b{font:800 22px/1 "Fira Sans Condensed",sans-serif}
@@ -218,6 +278,7 @@ label.f{display:block;margin:14px 0 6px;font-size:13px;font-weight:600;color:var
 <div class="tabs" id="tabs" hidden><nav>
   <button data-tab="lobby" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>Лобби</button>
   <button data-tab="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Рейтинг</button>
+  <button data-tab="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21.5 19"/></svg>Друзья<span class="dot" id="fr-dot" hidden></span></button>
   <button data-tab="admin" id="tab-admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg>Админ<span class="dot" id="adm-dot" hidden></span></button>
   <button data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Профиль</button>
 </nav></div>
@@ -242,6 +303,9 @@ const I = {
   copy: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="1"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>',
   pad: '<svg class="tagH" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="11" rx="3"/><path d="M7 11v3M5.5 12.5h3M15 12h.01M18 13h.01"/></svg>',
   check: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="m4 12 5 5L20 6"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg>',
+  pen: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+  shield: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>',
   back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>',
   trophy: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
 };
@@ -264,10 +328,23 @@ function lvl(l, cls = '') {
   if (!l) return `<div class="lvl q ${cls}"><svg viewBox="0 0 36 36">${trk}</svg><b>?</b></div>`;
   return `<div class="lvl ${cls}" style="color:${LVL[l]}"><svg viewBox="0 0 36 36">${trk}<circle cx="18" cy="18" r="15" class="arc" stroke-dasharray="${R * l / 10} ${C}"/></svg><b>${l}</b></div>`;
 }
-function av(p, size = '', badge = true) {
+function av(p, size = '', badge = true, online = false) {
   const inner = p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy" onerror="this.remove()">` : esc((p.nick || '?').slice(0, 2).toUpperCase());
-  return `<div class="av ${size}" style="--h:hsl(${hue(p.nick || p.tg_id)} 30% 28%)">${inner}${badge ? lvl(p.level, 'xs') : ''}</div>`;
+  return `<div class="av ${size}" style="--h:hsl(${hue(p.nick || p.tg_id)} 30% 28%)">${inner}${badge ? lvl(p.level, 'xs') : ''}${online && p.online ? '<i class="onl"></i>' : ''}</div>`;
 }
+const ago = ts => {
+  if (!ts) return 'давно';
+  const s = Date.now() / 1000 - ts;
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} мин назад`;
+  if (s < 86400) return `${Math.round(s / 3600)} ч назад`;
+  if (s < 7 * 86400) return `${Math.round(s / 86400)} дн. назад`;
+  return new Date(ts * 1000).toLocaleDateString('ru');
+};
+// стек экранов: профиль → все матчи → матч
+S.stack = [];
+function pushView(html) { S.stack.push(html); S.view = html; render(); window.scrollTo(0, 0); }
+function goBack() { S.stack.pop(); S.view = S.stack[S.stack.length - 1] || null; render(); window.scrollTo(0, 0); }
+const backBtn = () => `<button class="back" onclick="goBack()">${I.back}Назад</button>`;
 const haptic = t => { try { t === 'ok' || t === 'err' ? tg?.HapticFeedback?.notificationOccurred(t === 'ok' ? 'success' : 'error') : tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
 const fmtDate = ts => new Date(ts * 1000).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
@@ -320,10 +397,12 @@ function render() {
   $('#tabs').hidden = false;
   $('#tab-admin').hidden = !S.me.is_admin;
   $('#adm-dot').hidden = !S.me.pending_count; $('#adm-dot').textContent = S.me.pending_count || '';
+  $('#fr-dot').hidden = !S.me.friend_requests; $('#fr-dot').textContent = S.me.friend_requests || '';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
   if (S.view) { app.innerHTML = topbar() + `<div class="wrap">${S.view}</div>`; return; }
   if (S.tab === 'profile') return openProfile(S.me.player.tg_id, true);
   if (S.tab === 'admin') return adminTab();
+  if (S.tab === 'friends') return friendsTab();
   app.innerHTML = topbar() + `<div class="wrap">${S.tab === 'lobby' ? lobbyTab() : topTab()}</div>`;
 }
 
@@ -474,58 +553,193 @@ function playersList() {
 // ---------- профиль ----------
 function seasonLabel(k) { const M = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']; const [y, m] = String(k).split('-'); return `${M[+m - 1]} ${y}`; }
 
-function heroView(d, mine) {
-  const p = d.player, games = p.wins + p.losses, wr = games ? Math.round(p.wins * 100 / games) : 0;
-  let prog;
+function levelCard(d, mine) {
+  const p = d.player;
   if (!p.calibrated) {
-    const res = d.history.slice(0, p.calib_played).reverse().map(h => h.team === h.winner ? 'w' : 'l');
-    const c = d.calibration;
-    prog = `<div class="row" style="margin-top:14px"><div class="grow c" style="font-size:20px;font-weight:700">Калибровка ${p.calib_played} из ${p.calib_total}</div>
-        <div class="num" style="font-size:18px"><span class="p">${c.wins}W</span> <span class="m">${c.losses}L</span></div></div>
+    const res = d.history.filter(h => h.calibrating).slice(0, p.calib_played).reverse().map(h => h.team === h.winner ? 'w' : 'l'), c = d.calibration;
+    return `<div class="panel pad"><div class="row">${lvl(null, 'xl')}<div class="grow"><div class="c" style="font-size:24px;font-weight:800">Калибровка ${p.calib_played} из ${p.calib_total}</div>
+        <div class="num" style="font-size:17px"><span class="p">${c.wins} побед</span> · <span class="m">${c.losses} поражений</span></div></div></div>
       <div class="cal">${Array.from({ length: p.calib_total }, (_, i) => `<i class="${res[i] || ''}">${res[i] ? res[i].toUpperCase() : i + 1}</i>`).join('')}</div>
-      <p class="mute" style="margin:10px 0 0">В калибровке ELO меняется в ${S.cfg.calibration_mult} раза сильнее и зависит от силы соперников. После 10-го матча добавится бонус за K/D до ±100, если он вписан хотя бы в 3 играх${mine ? ` (сейчас ${c.with_stats})` : ''}. Выше ${S.cfg.placement_max_level} уровня после калибровки не поставят.</p>`;
-  } else {
-    const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
-    const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
-    prog = `<div class="row" style="margin-top:12px;align-items:baseline"><div class="elo" style="color:${LVL[p.level]}">${p.elo}</div><div class="grow mute">ELO · место ${d.rank}</div>
-        <div class="mute">${p.next_level_at ? `до ${p.level + 1} уровня <b style="color:var(--ink)">${p.next_level_at - p.elo}</b>` : 'максимум'}</div></div>
-      <div class="bar"><i style="width:${pct}%;background:${LVL[p.level]}"></i></div>`;
+      <p class="mute" style="margin:10px 0 0">В калибровке ELO меняется в ${S.cfg.calibration_mult} раза сильнее и зависит от силы соперников. После 10-го матча добавится бонус за K/D до ±100, если он вписан хотя бы в 3 играх${mine ? ` (сейчас ${c.with_stats})` : ''}. Выше ${S.cfg.placement_max_level} уровня после калибровки не поставят.</p></div>`;
   }
-  return `<div class="panel hero"><div class="row" style="gap:14px">${av(p, 'xl', false)}
-      <div class="grow"><div class="nick ell">${esc(p.nick)}</div><div class="mute">${p.game_id ? 'ID ' + esc(p.game_id) : 'ID не указан'}</div>
-        ${p.badges?.map(b => `<span class="medal">${b.place} место · ${esc(seasonLabel(b.season))}</span>`).join('') || ''}</div>
-      ${lvl(p.level, 'xl')}</div>${prog}
-    <div class="nums"><div><b>${games}</b><span>матчей</span></div><div><b class="p">${p.wins}</b><span>побед</span></div><div><b class="m">${p.losses}</b><span>поражений</span></div><div><b>${wr}%</b><span>винрейт</span></div></div></div>`;
+  const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
+  const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
+  return `<div class="panel lvc">${lvl(p.level, 'xl')}<div class="grow">
+      <div class="row" style="align-items:baseline"><span class="elo2" style="color:${LVL[p.level]}">${p.elo}</span><span class="mute">ELO · место ${d.rank}</span></div>
+      <div class="bar"><i style="width:${pct}%;background:${LVL[p.level]}"></i></div>
+      <div class="row mute" style="margin-top:6px"><span class="grow num">${p.elo} / ${p.next_level_at ?? '∞'}</span><span>${p.next_level_at ? `${p.next_level_at - p.elo} до ${p.level + 1} уровня` : 'максимальный уровень'}</span></div></div></div>`;
+}
+
+function statsCard(d) {
+  const st = d.stats, kd = st.kd ?? 0, C = 2 * Math.PI * 34, frac = Math.min(1, kd / 2);
+  const col = st.kd == null ? 'var(--s3)' : kd >= 1 ? 'var(--go)' : 'var(--bad)';
+  const streak = st.streak >= 2 ? ` · <span class="${st.streak_win ? 'p' : 'm'}">${st.streak} ${st.streak_win ? plural(st.streak, 'победа', 'победы', 'побед') : plural(st.streak, 'поражение', 'поражения', 'поражений')} подряд</span>` : '';
+  return `<div class="panel"><div class="kdc"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="none" stroke="var(--s3)" stroke-width="7"/>
+      <circle cx="40" cy="40" r="34" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C * frac} ${C}"/></svg>
+      <div class="grow"><div class="big" style="color:${col}">${st.kd ?? '—'}</div><div class="c" style="font-weight:700;font-size:16px">K/D</div>
+        <div class="mute">AVG ${st.avg_kills ?? '—'} · MVP ${st.mvps}${streak}</div></div></div>
+    <div class="tiles">
+      <div class="tile"><span>Убийства</span><b>${st.kills}</b></div><div class="tile"><span>Смерти</span><b>${st.deaths}</b></div>
+      <div class="tile"><span>Ассисты</span><b>${st.assists}</b></div><div class="tile"><span>Лучший матч</span><b>${st.best_kills ?? '—'}</b></div>
+      <div class="tile w"><span>Победы</span><b>${st.wins}</b></div><div class="tile l"><span>Поражения</span><b>${st.losses}</b></div></div>
+    ${st.stat_games < d.player.games ? `<div class="mute" style="padding:0 14px 12px">K/D посчитан по ${st.stat_games} из ${d.player.games} матчей, где вписана статистика</div>` : ''}</div>`;
+}
+
+function eloChart(d) {
+  const pts = d.elo_history;
+  if (pts.length < 2) return '';
+  const W = 300, H = 120, ys = pts.map(p => p.elo), lo = Math.min(...ys), hi = Math.max(...ys), span = Math.max(20, hi - lo);
+  const x = i => (i / (pts.length - 1)) * W, y = v => H - 8 - ((v - lo) / span) * (H - 16);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p.elo).toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1], up = last.d >= 0, col = up ? 'var(--go)' : 'var(--bad)';
+  const fmt = t => new Date(t * 1000).toLocaleDateString('ru', { day: 'numeric', month: 'short' });
+  return `<div class="hd"><h2>История рейтинга</h2></div><div class="panel chart">
+    <div class="row"><span class="c num" style="font-size:30px;font-weight:800">${last.elo}</span><span class="num ${up ? 'p' : 'm'}" style="font-size:18px;font-weight:700">${up ? '+' : ''}${last.d}</span>
+      <span class="grow"></span><span class="mute">мин ${lo} · макс ${hi}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <line x1="0" x2="${W}" y1="${y(lo)}" y2="${y(lo)}" stroke="var(--line)" vector-effect="non-scaling-stroke"/>
+      <line x1="0" x2="${W}" y1="${y(hi)}" y2="${y(hi)}" stroke="var(--line)" vector-effect="non-scaling-stroke"/>
+      <path d="${line} L${W} ${H} L0 ${H}Z" fill="${col}" opacity=".12"/>
+      <path d="${line}" fill="none" stroke="${col}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>
+    <div class="row mute" style="margin-top:6px"><span class="grow">${fmt(pts[0].t)}</span><span>${fmt(last.t)}</span></div></div>`;
+}
+
+function matchRow(h) {
+  const won = h.team === h.winner;
+  const d = h.elo_delta == null ? '<span class="mute">калибровка</span>' : `<span class="${won ? 'p' : 'm'}">${h.elo_delta >= 0 ? '+' : ''}${h.elo_delta} ELO</span>`;
+  return `<button class="mrow2" onclick="openMatch(${h.id})"><div class="mt2" style="--m:${mapColor(h.map)};--r:${won ? 'var(--go)' : 'var(--bad)'}">${esc(h.map[0] || '?')}</div>
+    <div class="grow" style="min-width:0"><b class="ell">${won ? 'Победа' : 'Поражение'} · ${esc(h.map)}${h.is_mvp ? ' <span class="mvpb">MVP</span>' : ''}</b>
+      <div class="mute ell">${d}${h.kills != null ? ` · ${h.kills}/${h.assists ?? 0}/${h.deaths}` : ` · ${fmtDate(h.finished_at)}`}</div></div>
+    <span class="sc">${esc(h.score) || '—'}</span>${I.chev}</button>`;
 }
 
 async function openProfile(tgId, isTab) {
   try {
-    const d = await api('/players/' + tgId), mine = tgId === S.me.user.id, st = d.stats;
-    const streak = st.streak >= 2 ? `<span class="${st.streak_win ? 'p' : 'm'}">${st.streak} ${st.streak_win ? plural(st.streak, 'победа', 'победы', 'побед') : plural(st.streak, 'поражение', 'поражения', 'поражений')} подряд</span>` : '';
-    const kd = `<h2>Стрельба ${streak ? `<small>${streak}</small>` : ''}</h2><div class="panel"><div class="nums three" style="border:0;margin:0">
-      <div><b>${st.kd ?? '—'}</b><span>K/D</span></div><div><b>${st.avg_kills ?? '—'}</b><span>убийств за матч</span></div><div><b style="color:var(--gold)">${st.mvps}</b><span>MVP</span></div>
-      <div><b>${st.best_kills ?? '—'}</b><span>лучший матч</span></div><div><b>${st.best_streak}</b><span>лучшая серия</span></div><div><b>${d.player.games}</b><span>всего игр</span></div></div></div>`;
-    const maps = `<h2>Карты</h2><div class="panel">${d.maps.map(m => {
+    const d = await api('/players/' + tgId), mine = tgId === S.me.user.id, p = d.player;
+    S.prof = d;
+    const fs = d.friend, fbtn = mine ? '' : {
+      none: `<button class="btn" onclick="friendAct('request',${tgId})">Добавить в друзья</button>`,
+      outgoing: `<button class="btn ghost" onclick="friendAct('remove',${tgId})">Заявка отправлена · отменить</button>`,
+      incoming: `<div class="btns" style="margin:0"><button class="btn" onclick="friendAct('accept',${tgId})">Принять в друзья</button><button class="btn ghost sm" onclick="friendAct('decline',${tgId})">Нет</button></div>`,
+      friends: `<button class="btn ghost" onclick="confirmDo('Удалить из друзей?',()=>friendAct('remove',${tgId}))">В друзьях · удалить</button>`,
+    }[fs];
+    const card = `<div class="panel" style="overflow:hidden"><div class="pc"><div class="row" style="gap:14px">${av(p, 'xl', false, true)}
+        <div class="grow"><div class="nick ell">${esc(p.nick)}</div>
+          ${p.game_id ? `<button class="idrow" onclick="copyText('${esc(p.game_id)}')">ID ${esc(p.game_id)} ${I.copy}</button>` : '<div class="idrow">ID не указан</div>'}
+          <div class="mute">${p.online ? '<span class="p">в сети</span>' : `был в сети ${ago(p.last_seen)}`}</div></div></div>
+        ${mine ? `<button class="edit" aria-label="Изменить профиль" onclick="openEdit()">${I.pen}</button>` : ''}
+        ${p.badges?.length ? `<div>${p.badges.map(b => `<span class="medal">${b.place} место · ${esc(seasonLabel(b.season))}</span>`).join('')}</div>` : ''}
+        ${fbtn ? `<div style="margin-top:14px">${fbtn}</div>` : ''}</div>
+      <div class="rowlink"><div class="ic" style="color:${p.banned ? 'var(--bad)' : 'var(--mute)'}">${I.shield}</div><div class="grow"><b>Наказания</b>
+        <span class="mute">${p.banned ? `Бан до ${new Date(p.banned_until * 1000).toLocaleString('ru')}` : 'Ничего не действует'}</span></div></div></div>`;
+    const got = d.achievements.filter(a => a.got);
+    const achs = `<div class="hd"><h2>Достижения <small>${got.length} из ${d.achievements.length}</small></h2><button class="lnk" onclick="openAchs()">Все ${I.chev}</button></div>
+      <div class="strip">${[...got, ...d.achievements.filter(a => !a.got)].map(a => `<div class="medal2 ${a.got ? 'on' : ''}" title="${esc(a.title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${ACH[a.id] || ''}</svg></div>`).join('')}</div>`;
+    const maps = `<div class="hd"><h2>Карты <small>${d.maps.filter(m => m.games).length} из ${d.maps.length}</small></h2></div><div class="panel">${d.maps.map(m => {
       const c = m.wr == null ? 'var(--s3)' : m.wr >= 55 ? 'var(--go)' : m.wr >= 45 ? 'var(--gold)' : 'var(--bad)';
       return `<div class="mrow"><div class="nm" style="--m:${mapColor(m.map)}">${esc(m.map)}</div><div class="b"><i style="width:${m.wr ?? 0}%;background:${c}"></i></div>
         <div class="v">${m.games ? `${m.wr}% · ${m.games} ${plural(m.games, 'игра', 'игры', 'игр')}` : 'не играл'}</div></div>`;
     }).join('')}</div>`;
-    const got = d.achievements.filter(a => a.got).length;
-    const achs = `<h2>Достижения <small>${got} из ${d.achievements.length}</small></h2><div class="panel" style="overflow:hidden"><div class="ach">${d.achievements.map(a =>
-      `<div class="${a.got ? 'on' : 'off'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${ACH[a.id] || ''}</svg><div><b>${esc(a.title)}</b><span>${esc(a.desc)}</span></div></div>`).join('')}</div></div>`;
-    const hist = d.history.length ? d.history.map(h => {
-      const won = h.team === h.winner;
-      return `<div class="hist"><div class="r" style="background:${won ? 'var(--go)' : 'var(--bad)'}"></div>
-        <div><div class="c" style="font-size:18px;font-weight:700">${esc(h.map)} <span class="mute num" style="font-size:15px">${esc(h.score)}</span>${h.is_mvp ? ' <span style="color:var(--gold)">MVP</span>' : ''}</div>
-          <div class="mute">${fmtDate(h.finished_at)}${h.kills != null ? ` · ${h.kills}–${h.deaths}` : ''}</div>
-          ${mine && h.can_stats ? `<button class="chip" style="margin-top:6px" onclick="openStats(${h.id})">Вписать K/D</button>` : ''}</div>
-        <div class="d ${h.elo_delta == null ? '' : h.elo_delta >= 0 ? 'p' : 'm'}">${h.elo_delta == null ? '<span class="mute" style="font-size:14px">калибровка</span>' : (h.elo_delta >= 0 ? '+' : '') + h.elo_delta}</div></div>`;
-    }).join('') : '<div class="empty">Ещё нет сыгранных матчей</div>';
-    const html = `${isTab ? '' : `<button class="back" onclick="S.view=null;render()">${I.back}Назад</button>`}
-      ${heroView(d, mine)}${mine ? '<button class="btn ghost" onclick="openEdit()">Изменить профиль и аватар</button>' : ''}
-      ${kd}${maps}${achs}<h2>Матчи</h2><div class="panel" style="padding-left:0">${hist}</div>`;
+    const need = mine ? d.history.filter(h => h.can_stats) : [];
+    const last = `<div class="hd"><h2>Последние матчи</h2>${d.history.length > 5 ? `<button class="lnk" onclick="openHistory(${tgId})">Все ${d.history.length} ${I.chev}</button>` : ''}</div>
+      ${need.length ? `<button class="btn" style="margin-bottom:10px" onclick="openStats(${need[0].id})">Вписать K/D за матч на ${esc(need[0].map)}</button>` : ''}
+      <div class="panel">${d.history.length ? d.history.slice(0, 5).map(matchRow).join('') : '<div class="empty">Ещё нет сыгранных матчей</div>'}</div>`;
+    const html = `${isTab ? '' : backBtn()}${card}${achs}${levelCard(d, mine)}<div class="hd"><h2>Статистика</h2><span class="mute">${p.games} ${plural(p.games, 'матч', 'матча', 'матчей')}</span></div>${statsCard(d)}${eloChart(d)}${maps}${last}`;
     if (isTab) $('#app').innerHTML = topbar() + `<div class="wrap">${html}</div>`;
-    else { S.view = html; render(); window.scrollTo(0, 0); }
+    else pushView(html);
+  } catch (e) { toast(e.message); }
+}
+
+function openAchs() {
+  const d = S.prof;
+  sheet(`<h3>Достижения</h3><div class="mute">${d.achievements.filter(a => a.got).length} из ${d.achievements.length} получено</div>
+    <div class="panel" style="overflow:hidden;margin-top:12px"><div class="ach">${d.achievements.map(a =>
+      `<div class="${a.got ? 'on' : 'off'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${ACH[a.id] || ''}</svg><div><b>${esc(a.title)}</b><span>${esc(a.desc)}</span></div></div>`).join('')}</div></div>`);
+}
+
+function openHistory(tgId) {
+  const d = S.prof, w = d.history.filter(h => h.team === h.winner).length;
+  pushView(`${backBtn()}<div class="hd" style="margin-top:4px"><h2 style="font-size:28px">История матчей</h2><span class="mute">${esc(d.player.nick)}</span></div>
+    <div class="mute" style="margin:-4px 0 10px">${d.history.length} ${plural(d.history.length, 'матч', 'матча', 'матчей')} · <span class="p">${w} W</span> · <span class="m">${d.history.length - w} L</span></div>
+    <div class="panel">${d.history.map(matchRow).join('')}</div>`);
+}
+
+async function openMatch(id) {
+  try {
+    const m = await api('/matches/' + id), [s1, s2] = (m.score || '').split(':');
+    const team = t => {
+      const won = m.winner === t, cap = t === 1 ? m.captain1 : m.captain2;
+      const ps = m.players.filter(p => p.team === t).sort((a, b) => (b.kills ?? -1) - (a.kills ?? -1));
+      const rows = ps.map(p => {
+        const kd = p.kills != null ? (p.kills / Math.max(1, p.deaths)).toFixed(2) : '—';
+        const d = p.elo_delta == null ? '<span class="mute" style="font-size:12px">калибр.</span>' : `<span class="${p.elo_delta >= 0 ? 'p' : 'm'}">${p.elo_delta >= 0 ? '+' : ''}${p.elo_delta}</span>`;
+        return `<div class="tgrid ${p.tg_id === m.mvp ? 'mvp' : ''}" onclick="openProfile(${p.tg_id})"><div class="who">${av(p, 'sm', false)}<div style="min-width:0">
+            <b>${esc(p.nick)}${p.tg_id === m.mvp ? '<span class="mvpb">MVP</span>' : ''}${p.tg_id === cap ? ' <span class="tagC">C</span>' : ''}</b>
+            <span class="sub2">${lvl(p.level, 'xs')}${p.game_id ? 'ID ' + esc(p.game_id) : ''}</span></div></div>
+          <div>${p.kills ?? '—'}</div><div>${p.assists ?? '—'}</div><div>${p.deaths ?? '—'}</div>
+          <div class="${p.kills != null ? (kd >= 1 ? 'p' : 'mute') : 'mute'}">${kd}</div><div>${d}</div></div>`;
+      }).join('');
+      return `<div class="panel tm ${won ? 'won' : ''}" style="overflow:hidden"><div class="tmh"><div style="width:6px;align-self:stretch;background:var(--${t === 1 ? 'a' : 'b'})"></div>
+          <div class="grow"><div class="mute">Команда ${t === 1 ? 'A' : 'B'}</div><div class="tn">Команда ${t}</div></div>
+          ${m.status === 'finished' ? `<span class="res ${won ? 'w' : 'l'}">${won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}</span>` : ''}
+          ${m.score ? `<span class="mute">Счёт</span><span class="sc ${won ? 'p' : ''}">${t === 1 ? s1 : s2}</span>` : ''}</div>
+        <div class="tgrid head"><div style="text-align:left">Игрок</div><div>K</div><div>A</div><div>D</div><div>K/D</div><div>ELO</div></div>${rows}</div>`;
+    };
+    pushView(`${backBtn()}<div class="panel" style="overflow:hidden;margin-bottom:12px"><div class="banner2" style="padding:16px;background:${mapColor(m.map)}">
+        <div class="mute" style="color:#fffc">Матч #${m.id}${m.finished_at ? ' · ' + fmtDate(m.finished_at) : ''}</div>
+        <div class="row" style="align-items:flex-end"><div class="grow c" style="font-size:34px;font-weight:800;line-height:1">${esc(m.map)}</div>
+          ${m.score ? `<div class="c num" style="font-size:34px;font-weight:800">${esc(s1)}:${esc(s2)}</div>` : ''}</div></div></div>
+      ${team(1)}${team(2)}`);
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- друзья ----------
+async function friendsTab() {
+  $('#app').innerHTML = topbar() + '<div class="wrap"><div class="panel empty" style="margin-top:10px">Загрузка…</div></div>';
+  try {
+    const [f, all] = await Promise.all([api('/friends'), S.top.length ? S.top : api('/leaderboard')]);
+    S.fr = f; S.top = all;
+    const on = f.friends.filter(x => x.online).length;
+    $('#app').innerHTML = topbar() + `<div class="wrap">
+      <div class="hd" style="margin-top:8px"><h2 style="font-size:28px">Друзья</h2><span class="mute">${f.friends.length} в списке · ${on} в сети</span></div>
+      <input class="search" placeholder="Найти игрока по нику или ID" value="${esc(S.fq || '')}" oninput="S.fq=this.value;$('#fsearch').innerHTML=friendSearch()">
+      <div id="fsearch">${friendSearch()}</div>
+      ${f.incoming.length ? `<div class="hd"><h2>Входящие заявки <small>${f.incoming.length}</small></h2></div><div class="panel">${f.incoming.map(x => frRow(x,
+        `<button class="btn sm" onclick="event.stopPropagation();friendAct('accept',${x.tg_id})">Принять</button><button class="btn ghost sm" onclick="event.stopPropagation();friendAct('decline',${x.tg_id})">×</button>`)).join('')}</div>` : ''}
+      ${f.outgoing.length ? `<div class="hd"><h2>Исходящие <small>${f.outgoing.length}</small></h2></div><div class="panel">${f.outgoing.map(x => frRow(x,
+        `<button class="btn ghost sm" onclick="event.stopPropagation();friendAct('remove',${x.tg_id})">Отменить</button>`, 'Ожидает подтверждения')).join('')}</div>` : ''}
+      <div class="hd"><h2>Список <small>${f.friends.length}</small></h2></div>
+      <div class="panel">${f.friends.length ? f.friends.map(x => frRow(x, I.chev)).join('') : '<div class="empty">Пока никого. Найди друга по нику выше</div>'}</div></div>`;
+  } catch (e) { toast(e.message); }
+}
+function frStatus(x) {
+  if (x.in_match) return '<span class="st on">играет матч</span>';
+  if (x.in_lobby) return '<span class="st on">в лобби</span>';
+  return x.online ? '<span class="st on">в сети</span>' : `<span class="st">был в сети ${ago(x.last_seen)}</span>`;
+}
+function frRow(x, right, sub) {
+  return `<div class="fr" onclick="openProfile(${x.tg_id})">${av(x, 'sm', true, true)}<div class="grow" style="min-width:0"><b class="ell">${esc(x.nick)}</b>
+    <div class="ell">${sub ? `<span class="st">${sub}</span>` : frStatus(x)}</div></div><div class="row" style="gap:6px">${right}</div></div>`;
+}
+function friendSearch() {
+  const q = (S.fq || '').trim().toLowerCase();
+  if (q.length < 2) return '';
+  const known = new Map([...S.fr.friends.map(x => [x.tg_id, 'friends']), ...S.fr.outgoing.map(x => [x.tg_id, 'outgoing']), ...S.fr.incoming.map(x => [x.tg_id, 'incoming'])]);
+  const res = S.top.filter(p => p.tg_id !== S.me.user.id && (p.nick.toLowerCase().includes(q) || String(p.game_id || '').includes(q))).slice(0, 8);
+  if (!res.length) return '<div class="panel empty">Никого не нашли</div>';
+  return `<div class="panel">${res.map(p => {
+    const st = known.get(p.tg_id);
+    const btn = st === 'friends' ? '<span class="mute">в друзьях</span>' : st === 'outgoing' ? '<span class="mute">заявка отправлена</span>'
+      : st === 'incoming' ? `<button class="btn sm" onclick="event.stopPropagation();friendAct('accept',${p.tg_id})">Принять</button>`
+      : `<button class="btn sm" onclick="event.stopPropagation();friendAct('request',${p.tg_id})">Добавить</button>`;
+    return frRow(p, btn, p.calibrated ? `${p.elo} ELO` : `калибровка ${p.calib_played}/10`);
+  }).join('')}</div>`;
+}
+async function friendAct(op, id) {
+  try {
+    const r = await api(`/friends/${op}`, { tg_id: id });
+    toast({ request: r.state === 'friends' ? 'Теперь вы друзья' : 'Заявка отправлена', accept: 'Теперь вы друзья', decline: 'Заявка отклонена', remove: 'Готово' }[op], true);
+    if (S.view) { S.stack.pop(); S.view = S.stack[S.stack.length - 1] || null; openProfile(id); } else if (S.tab === 'friends') friendsTab(); else render();
   } catch (e) { toast(e.message); }
 }
 
@@ -617,12 +831,13 @@ function openResult(id, adminEdit = false) {
 function openStats(id) {
   sheet(`<h3>Твоя статистика</h3><div class="mute">Матч #${id}. Из неё считаются MVP, K/D и бонус калибровки</div>
     <div class="row" style="margin-top:6px"><div class="grow"><label class="f" for="k">Убийства</label><input id="k" type="number" inputmode="numeric" placeholder="18"></div>
+      <div class="grow"><label class="f" for="aa">Ассисты</label><input id="aa" type="number" inputmode="numeric" placeholder="3"></div>
       <div class="grow"><label class="f" for="dd">Смерти</label><input id="dd" type="number" inputmode="numeric" placeholder="12"></div></div>
     <div class="btns"><button class="btn" id="st-go">Сохранить</button></div>`);
   $('#k').focus();
   $('#st-go').onclick = async () => {
-    try { await api(`/lobbies/${id}/stats`, { kills: +$('#k').value || 0, deaths: +$('#dd').value || 0 }); closeSheet(); toast('Сохранено', true);
-      if (S.tab === 'profile' || S.view) { S.view = null; render(); } else await refresh(); } catch (e) { toast(e.message); }
+    try { await api(`/lobbies/${id}/stats`, { kills: +$('#k').value || 0, assists: +$('#aa').value || 0, deaths: +$('#dd').value || 0 }); closeSheet(); toast('Сохранено', true);
+      if (S.tab === 'profile' || S.view) { S.view = null; S.stack = []; render(); } else await refresh(); } catch (e) { toast(e.message); }
   };
 }
 function openEdit() {
@@ -658,12 +873,12 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = async () => {
-  S.tab = b.dataset.tab; S.view = null; haptic('light'); window.scrollTo(0, 0);
+  S.tab = b.dataset.tab; S.view = null; S.stack = []; haptic('light'); window.scrollTo(0, 0);
   render();
   if (S.tab === 'top') { S.top = await api('/leaderboard'); render(); }
 });
