@@ -228,24 +228,6 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .fr .st.on{color:var(--go)}
 
 /* косметика: рамки и шевроны */
-.av.f-frame_steel{box-shadow:0 0 0 2px #aeb7c1,0 0 0 4px #4b525b}
-.av.f-frame_carbon{box-shadow:0 0 0 2px #50565e,0 0 0 4px #1b1d21,0 0 0 5px #50565e}
-.av.f-frame_fire{box-shadow:0 0 0 2px #ffb000,0 0 0 4px #ff4a1c}
-.av.f-frame_ice{box-shadow:0 0 0 2px #9be7ff,0 0 0 4px #2f7cff}
-.av.f-frame_toxic{box-shadow:0 0 0 2px #b6ff3a,0 0 0 4px #2f7a12}
-.av.f-frame_gold{box-shadow:0 0 0 2px #ffe27a,0 0 0 4px #c48a00}
-.av.f-frame_mint{box-shadow:0 0 0 2px #b9ffe4,0 0 0 4px #1aa077}
-.av.f-frame_violet{box-shadow:0 0 0 2px #e2c6ff,0 0 0 4px #7a3fd1}
-.av.f-frame_ruby{box-shadow:0 0 0 2px #ff9aa8,0 0 0 4px #b3122b,0 0 0 5px #ff9aa8}
-.av.f-frame_emerald{box-shadow:0 0 0 2px #a8ffb8,0 0 0 4px #0f7d3c,0 0 0 5px #a8ffb8}
-.av.f-frame_dual{box-shadow:-2px -2px 0 2px #2f7cff,2px 2px 0 2px #ff5236}
-.av.f-frame_prem{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00;animation:premf 2.4s linear infinite}
-@keyframes premf{0%,100%{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00}50%{box-shadow:0 0 0 2px #ffc400,0 0 0 4px #fff,0 0 0 6px #ff8a00}}
-.av.f-frame_galaxy{box-shadow:0 0 0 2px #c9a7ff,0 0 0 4px #3b2a8f,0 0 0 6px #1ad0ff;animation:galf 3s linear infinite}
-@keyframes galf{0%,100%{box-shadow:0 0 0 2px #c9a7ff,0 0 0 4px #3b2a8f,0 0 0 6px #1ad0ff}50%{box-shadow:0 0 0 2px #1ad0ff,0 0 0 4px #7a3fd1,0 0 0 6px #c9a7ff}}
-.av.f-frame_blood{box-shadow:0 0 0 2px #ff3a3a,0 0 0 4px #3a0006,0 0 0 6px #8a0010}
-.bn-bn_aurora{background:radial-gradient(ellipse at 30% 0%,#3fffb4aa 0 30%,transparent 60%),radial-gradient(ellipse at 75% 10%,#7a5cffaa 0 25%,transparent 55%),linear-gradient(180deg,#061226,#0d1f3a)}
-.bn-bn_galaxy{background:radial-gradient(circle at 20% 30%,#fff 0 1px,transparent 2px),radial-gradient(circle at 60% 70%,#fff 0 1px,transparent 2px),radial-gradient(circle at 85% 25%,#fff 0 1px,transparent 2px),radial-gradient(ellipse at 50% 50%,#7a3fd1aa 0 30%,transparent 60%),linear-gradient(135deg,#0b0620,#1d0f3f)}
 .flag{display:inline-block;width:22px;height:15px;border-radius:2px;vertical-align:-2px;margin-left:5px;overflow:hidden;box-shadow:0 0 0 1px #0006}
 .flag.big{width:60px;height:40px;border-radius:4px}
 .patch{width:64px;height:64px;display:grid;place-items:center;background:linear-gradient(160deg,#2a2f37,#14171b);border:2px solid #3a414b;clip-path:polygon(50% 0,100% 18%,100% 72%,50% 100%,0 72%,0 18%)}
@@ -270,19 +252,14 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .thumbs button{width:30px;height:28px;border-radius:4px;background:var(--s3);display:grid;place-items:center;color:var(--mute)}
 .thumbs button.up.on{background:#163322;color:var(--go)}.thumbs button.down.on{background:#2b1418;color:var(--bad)}
 .shotimg{display:block;width:100%;max-height:240px;object-fit:contain;background:#000;border-top:1px solid var(--line)}
+/* рисованная косметика */
+.frm{position:absolute;left:-8px;top:-8px;width:calc(100% + 16px);height:calc(100% + 16px);pointer-events:none;z-index:1}
+.av .lvl,.av .onl{z-index:2}
+.bnsvg{position:absolute;inset:0;width:100%;height:100%;display:block}
+svg.chev2{width:18px;height:18px;vertical-align:-3px;margin-left:4px}
+svg.patchbig{width:60px;height:60px}
 /* баннеры профиля */
 .bn{height:84px;position:relative;overflow:hidden;background:var(--s2)}
-.bn-bn_night{background:linear-gradient(180deg,#0c1330 0%,#1b2350 60%,#2a1a3f 100%)}
-.bn-bn_night::after{content:"";position:absolute;left:0;right:0;bottom:0;height:46px;background:repeating-linear-gradient(90deg,#090b14 0 18px,transparent 18px 22px,#090b14 22px 34px,transparent 34px 37px);clip-path:polygon(0 40%,6% 40%,6% 10%,12% 10%,12% 55%,20% 55%,20% 0,27% 0,27% 35%,36% 35%,36% 15%,44% 15%,44% 60%,52% 60%,52% 5%,60% 5%,60% 45%,70% 45%,70% 20%,78% 20%,78% 50%,88% 50%,88% 25%,100% 25%,100% 100%,0 100%)}
-.bn-bn_camo{background:radial-gradient(circle at 20% 30%,#4b5a2a 0 18%,transparent 19%),radial-gradient(circle at 70% 60%,#2f3a1c 0 22%,transparent 23%),radial-gradient(circle at 45% 80%,#6b6a3a 0 16%,transparent 17%),radial-gradient(circle at 88% 20%,#4b5a2a 0 14%,transparent 15%),#3a4424}
-.bn-bn_sand{background:repeating-linear-gradient(170deg,#c99a55 0 12px,#b5843f 12px 20px,#d8ad6a 20px 34px)}
-.bn-bn_sakura{background:radial-gradient(circle at 15% 40%,#ffd1e3 0 6%,transparent 7%),radial-gradient(circle at 55% 25%,#ffb3cf 0 5%,transparent 6%),radial-gradient(circle at 80% 70%,#ffd1e3 0 7%,transparent 8%),radial-gradient(circle at 35% 75%,#ff9ec2 0 4%,transparent 5%),linear-gradient(135deg,#5a2a45,#2a1424)}
-.bn-bn_ice{background:linear-gradient(120deg,transparent 40%,#ffffff33 41%,transparent 47%),linear-gradient(60deg,transparent 60%,#ffffff26 61%,transparent 66%),linear-gradient(135deg,#bfe9ff,#3f7fbf 60%,#1d3c66)}
-.bn-bn_lava{background:radial-gradient(ellipse at 30% 110%,#ffb000 0 20%,transparent 40%),radial-gradient(ellipse at 75% 120%,#ff5a1f 0 25%,transparent 45%),linear-gradient(180deg,#1a0a06,#4a1208)}
-.bn-bn_grid{background:linear-gradient(#00e0ff22 1px,transparent 1px) 0 0/16px 16px,linear-gradient(90deg,#00e0ff22 1px,transparent 1px) 0 0/16px 16px,linear-gradient(180deg,#0a0f1f,#1a0b2e)}
-.bn-bn_carbon{background:repeating-linear-gradient(45deg,#1b1d21 0 6px,#25282d 6px 12px)}
-.bn-bn_storm{background:linear-gradient(115deg,transparent 46%,#fff8 47%,#fff 48%,transparent 49%) ,linear-gradient(180deg,#232a3a,#3d4660 70%,#1a1f2b)}
-.bn-bn_prem{background:repeating-linear-gradient(135deg,#ffc40022 0 10px,transparent 10px 20px),linear-gradient(135deg,#3a2c00,#8a6a00 50%,#2a2000)}
 .pc.has-bn{padding-top:0}
 .pc.has-bn .bn{margin:0 -16px 0;height:84px}
 .pc.has-bn .row.top2{margin-top:-30px}
@@ -309,7 +286,6 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .colors{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .colors button{width:32px;height:32px;border-radius:50%;border:2px solid transparent}
 .colors button.on{border-color:#fff;box-shadow:0 0 0 2px var(--bg)}
-.av.xl[class*=f-frame]{outline:0}
 .chev2{display:inline-block;width:16px;height:16px;vertical-align:-2px;margin-left:4px}
 .prem{color:var(--gold)!important}
 .ptag{display:inline-block;font:800 10px "Fira Sans Condensed",sans-serif;background:var(--gold);color:#1a1400;padding:1px 5px;border-radius:2px;vertical-align:2px;margin-left:4px;letter-spacing:.04em}
@@ -416,6 +392,155 @@ label.f{display:block;margin:14px 0 6px;font-size:13px;font-weight:600;color:var
 </nav></div>
 
 <script>
+// ---------- рисованная косметика: нашивки, оправы аватара, баннеры ----------
+window.ART = (() => {
+  const rng = seed => { let s = seed % 2147483647 || 1; return () => (s = s * 16807 % 2147483647) / 2147483647; };
+  let uid = 0;
+  const gid = p => `${p}${++uid}`;
+
+  // ---- нашивки (шевроны) ----
+  const SH = {
+    shield: 'M20 2.5 35.5 7v12.5c0 9.6-6.6 15.6-15.5 18.5C11.1 35.1 4.5 29.1 4.5 19.5V7z',
+    round: 'M20 2.5a17.5 17.5 0 1 1 0 35 17.5 17.5 0 0 1 0-35z',
+    hex: 'M20 2.5 35.2 11.25v17.5L20 37.5 4.8 28.75v-17.5z',
+    tab: 'M3 8.5Q3 6 5.5 6h29Q37 6 37 8.5v23q0 2.5-2.5 2.5h-29Q3 34 3 31.5z',
+    wing: 'M20 4 37 10l-3 18-14 10-14-10-3-18z',
+  };
+  // эмблемы рисуются в квадрате 40×40, центр около (20, 20)
+  const EM = {
+    star: c => `<path d="M20 9.5l3.1 6.6 7.2.8-5.4 4.9 1.5 7.1L20 25.3l-6.4 3.6 1.5-7.1-5.4-4.9 7.2-.8z" fill="${c}"/>`,
+    heart: c => `<path d="M20 30s-9-5.6-9-12.2c0-3 2.3-5.3 5.1-5.3 1.8 0 3.1.9 3.9 2.2.8-1.3 2.1-2.2 3.9-2.2 2.8 0 5.1 2.3 5.1 5.3C29 24.4 20 30 20 30z" fill="${c}"/><path d="M15 15.5c-1.3.4-2 1.6-2 2.8" stroke="#fff6" stroke-width="1.2" fill="none" stroke-linecap="round"/>`,
+    bolt: c => `<path d="M22.5 8 12 22h6.5L16.5 32 28 17h-6.6z" fill="${c}" stroke="#0008" stroke-width=".8" stroke-linejoin="round"/>`,
+    rank: c => [0, 1, 2].map(i => `<path d="M11 ${12 + i * 6}l9 5 9-5v3.4l-9 5-9-5z" fill="${c}"/>`).join(''),
+    target: c => `<circle cx="20" cy="20" r="8.5" fill="none" stroke="${c}" stroke-width="2"/><circle cx="20" cy="20" r="3.5" fill="none" stroke="${c}" stroke-width="1.6"/><path d="M20 7v6.5M20 26.5V33M7 20h6.5M26.5 20H33" stroke="${c}" stroke-width="2" stroke-linecap="round"/><circle cx="20" cy="20" r="1" fill="${c}"/>`,
+    fire: c => `<path d="M20 8c4.4 4.6 7.6 8.6 7.6 13.4A7.6 7.6 0 0 1 12.4 21.4c0-2.7 1.3-4.8 3-6.4.2 2.4 1.3 3.8 2.6 4.3-.5-4 .4-7.6 2-11.3z" fill="${c}"/><path d="M20 19c1.9 2 3.2 3.7 3.2 5.6a3.2 3.2 0 0 1-6.4 0c0-1.4.8-2.6 1.7-3.4.2 1 .6 1.6 1.2 1.8-.1-1.4.1-2.7.3-4z" fill="#fff3b0"/>`,
+    diamond: c => `<path d="M13.5 12h13l5 6-11.5 12.5L8.5 18z" fill="${c}"/><path d="M8.5 18h23M16.5 12l-2 6 5.5 12.5 5.5-12.5-2-6M14.5 18 20 12l5.5 6" fill="none" stroke="#0a3a48" stroke-width=".9" stroke-linejoin="round"/><path d="M15 13.5l-1 2.5" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>`,
+    skull: c => `<path d="M20 9.5c-5.8 0-9.5 3.9-9.5 9 0 3.1 1.4 5.1 3.3 6.3v3.7h12.4v-3.7c1.9-1.2 3.3-3.2 3.3-6.3 0-5.1-3.7-9-9.5-9z" fill="${c}"/><ellipse cx="16.2" cy="19.2" rx="2.4" ry="2.7" fill="#14161a"/><ellipse cx="23.8" cy="19.2" rx="2.4" ry="2.7" fill="#14161a"/><path d="M20 22.2l-1.4 2.6h2.8z" fill="#14161a"/><path d="M16.3 26.4v2.1M18.8 26.6v1.9M21.2 26.6v1.9M23.7 26.4v2.1" stroke="#14161a" stroke-width="1"/>`,
+    wings: c => `<path d="M19 21c-3-6-8-8.5-14-8 2.4 1.4 3.2 2.7 3.4 4.2-1.6-.2-2.8 0-4 .7 2.3.8 3.3 1.9 3.8 3.3-1.3.1-2.3.6-3 1.4 4.5.3 9.5 1 13.8-1.6zM21 21c3-6 8-8.5 14-8-2.4 1.4-3.2 2.7-3.4 4.2 1.6-.2 2.8 0 4 .7-2.3.8-3.3 1.9-3.8 3.3 1.3.1 2.3.6 3 1.4-4.5.3-9.5 1-13.8-1.6z" fill="${c}"/><circle cx="20" cy="22" r="2.2" fill="${c}"/>`,
+    crown: c => `<path d="M10 27h20l1.6-12.5-6.2 4.8L20 11l-5.4 8.3-6.2-4.8z" fill="${c}" stroke="#7a5a00" stroke-width=".8" stroke-linejoin="round"/><rect x="10" y="27" width="20" height="3.2" rx=".8" fill="${c}" stroke="#7a5a00" stroke-width=".8"/><circle cx="20" cy="22" r="1.6" fill="#e0263a"/><circle cx="14.4" cy="23.2" r="1.1" fill="#2f7cff"/><circle cx="25.6" cy="23.2" r="1.1" fill="#2f7cff"/>`,
+    wolf: c => `<path d="M11 9.5l4.5 6.2h9L29 9.5l.9 10.3-2.8 4.4L20 31.5l-7.1-7.3-2.8-4.4z" fill="${c}"/><path d="M14.2 12.6l1.9 3.1M25.8 12.6l-1.9 3.1" stroke="#0005" stroke-width="1.2"/><path d="M14.5 19.5l3.6 1.3M25.5 19.5l-3.6 1.3" stroke="#e8f0ff" stroke-width="1.5" stroke-linecap="round"/><path d="M17.8 25.4h4.4L20 28.6z" fill="#14161a"/><path d="M20 21.5v3.9" stroke="#0004" stroke-width="1"/>`,
+    eagle: c => `<path d="M20 15.5c-2.8-3.6-7.4-5.4-13-4.8l2.5 2.2-2.9.6 3 1.8-2.4 1.1 3.4 1.2-1.8 1.6c3.7.6 7.4.4 10.6-1.3z" fill="${c}"/><path d="M20 15.5c2.8-3.6 7.4-5.4 13-4.8l-2.5 2.2 2.9.6-3 1.8 2.4 1.1-3.4 1.2 1.8 1.6c-3.7.6-7.4.4-10.6-1.3z" fill="${c}"/><path d="M17.5 17.5c0-2 1.1-3.6 2.5-3.6s2.5 1.6 2.5 3.6v6.5l2.3 5.5h-9.6l2.3-5.5z" fill="${c}"/><circle cx="20" cy="12.6" r="2.4" fill="#f4f1e8"/><path d="M21.6 12.4l2 .8-2 .6z" fill="#f0a020"/>`,
+    knives: c => `<g fill="${c}"><path d="M11 9.5l1.5-1 12.3 14.3-2.5 2.2z"/><path d="M29 9.5l-1.5-1-12.3 14.3 2.5 2.2z"/></g><g fill="#6b4423" stroke="#2a1a0c" stroke-width=".6"><path d="M21.6 23.5l2.7-2.3 4.4 5.2-2.7 2.3z"/><path d="M18.4 23.5l-2.7-2.3-4.4 5.2 2.7 2.3z"/></g><path d="M20.5 22l4.8-4.2M19.5 22l-4.8-4.2" stroke="#999" stroke-width="1.4"/>`,
+    dragon: c => `<path d="M9 26c3.5-1 6-4 7-9 1.4 2 3.5 3 5.5 2.6l3.2-5.6 1.3 4.5 4.6.9-3.3 3.3 1.2 4.6-4.4-2c-2.7 2.4-6.4 3.3-10.4 2.3l-3.6 2z" fill="${c}"/><path d="M16 17c-2-3-1.4-5.8.6-8 .1 2.4 1.3 4 3.2 5" fill="${c}"/><circle cx="25.3" cy="19.2" r="1.1" fill="#ffe27a"/><path d="M12 25.5c2 .4 3.9.1 5.6-.9" stroke="#0006" stroke-width="1" fill="none"/>`,
+    phoenix: c => `<path d="M20 33c-1.6-3.6-1.6-6.2-.3-8.8-4 .1-7.8-2.4-10.2-7.4 3.6 1.3 6.3 1.3 8.8 0-1.3-2.6-1.3-5.1 1.3-7.8 0 3.8 1.3 5.1 3.8 6.4 2.6-1.3 5.1-1.3 7.7 1.3-3.8 0-5.1 1.3-6.4 3.8 3.8 0 6.4 1.3 7.7 3.8-3.8 0-6.4 0-9 1.3 0 2.6 0 5.1-3.4 7.4z" fill="${c}"/><path d="M20 24.2c.6-2.8 2-4.6 4.2-5.6" stroke="#fff4c0" stroke-width="1" fill="none"/>`,
+    premium: c => `<path d="M20 9.5l3.1 6.6 7.2.8-5.4 4.9 1.5 7.1L20 25.3l-6.4 3.6 1.5-7.1-5.4-4.9 7.2-.8z" fill="${c}"/><path d="M8 31h24" stroke="${c}" stroke-width="1.6"/><text x="20" y="35.4" font-size="4.4" font-family="Fira Sans Condensed,sans-serif" font-weight="800" text-anchor="middle" fill="${c}">PREMIUM</text>`,
+  };
+  // [форма, ткань, кант, нитка прострочки, эмблема, цвет эмблемы, надпись]
+  const PATCH = {
+    chev_star: ['round', '#2b3320', '#5c6a3a', '#a8b37a', 'star', '#f0d34a'],
+    chev_heart: ['shield', '#3a1420', '#7a2a40', '#e88aa6', 'heart', '#ff5a7e'],
+    chev_bolt: ['hex', '#14243a', '#2f4f7a', '#8fb6e8', 'bolt', '#5cc8ff'],
+    chev_shield: ['shield', '#26301c', '#55633a', '#c5cf9a', 'rank', '#e8d27a'],
+    chev_target: ['round', '#1c1f24', '#4a5058', '#9aa2ab', 'target', '#ff5236'],
+    chev_fire: ['shield', '#2a120a', '#6a2a12', '#ffb27a', 'fire', '#ff7a1f'],
+    chev_diamond: ['hex', '#0f2a33', '#2a6070', '#9fe6f5', 'diamond', '#7fe8ff'],
+    chev_skull: ['tab', '#17191c', '#3a3e44', '#8a9098', 'skull', '#e8ecf0', 'NO MERCY'],
+    chev_wings: ['wing', '#221a33', '#4a3a70', '#c2aef0', 'wings', '#d9c8ff'],
+    chev_crown: ['shield', '#2a1f08', '#7a5a10', '#ffd970', 'crown', '#ffc400'],
+    chev_wolf: ['shield', '#1d2228', '#4a545e', '#aab4be', 'wolf', '#c5ced8', 'WOLF'],
+    chev_eagle: ['round', '#2a1e10', '#6a4a20', '#e0b060', 'eagle', '#c58a3a'],
+    chev_knives: ['tab', '#1f1a16', '#4a4038', '#b0a090', 'knives', '#d8dde3', 'ASSAULT'],
+    chev_dragon: ['shield', '#2a0a0e', '#b8860b', '#ffd970', 'dragon', '#ff3a3a'],
+    chev_phoenix: ['round', '#2a1406', '#b8860b', '#ffd970', 'phoenix', '#ff9a1f'],
+    chev_prem: ['shield', '#2a2000', '#c48a00', '#ffe27a', 'premium', '#ffc400'],
+  };
+  function patch(id, cls = 'chev2') {
+    const d = PATCH[id];
+    if (!d) return '';
+    const [shape, cloth, edge, thread, em, ec, label] = d, g = gid('pt');
+    const sp = SH[shape];
+    return `<svg class="${cls}" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".09"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient></defs>
+      <path d="${sp}" fill="${edge}"/><path d="${sp}" fill="${cloth}" transform="translate(20 20) scale(.84) translate(-20 -20)"/>
+      <path d="${sp}" fill="none" stroke="${thread}" stroke-width="1" stroke-dasharray="1.6 1.3" transform="translate(20 20) scale(.9) translate(-20 -20)" opacity=".85"/>
+      <g ${label ? 'transform="translate(20 17) scale(.8) translate(-20 -20)"' : ''}>${EM[em](ec)}</g>
+      ${label ? `<text x="20" y="31.2" font-size="4.6" font-family="Fira Sans Condensed,sans-serif" font-weight="800" letter-spacing=".3" text-anchor="middle" fill="${thread}">${label}</text>` : ''}
+      <path d="${sp}" fill="url(#${g})" transform="translate(20 20) scale(.84) translate(-20 -20)"/></svg>`;
+  }
+
+  // ---- оправы аватара: рисуются поверх квадрата 100×100, аватар внутри 8..92 ----
+  const box = (stroke, w = 5, extra = '') => `<rect x="${w / 2 + 2}" y="${w / 2 + 2}" width="${96 - w}" height="${96 - w}" rx="6" fill="none" stroke="${stroke}" stroke-width="${w}" ${extra}/>`;
+  const corners = f => [[6, 6, 0], [94, 6, 90], [94, 94, 180], [6, 94, 270]].map(([x, y, r]) => `<g transform="translate(${x} ${y}) rotate(${r})">${f}</g>`).join('');
+  const FR = {
+    frame_steel: () => { const g = gid('st'); return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef2f6"/><stop offset=".45" stop-color="#7d8792"/><stop offset=".55" stop-color="#c8d0d8"/><stop offset="1" stop-color="#4b525b"/></linearGradient></defs>${box(`url(#${g})`, 6)}${corners('<circle cx="3.5" cy="3.5" r="2.6" fill="#d9dee4" stroke="#3a4048" stroke-width=".8"/><path d="M2.3 3.5h2.4" stroke="#3a4048" stroke-width=".7"/>')}`; },
+    frame_mint: () => `${box('#1aa077', 3)}${box('#b9ffe4', 1.2, 'transform="translate(50 50) scale(.92) translate(-50 -50)"')}${corners('<path d="M0 14V0h14" fill="none" stroke="#b9ffe4" stroke-width="3" stroke-linecap="square"/>')}`,
+    frame_carbon: () => { const g = gid('cb'); return `<defs><pattern id="${g}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#15171a"/><rect width="2" height="2" fill="#3a3f46"/><rect x="2" y="2" width="2" height="2" fill="#2a2e34"/></pattern></defs>${box(`url(#${g})`, 7)}${box('#5a616a', .8)}`; },
+    frame_fire: () => `${box('#ff4a1c', 4)}${[12, 26, 40, 54, 68, 82].map((x, i) => `<path d="M${x - 5} 7c1-${4 + (i % 3) * 2} 3-${7 + (i % 2) * 3} 5-${10 + (i % 3) * 2}c1 3 4 5 4 9-1 1-6 1-9 1z" fill="${i % 2 ? '#ffb000' : '#ff6a1f'}"/>`).join('')}${corners('<path d="M0 10c-1-4 1-8 4-10-1 3 1 4 3 4-2 2-4 4-7 6z" fill="#ffb000"/>')}`,
+    frame_ice: () => `${box('#4fa6ff', 3.5)}${box('#d8f4ff', 1, 'transform="translate(50 50) scale(.93) translate(-50 -50)"')}${corners('<path d="M-3 9 2 2l7-5-3 8zM3 14l2-9 5 2zM12 2l-7 3 2-6z" fill="#d8f4ff" stroke="#4fa6ff" stroke-width=".8" stroke-linejoin="round"/>')}`,
+    frame_toxic: () => `${box('#6fd12a', 4)}${[18, 34, 47, 63, 80].map((x, i) => `<path d="M${x} 6v${6 + i % 3 * 4}a2.6 2.6 0 1 0 5.2 0V6z" transform="translate(-2.6 0)" fill="#b6ff3a"/>`).join('')}${box('#2f7a12', 1, 'transform="translate(50 50) scale(.95) translate(-50 -50)"')}`,
+    frame_violet: () => `${box('#7a3fd1', 3)}${corners('<path d="M0 16V0h16" fill="none" stroke="#e2c6ff" stroke-width="3"/><circle cx="0" cy="0" r="3" fill="#e2c6ff"/>')}`,
+    frame_ruby: () => gem('#b3122b', '#ff9aa8', '#ff2a4a'),
+    frame_emerald: () => gem('#0f7d3c', '#a8ffb8', '#2ae06a'),
+    frame_dual: () => `<path d="M4.5 60V10.5a6 6 0 0 1 6-6H60" fill="none" stroke="#2f7cff" stroke-width="5"/><path d="M95.5 40v49.5a6 6 0 0 1-6 6H40" fill="none" stroke="#ff5236" stroke-width="5"/><path d="M60 4.5h29.5a6 6 0 0 1 6 6V40M40 95.5H10.5a6 6 0 0 1-6-6V60" fill="none" stroke="#ffffff55" stroke-width="2"/>`,
+    frame_gold: () => { const g = gid('gd'); return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1a8"/><stop offset=".5" stop-color="#c48a00"/><stop offset="1" stop-color="#ffe27a"/></linearGradient></defs>${box(`url(#${g})`, 5)}${box('#7a5a00', 1, 'transform="translate(50 50) scale(.9) translate(-50 -50)"')}${corners(`<path d="M-2 4 4-2l6 6-6 6z" fill="url(#${g})" stroke="#7a5a00" stroke-width=".8"/><circle cx="4" cy="4" r="1.6" fill="#e0263a"/>`)}${[50].map(x => `<path d="M${x - 6} 3l6-4 6 4-6 4z" fill="url(#${g})" stroke="#7a5a00" stroke-width=".8"/>`).join('')}`; },
+    frame_prem: () => { const g = gid('pr'); return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7a5a00"/><stop offset=".5" stop-color="#fff6c8"><animate attributeName="offset" values=".1;.9;.1" dur="2.6s" repeatCount="indefinite"/></stop><stop offset="1" stop-color="#c48a00"/></linearGradient></defs>${box(`url(#${g})`, 6)}${corners('<path d="M0 0l9 2-7 7z" fill="#ffc400" stroke="#7a5a00" stroke-width=".8"/>')}<path d="M42 1.5h16l-3 5H45z" fill="#ffc400" stroke="#7a5a00" stroke-width=".8"/><path d="M50 2.3l.9 1.8 2 .2-1.5 1.3.4 2-1.8-1-1.8 1 .4-2-1.5-1.3 2-.2z" fill="#7a5a00"/>`; },
+    frame_galaxy: () => { const g = gid('gx'); return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1ad0ff"/><stop offset=".5" stop-color="#7a3fd1"/><stop offset="1" stop-color="#ff6fb5"/><animateTransform attributeName="gradientTransform" type="rotate" values="0 .5 .5;360 .5 .5" dur="6s" repeatCount="indefinite"/></linearGradient></defs>${box(`url(#${g})`, 5)}${[[10, 3], [70, 2], [97, 40], [30, 97], [3, 70]].map(([x, y]) => `<path d="M${x} ${y - 4}l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill="#fff"/>`).join('')}`; },
+    frame_blood: () => `${box('#5a000a', 6)}${box('#ff3a3a', 1.2)}${[[50, 3, 0], [97, 50, 90], [50, 97, 180], [3, 50, 270], [25, 3, 0], [75, 97, 180]].map(([x, y, r]) => `<path d="M-3 0 0-7 3 0z" transform="translate(${x} ${y}) rotate(${r})" fill="#8a0010" stroke="#ff3a3a" stroke-width=".6"/>`).join('')}`,
+  };
+  function gem(base, light, stone) { return `${box(base, 4)}${box(light, 1, 'transform="translate(50 50) scale(.92) translate(-50 -50)"')}${corners(`<path d="M4 -2 10 4 4 10-2 4z" fill="${stone}" stroke="${light}" stroke-width="1"/><path d="M4 -2 4 10M-2 4h12" stroke="#fff6" stroke-width=".6"/>`)}`; }
+  function frame(id) { return FR[id] ? `<svg class="frm" viewBox="0 0 100 100" aria-hidden="true">${FR[id]()}</svg>` : ''; }
+
+  // ---- баннеры профиля: сцены 400×100 ----
+  const BN = {
+    bn_night: () => {
+      const r = rng(7), g = gid('ng'); let st = '', city = '';
+      for (let i = 0; i < 40; i++) st += `<circle cx="${(r() * 400).toFixed(1)}" cy="${(r() * 55).toFixed(1)}" r="${(r() * .9 + .2).toFixed(2)}" fill="#fff" opacity="${(.3 + r() * .7).toFixed(2)}"/>`;
+      [[58, '#1a2045', 0], [74, '#0f1430', 1], [88, '#080b1a', 2]].forEach(([base, col, l]) => {
+        let x = -5; while (x < 405) {
+          const w = 14 + r() * 26, h = 10 + r() * (l === 0 ? 30 : 42), y = 100 - (100 - base) - h + (l * 6);
+          city += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${(100 - y).toFixed(1)}" fill="${col}"/>`;
+          if (l > 0) for (let wy = y + 4; wy < 96; wy += 6) for (let wx = x + 3; wx < x + w - 3; wx += 5) if (r() < .22) city += `<rect x="${wx.toFixed(1)}" y="${wy.toFixed(1)}" width="2" height="2.6" fill="${r() < .8 ? '#ffd36b' : '#7fd8ff'}" opacity=".9"/>`;
+          x += w + 1;
+        }
+      });
+      return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0f2a"/><stop offset="1" stop-color="#3a2050"/></linearGradient></defs><rect width="400" height="100" fill="url(#${g})"/>${st}<circle cx="330" cy="24" r="11" fill="#f4efd8"/><circle cx="335" cy="21" r="10" fill="#0d1230" opacity=".2"/>${city}`;
+    },
+    bn_camo: () => {
+      const r = rng(11), cols = ['#4b5a2a', '#2f3a1c', '#6b6a3a', '#3a4424']; let px = '';
+      const cell = 8, seeds = Array.from({ length: 26 }, () => [r() * 400, r() * 100, Math.floor(r() * 4)]);
+      for (let y = 0; y < 100; y += cell) for (let x = 0; x < 400; x += cell) {
+        let best = 0, bd = 1e9;
+        seeds.forEach((s, i) => { const d = (s[0] - x) ** 2 * .6 + (s[1] - y) ** 2 + r() * 260; if (d < bd) { bd = d; best = i; } });
+        px += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${cols[seeds[best][2]]}"/>`;
+      }
+      return px;
+    },
+    bn_sand: () => `<rect width="400" height="100" fill="#e9b872"/><circle cx="300" cy="30" r="16" fill="#fff1c9"/><path d="M0 55Q80 30 170 52T400 45V100H0z" fill="#d79a52"/><path d="M0 70Q110 48 220 68T400 62V100H0z" fill="#c2833c"/><path d="M0 84Q120 68 260 86T400 80V100H0z" fill="#a86a2a"/><path d="M60 62q40-8 80 2M240 75q50-10 100 2" stroke="#f3c98a" stroke-width="1.2" fill="none" opacity=".6"/>`,
+    bn_sakura: () => {
+      const r = rng(5), fl = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})">${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-4.2" rx="2.9" ry="4.4" transform="rotate(${a})" fill="${c}"/>`).join('')}<circle r="1.4" fill="#ffd27a"/></g>`;
+      let f = ''; const pts = [[120, 40], [150, 28], [185, 34], [215, 22], [250, 30], [280, 18], [205, 48], [310, 26], [95, 52], [340, 34]];
+      pts.forEach(([x, y]) => f += fl(x + (r() - .5) * 6, y + (r() - .5) * 6, .7 + r() * .5, r() < .5 ? '#ffc1d6' : '#ff9ec2'));
+      for (let i = 0; i < 9; i++) f += `<ellipse cx="${(r() * 400).toFixed(0)}" cy="${(50 + r() * 45).toFixed(0)}" rx="2.4" ry="1.4" transform="rotate(${(r() * 180).toFixed(0)} 0 0)" fill="#ffc1d6" opacity=".7"/>`;
+      return `<rect width="400" height="100" fill="#2a1424"/><circle cx="60" cy="70" r="70" fill="#4a1f3a" opacity=".6"/><path d="M-10 70C40 62 80 50 120 42s70-14 110-20 70-6 120 4" stroke="#3a2418" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M150 32c10 8 25 12 55 14M240 22c12-6 30-8 50-6M100 46c-8 6-10 12-6 18" stroke="#3a2418" stroke-width="2.6" fill="none" stroke-linecap="round"/>${f}`;
+    },
+    bn_ice: () => `<rect width="400" height="100" fill="#bfe3f7"/><path d="M0 70 60 28l40 30 50-46 60 52 50-36 70 40 70-30V100H0z" fill="#6fa9d6"/><path d="M60 28 73 37l-6 2-7-4-10 7zM150 12l18 16-8-2-6 6-8-8-6 6zM260 30l14 10-6 0-6 4z" fill="#fff"/><path d="M0 82 80 60l60 22 70-28 70 30 60-20 60 22V100H0z" fill="#3f7fbf"/><path d="M0 92h400v8H0z" fill="#1d3c66"/>`,
+    bn_lava: () => {
+      const r = rng(3); let cr = '', rock = '';
+      for (let i = 0; i < 26; i++) rock += `<path d="M${(r() * 400).toFixed(0)} ${(r() * 100).toFixed(0)}l${(8 + r() * 14).toFixed(0)} ${(-4 - r() * 6).toFixed(0)} ${(10 + r() * 10).toFixed(0)} ${(6 + r() * 6).toFixed(0)} ${(-6 - r() * 10).toFixed(0)} ${(8 + r() * 8).toFixed(0)}z" fill="#2a1410" opacity=".8"/>`;
+      for (let i = 0; i < 8; i++) {
+        let x = 20 + i * 52 + (r() - .5) * 20, y = -2, d = `M${x.toFixed(0)} ${y}`;
+        while (y < 102) { x += (r() - .5) * 22; y += 8 + r() * 10; d += `L${x.toFixed(1)} ${y.toFixed(1)}`; }
+        const w = (1.6 + r() * 2.4).toFixed(1);
+        cr += `<path d="${d}" stroke="#ff4a12" stroke-width="${(w * 2.6).toFixed(1)}" stroke-opacity=".25" fill="none" stroke-linejoin="round"/><path d="${d}" stroke="#ff7a1f" stroke-width="${w}" fill="none" stroke-linejoin="round"/><path d="${d}" stroke="#ffe08a" stroke-width=".8" fill="none" stroke-linejoin="round"/>`;
+      }
+      const g = gid('lv');
+      return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#140806"/><stop offset="1" stop-color="#3a0f06"/></linearGradient></defs><rect width="400" height="100" fill="url(#${g})"/>${rock}${cr}<rect y="78" width="400" height="22" fill="#ff5a1f" opacity=".14"/>`;
+    },
+    bn_grid: () => {
+      const r = rng(9); let p = '';
+      for (let k = 1; k <= 9; k++) { const cx = 230, cy = 60, a = k * 16, b = k * 9; let d = ''; for (let t = 0; t <= 24; t++) { const an = t / 24 * Math.PI * 2, w = 1 + (r() - .5) * .18; d += `${t ? 'L' : 'M'}${(cx + Math.cos(an) * a * w).toFixed(1)} ${(cy + Math.sin(an) * b * w).toFixed(1)}`; } p += `<path d="${d}Z" fill="none" stroke="#c9b37a" stroke-width="${k % 3 ? .8 : 1.5}" opacity="${k % 3 ? .55 : .9}"/>`; }
+      return `<rect width="400" height="100" fill="#2b2a22"/>${p}<path d="M0 30h400M0 70h400M100 0v100M300 0v100" stroke="#ffffff10" stroke-width=".6"/><text x="12" y="92" font-size="7" font-family="Fira Sans Condensed,sans-serif" fill="#c9b37a" opacity=".8">N 48°27′ · E 35°01′</text>`;
+    },
+    bn_carbon: () => { const g = gid('cw'); return `<defs><pattern id="${g}" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#16181b"/><path d="M0 0h6v6H0zM6 6h6v6H6z" fill="#24272c"/><path d="M0 0h6v1H0zM6 6h6v1H6z" fill="#3a3e45"/></pattern></defs><rect width="400" height="100" fill="url(#${g})"/><rect width="400" height="100" fill="#000" opacity=".15"/><path d="M0 85h400" stroke="#ff5236" stroke-width="3"/>`; },
+    bn_storm: () => `<rect width="400" height="100" fill="#2a3142"/><g fill="#4a5470"><ellipse cx="80" cy="18" rx="70" ry="22"/><ellipse cx="170" cy="10" rx="80" ry="24"/><ellipse cx="300" cy="16" rx="100" ry="24"/></g><g fill="#5f6a88"><ellipse cx="120" cy="26" rx="60" ry="16"/><ellipse cx="250" cy="28" rx="70" ry="16"/></g><path d="M232 30l-14 26h10l-8 30 26-36h-11l9-20z" fill="#fff8c8"/><path d="M232 30l-14 26h10l-8 30 26-36h-11l9-20z" fill="none" stroke="#fff" stroke-width="1"/>${Array.from({ length: 30 }, (_, i) => `<path d="M${(i * 14 + 3) % 400} ${44 + (i * 7) % 40}l-3 9" stroke="#9fb0d0" stroke-width="1" opacity=".55"/>`).join('')}`,
+    bn_prem: () => { const g = gid('pg'); return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2000"/><stop offset=".5" stop-color="#8a6a00"/><stop offset="1" stop-color="#2a2000"/></linearGradient></defs><rect width="400" height="100" fill="url(#${g})"/>${Array.from({ length: 22 }, (_, i) => `<path d="M${i * 20 - 40} 100 ${i * 20 + 20} 0" stroke="#ffc400" stroke-opacity=".08" stroke-width="6"/>`).join('')}<path d="M300 50c-12-4-18-14-18-26 6 6 12 8 18 8 6 0 12-2 18-8 0 12-6 22-18 26z" fill="#ffc400" opacity=".9"/><path d="M300 24l3 6 6 .8-4.5 4.2 1.2 6-5.7-3-5.7 3 1.2-6-4.5-4.2 6-.8z" fill="#2a2000"/>`; },
+    bn_aurora: () => { const r = rng(2); let s = ''; for (let i = 0; i < 30; i++) s += `<circle cx="${(r() * 400).toFixed(0)}" cy="${(r() * 60).toFixed(0)}" r=".7" fill="#fff" opacity="${(.4 + r() * .6).toFixed(2)}"/>`; const g = gid('au'); return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3fffb4" stop-opacity="0"/><stop offset=".5" stop-color="#3fffb4" stop-opacity=".7"/><stop offset="1" stop-color="#7a5cff" stop-opacity="0"/></linearGradient></defs><rect width="400" height="100" fill="#061226"/>${s}<path d="M0 40C60 10 110 60 180 30s120-20 220 10V70C330 50 260 80 190 60S60 70 0 80z" fill="url(#${g})"/><path d="M0 92 70 74l50 12 60-20 70 18 60-14 90 16V100H0z" fill="#03070f"/>`; },
+    bn_galaxy: () => { const r = rng(4); let s = ''; for (let i = 0; i < 140; i++) { const a = r() * Math.PI * 6, d = a * 6 + r() * 10; s += `<circle cx="${(200 + Math.cos(a) * d * 1.8).toFixed(1)}" cy="${(50 + Math.sin(a) * d * .55).toFixed(1)}" r="${(r() * .9 + .2).toFixed(2)}" fill="${r() < .3 ? '#c9a7ff' : '#fff'}" opacity="${(.4 + r() * .6).toFixed(2)}"/>`; } return `<rect width="400" height="100" fill="#0b0620"/><ellipse cx="200" cy="50" rx="150" ry="40" fill="#3a1a7a" opacity=".45"/><ellipse cx="200" cy="50" rx="60" ry="18" fill="#c9a7ff" opacity=".35"/>${s}<circle cx="200" cy="50" r="4" fill="#fff"/>`; },
+  };
+  function banner(id) { return BN[id] ? `<svg class="bnsvg" viewBox="0 0 400 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${BN[id]()}</svg>` : ''; }
+  return { patch, frame, banner, hasPatch: id => !!PATCH[id] };
+})();
+</script>
+<script>
 {
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
@@ -481,7 +606,7 @@ Object.assign(CHEV, {
   chev_dragon: ['#ff3a3a', '<path d="M3 14c3-1 5-4 6-8 1 2 3 3 5 3l3-4 1 5 4 1-3 3 1 4-4-2c-2 2-5 3-8 2l-3 2 1-4z" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="#111316"/>'],
   chev_phoenix: ['#ff9a1f', '<path d="M12 21c-1-3-1-5 0-7-3 0-6-2-8-6 3 1 5 1 7 0-1-2-1-4 1-6 0 3 1 4 3 5 2-1 4-1 6 1-3 0-4 1-5 3 3 0 5 1 6 3-3 0-5 0-7 1 0 2 0 4-3 6z" fill="currentColor"/>'],
 });
-const chevSvg = (id, cls = 'chev2') => id?.startsWith('flag_') ? flagSvg(id.slice(5), cls === 'chevbig') : CHEV[id] ? `<svg class="${cls}" viewBox="0 0 24 24" style="color:${CHEV[id][0]}">${CHEV[id][1]}</svg>` : '';
+const chevSvg = (id, cls = 'chev2') => id?.startsWith('flag_') ? flagSvg(id.slice(5), cls === 'chevbig') : ART.hasPatch(id) ? ART.patch(id, cls) : CHEV[id] ? `<svg class="${cls}" viewBox="0 0 24 24" style="color:${CHEV[id][0]}">${CHEV[id][1]}</svg>` : '';
 const nickH = p => `<span class="${p.premium && !p.nick_color ? 'prem' : ''}" ${p.premium && p.nick_color ? `style="color:${esc(p.nick_color)}"` : ''}>${esc(p.nick)}</span>${chevSvg(p.chevron)}`;
 const coinSvg = '<span class="tcoin">TC</span>';
 const ACH = {
@@ -505,7 +630,7 @@ function lvl(l, cls = '') {
 }
 function av(p, size = '', badge = true, online = false) {
   const inner = p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy" onerror="this.remove()">` : esc((p.nick || '?').slice(0, 2).toUpperCase());
-  return `<div class="av ${size} ${p.frame ? 'f-' + p.frame : ''}" style="--h:hsl(${hue(p.nick || p.tg_id)} 30% 28%)">${inner}${badge ? lvl(p.level, 'xs') : ''}${online && p.online ? '<i class="onl"></i>' : ''}</div>`;
+  return `<div class="av ${size} ${p.frame ? 'f-' + p.frame : ''}" style="--h:hsl(${hue(p.nick || p.tg_id)} 30% 28%)">${inner}${p.frame ? ART.frame(p.frame) : ''}${badge ? lvl(p.level, 'xs') : ''}${online && p.online ? '<i class="onl"></i>' : ''}</div>`;
 }
 const ago = ts => {
   if (!ts) return 'давно';
@@ -823,7 +948,7 @@ async function openProfile(tgId, isTab) {
       incoming: `<div class="btns" style="margin:0"><button class="btn" onclick="friendAct('accept',${tgId})">Принять в друзья</button><button class="btn ghost sm" onclick="friendAct('decline',${tgId})">Нет</button></div>`,
       friends: `<button class="btn ghost" onclick="confirmDo('Удалить из друзей?',()=>friendAct('remove',${tgId}))">В друзьях · удалить</button>`,
     }[fs];
-    const card = `<div class="panel" style="overflow:hidden"><div class="pc ${p.banner ? 'has-bn' : ''}">${p.banner ? `<div class="bn bn-${esc(p.banner)}"></div>` : ''}<div class="row top2" style="gap:14px;align-items:flex-end">${av(p, 'xl', false, true)}
+    const card = `<div class="panel" style="overflow:hidden"><div class="pc ${p.banner ? 'has-bn' : ''}">${p.banner ? `<div class="bn">${ART.banner(p.banner)}</div>` : ''}<div class="row top2" style="gap:14px;align-items:flex-end">${av(p, 'xl', false, true)}
         <div class="grow"><div class="nick ell">${nickH(p)}</div>${p.premium ? '<span class="ptag">PREMIUM</span>' : ''}
           ${p.game_id ? `<button class="idrow" onclick="copyText('${esc(p.game_id)}')">ID ${esc(p.game_id)} ${I.copy}</button>` : '<div class="idrow">ID не указан</div>'}
           <div class="mute">${p.online ? '<span class="p">в сети</span>' : `был в сети ${ago(p.last_seen)}`}${(() => { const r = d.reputation, n = r.up + r.down; return n ? ` · репутация <b class="${r.up / n >= .7 ? 'p' : r.up / n >= .4 ? '' : 'm'}">${Math.round(r.up * 100 / n)}%</b> (${n})` : ''; })()}</div></div></div>
@@ -939,11 +1064,11 @@ const DESC = { frame: 'Рамка вокруг аватара в профиле,
 function itemPreview(it, p) {
   const base = { ...p, frame: null, chevron: null };
   if (it.kind === 'frame') return av({ ...base, frame: it.id }, 'xl', false);
-  if (it.kind === 'chevron') return it.flag ? chevSvg(it.id, 'chevbig') : `<div class="patch">${chevSvg(it.id, 'chevbig')}</div>`;
-  if (it.kind === 'banner') return `<div class="bn bn-${it.id}"></div>`;
+  if (it.kind === 'chevron') return it.flag ? chevSvg(it.id, 'chevbig') : chevSvg(it.id, 'patchbig');
+  if (it.kind === 'banner') return `<div class="bn">${ART.banner(it.id)}</div>`;
   if (it.kind === 'bundle') {
     const [f, c, b] = it.items.map(id => S.cfg.shop.find(x => x.id === id));
-    return `<div class="bn bn-${b.id}"></div><div class="row" style="position:relative;gap:6px">${av({ ...base, frame: f.id }, '', false)}${chevSvg(c.id, 'chevbig')}</div>`;
+    return `<div class="bn">${ART.banner(b.id)}</div><div class="row" style="position:relative;gap:12px">${av({ ...base, frame: f.id }, '', false)}${chevSvg(c.id, 'patchbig')}</div>`;
   }
   return '';
 }
@@ -958,7 +1083,7 @@ async function shopTab() {
   let body = '';
   if (sec === 'premium') {
     const until = p.premium ? `Активен до ${new Date(p.premium_until * 1000).toLocaleDateString('ru')}` : 'Не активен';
-    body = `<div class="panel premc"><div class="row"><div class="grow"><h3>Премиум</h3><div class="mute">${until}</div></div>${chevSvg('chev_prem', 'chevbig')}</div>
+    body = `<div class="panel premc"><div class="row"><div class="grow"><h3>Премиум</h3><div class="mute">${until}</div></div>${chevSvg('chev_prem', 'patchbig')}</div>
       <ul>${S.cfg.premium_perks.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
       <div class="plans">${items.map(i => `<div class="plan"><span class="mute">${i.days} дн.</span><b class="coins" style="font-size:20px">${coinSvg}${i.price}</b>
         ${i.tag ? `<span class="tag2">${esc(i.tag)}</span>` : '<span style="height:14px"></span>'}<button class="btn" style="background:var(--gold);min-height:36px;font-size:14px" onclick="buy('${i.id}')">Купить</button></div>`).join('')}</div>
@@ -969,7 +1094,7 @@ async function shopTab() {
   } else if (sec === 'case') {
     body = S.cfg.cases.map(c => {
       const ex = c.pool.filter(x => x.rarity === 'legendary').map(x => S.cfg.shop.find(i => i.id === x.id));
-      return `<div class="panel case ${c.id === 'case_elite' ? 'elite' : ''}"><div class="box">${chevSvg(c.id === 'case_elite' ? 'chev_dragon' : 'chev_star', 'chevbig')}</div>
+      return `<div class="panel case ${c.id === 'case_elite' ? 'elite' : ''}"><div class="box">${chevSvg(c.id === 'case_elite' ? 'chev_dragon' : 'chev_crown', 'patchbig')}</div>
         <div class="grow"><div class="c" style="font-size:22px;font-weight:800">${esc(c.title)}</div>
           <div class="odds">${Object.entries(c.odds).filter(([, w]) => w).map(([k, w]) => `<span class="rar r-${k}">${RAR[k]} ${w}%</span>`).join('')}</div>
           <div class="mute" style="margin-top:4px">Легендарные: ${ex.map(i => esc(i.title)).join(', ')}</div>
@@ -1006,7 +1131,7 @@ function tryOn(id) {
   if (it.kind === 'bundle') it.items.forEach(i => apply(S.cfg.shop.find(x => x.id === i))); else apply(it);
   if (it.premium) p.premium = true;
   sheet(`<h3>Примерка: ${esc(it.title)}</h3><div class="mute">Так тебя увидят другие игроки</div>
-    <div class="panel" style="overflow:hidden;margin-top:12px"><div class="pc ${p.banner ? 'has-bn' : ''}">${p.banner ? `<div class="bn bn-${esc(p.banner)}"></div>` : ''}
+    <div class="panel" style="overflow:hidden;margin-top:12px"><div class="pc ${p.banner ? 'has-bn' : ''}">${p.banner ? `<div class="bn">${ART.banner(p.banner)}</div>` : ''}
       <div class="row top2" style="gap:14px;align-items:flex-end">${av(p, 'xl', false)}<div class="grow"><div class="nick ell">${nickH(p)}</div><div class="mute">${p.calibrated ? p.elo + ' ELO' : 'калибровка'}</div></div></div></div></div>
     <div class="panel list"><div class="it">${av(p, 'sm')}<div class="grow"><div class="n ell">${nickH(p)}</div><div class="mute">так в рейтинге и лобби</div></div></div></div>
     <div class="btns"><button class="btn ghost" onclick="closeSheet()">Закрыть</button></div>`);
@@ -1017,7 +1142,7 @@ async function openCase(cid) {
   let r;
   try { r = await api('/case/open', { case: cid }); } catch (e) { return toast(e.message); }
   const pool = c.pool.filter(x => c.odds[x.rarity] > 0);
-  const cellOf = x => { const it = S.cfg.shop.find(i => i.id === x.id); return `<div class="cell r-${x.rarity}">${it.kind === 'frame' ? av({ ...S.me.player, frame: it.id, chevron: null }, '', false) : it.kind === 'banner' ? `<div class="bn bn-${it.id}" style="width:70px;height:46px;border-radius:3px"></div>` : chevSvg(it.id, 'chevbig')}</div>`; };
+  const cellOf = x => { const it = S.cfg.shop.find(i => i.id === x.id); return `<div class="cell r-${x.rarity}">${it.kind === 'frame' ? av({ ...S.me.player, frame: it.id, chevron: null }, '', false) : it.kind === 'banner' ? `<div class="bn" style="width:76px;height:46px;border-radius:3px">${ART.banner(it.id)}</div>` : chevSvg(it.id, 'chevbig')}</div>`; };
   const cells = Array.from({ length: 34 }, (_, i) => i === 28 ? { id: r.item, rarity: r.rarity } : pool[Math.floor(Math.random() * pool.length)]);
   sheet(`<h3>${esc(c.title)}</h3><div class="roul"><div class="rstrip" id="strip">${cells.map(cellOf).join('')}</div></div><div id="prize" class="prize" style="visibility:hidden"></div>
     <div class="btns"><button class="btn ghost" onclick="closeSheet();shopTab()">Закрыть</button><button class="btn" onclick="openCase('${cid}')">Ещё раз · ${c.price}</button></div>`);

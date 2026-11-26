@@ -43,7 +43,7 @@ const SHOP = [
   it("chev_crown", "chevron", "Корона", 1200), it("chev_prem", "chevron", "Премиум", 0, { premium: true }),
   it("bn_night", "banner", "Ночной город", 500), it("bn_camo", "banner", "Камуфляж", 500), it("bn_sand", "banner", "Пустыня", 600),
   it("bn_sakura", "banner", "Сакура", 700), it("bn_ice", "banner", "Ледник", 700), it("bn_lava", "banner", "Лава", 800),
-  it("bn_grid", "banner", "Сетка", 800), it("bn_carbon", "banner", "Карбон", 900), it("bn_storm", "banner", "Гроза", 1200),
+  it("bn_grid", "banner", "Топография", 800), it("bn_carbon", "banner", "Карбон", 900), it("bn_storm", "banner", "Гроза", 1200),
   it("bn_prem", "banner", "Премиум", 0, { premium: true }),
   // флаги — тоже шевроны, отдельный раздел магазина
   ...[["ua", "Украина"], ["kz", "Казахстан"], ["by", "Беларусь"], ["pl", "Польша"], ["de", "Германия"], ["us", "США"], ["gb", "Великобритания"],
