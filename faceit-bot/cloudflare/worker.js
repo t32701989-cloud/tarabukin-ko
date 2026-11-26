@@ -22,7 +22,6 @@ const CALIBRATION_MULT = 2;    // на калибровке ELO меняется
 const PLACEMENT_MIN = 700, PLACEMENT_MAX = 1700; // после калибровки: от 1 до 8 уровня
 const PLACEMENT_KD_MAX = 100;  // бонус/штраф за K/D на калибровке
 const AVATAR_MAX = 220 * 1024;
-const READY_BAN_SEC = 10 * 60;  // бан за то, что не нажал «Готов»
 const PARTY_MAX = 3, PARTY_MAX_PREMIUM = 5;
 const COINS = { win: 50, loss: 20, mvp: 25, daily: 50, daily_premium: 150 }; // TC — Timoha Coin
 const PREMIUM_COIN_MULT = 1.5;
@@ -46,12 +45,37 @@ const SHOP = [
   it("bn_sakura", "banner", "Сакура", 700), it("bn_ice", "banner", "Ледник", 700), it("bn_lava", "banner", "Лава", 800),
   it("bn_grid", "banner", "Сетка", 800), it("bn_carbon", "banner", "Карбон", 900), it("bn_storm", "banner", "Гроза", 1200),
   it("bn_prem", "banner", "Премиум", 0, { premium: true }),
+  // флаги — тоже шевроны, отдельный раздел магазина
+  ...[["ua", "Украина"], ["kz", "Казахстан"], ["by", "Беларусь"], ["pl", "Польша"], ["de", "Германия"], ["us", "США"], ["gb", "Великобритания"],
+    ["ge", "Грузия"], ["am", "Армения"], ["az", "Азербайджан"], ["uz", "Узбекистан"], ["md", "Молдова"], ["lt", "Литва"], ["lv", "Латвия"],
+    ["ee", "Эстония"], ["kg", "Кыргызстан"], ["tr", "Турция"], ["ru", "Россия"]].map(([c, t]) => it("flag_" + c, "chevron", t, 200, { flag: true })),
+  it("chev_wolf", "chevron", "Волк", 900), it("chev_eagle", "chevron", "Орёл", 900), it("chev_knives", "chevron", "Ножи", 700),
+  // эксклюзивы: только из кейсов
+  it("frame_galaxy", "frame", "Галактика", 0, { case: true }), it("frame_blood", "frame", "Кровавая луна", 0, { case: true }),
+  it("chev_dragon", "chevron", "Дракон", 0, { case: true }), it("chev_phoenix", "chevron", "Феникс", 0, { case: true }),
+  it("bn_aurora", "banner", "Северное сияние", 0, { case: true }), it("bn_galaxy", "banner", "Галактика", 0, { case: true }),
   it("set_fire", "bundle", "Комплект «Пламя»", 1500, { items: ["frame_fire", "chev_fire", "bn_lava"] }),
   it("set_ice", "bundle", "Комплект «Лёд»", 1500, { items: ["frame_ice", "chev_diamond", "bn_ice"] }),
   it("set_ops", "bundle", "Комплект «Спецназ»", 1100, { items: ["frame_carbon", "chev_shield", "bn_camo"] }),
   it("set_sakura", "bundle", "Комплект «Сакура»", 1350, { items: ["frame_violet", "chev_heart", "bn_sakura"] }),
   it("set_king", "bundle", "Комплект «Король»", 3000, { items: ["frame_gold", "chev_crown", "bn_storm"] }),
 ];
+// кейсы: шансы по редкости. Редкость предмета: обычный ≤400 TC, редкий ≤900, эпический >900, легендарный — эксклюзив кейса
+const CASES = [
+  { id: "case_basic", title: "Обычный кейс", price: 400, odds: { common: 70, rare: 24, epic: 5, legendary: 1 } },
+  { id: "case_elite", title: "Элитный кейс", price: 1200, odds: { common: 0, rare: 55, epic: 33, legendary: 12 } },
+];
+const DUP_REFUND = 0.3; // за повторку возвращаем 30% цены кейса
+const rarityOf = i => i.case ? "legendary" : i.price <= 400 ? "common" : i.price <= 900 ? "rare" : "epic";
+// Telegram Stars: пакеты TC и премиум за звёзды
+const STARS = [
+  { id: "tc_1000", title: "1 000 TC", stars: 50, tc: 1000 },
+  { id: "tc_3000", title: "3 000 TC", stars: 130, tc: 3000 },
+  { id: "tc_8000", title: "8 000 TC", stars: 300, tc: 8000 },
+  { id: "prem_30", title: "Премиум на 30 дней", stars: 150, days: 30 },
+  { id: "prem_90", title: "Премиум на 90 дней", stars: 390, days: 90 },
+];
+const BAN_BASE_MIN = 10, BAN_MAX_MIN = 24 * 60, BAN_RESET_DAYS = 7;
 const PREMIUM_PERKS = [
   "Пати до 5 человек вместо 3",
   "×1.5 TC за каждый матч",
@@ -146,7 +170,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/") {
       return new Response(INDEX_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
     }
-    if (url.pathname.startsWith("/api/") || url.pathname === "/webhook" || url.pathname.startsWith("/avatar/") || url.pathname.startsWith("/ticketimg/")) {
+    if (url.pathname.startsWith("/api/") || url.pathname === "/webhook" || url.pathname.startsWith("/avatar/") || url.pathname.startsWith("/ticketimg/") || url.pathname.startsWith("/shot/")) {
       return env.ARENA.get(env.ARENA.idFromName("main")).fetch(request);
     }
     return new Response("Not found", { status: 404 });
@@ -171,6 +195,9 @@ export class Arena extends DurableObject {
       joined_at REAL NOT NULL, PRIMARY KEY (match_id, tg_id))`);
     this.sql.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS admins (tg_id INTEGER PRIMARY KEY)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS rep (match_id INTEGER NOT NULL, from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (match_id, from_id, to_id))");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS shots (match_id INTEGER PRIMARY KEY, data BLOB NOT NULL)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS payments (charge_id TEXT PRIMARY KEY, tg_id INTEGER NOT NULL, product TEXT NOT NULL, stars INTEGER NOT NULL, created INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS parties (id INTEGER PRIMARY KEY AUTOINCREMENT, leader INTEGER NOT NULL, created INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS party_invites (party_id INTEGER NOT NULL, to_id INTEGER NOT NULL, from_id INTEGER NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (party_id, to_id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS inventory (tg_id INTEGER NOT NULL, item TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (tg_id, item))");
@@ -213,6 +240,9 @@ export class Arena extends DurableObject {
       "ALTER TABLE players ADD COLUMN banner TEXT",
       "ALTER TABLE players ADD COLUMN nick_color TEXT",
       "ALTER TABLE players ADD COLUMN daily_at INTEGER",
+      "ALTER TABLE players ADD COLUMN offenses INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE players ADD COLUMN last_offense INTEGER",
+      "ALTER TABLE matches ADD COLUMN shot_key TEXT",
     ]) { try { this.sql.exec(ddl); } catch {} }
     this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
 
@@ -309,7 +339,7 @@ export class Arena extends DurableObject {
       veto_left: m.status === "veto" && m.veto_deadline ? Math.max(0, m.veto_deadline - now()) : null,
       ready_left: m.status === "ready" && m.ready_deadline ? Math.max(0, m.ready_deadline - now()) : null,
       pending_winner: m.pending_winner, pending_score: m.pending_score, reported_by: m.reported_by,
-      finished_at: m.finished_at, team_avg: {},
+      finished_at: m.finished_at, team_avg: {}, shot: m.shot_key ? `/shot/${m.id}/${m.shot_key}` : null,
     };
     for (const t of [1, 2]) {
       const ps = m.players.filter(p => p.team === t);
@@ -390,6 +420,8 @@ export class Arena extends DurableObject {
         streak: cur, streak_win: curWin, best_streak: bestStreak,
       },
       maps: mapsStat, achievements: ach, elo_history: eloHistory,
+      reputation: this.one("SELECT COALESCE(SUM(value = 1), 0) AS up, COALESCE(SUM(value = -1), 0) AS down FROM rep WHERE to_id = ?", id),
+      offenses: p.last_offense && now() - p.last_offense < BAN_RESET_DAYS * 86400 ? p.offenses : 0,
       friend: viewer && viewer !== id ? this.friendState(viewer, id) : null,
       calibration: {
         wins: rows.filter(r => r.calibrating && r.team === r.winner).length,
@@ -516,15 +548,25 @@ export class Arena extends DurableObject {
   async readyTimeout(mid) {
     const m = this.match(mid);
     const notReady = m.players.filter(p => !p.ready);
+    const banMin = {};
     for (const p of notReady) {
       this.sql.exec("DELETE FROM match_players WHERE match_id = ? AND tg_id = ?", mid, p.tg_id);
-      this.sql.exec("UPDATE players SET banned_until = MAX(COALESCE(banned_until, 0), ?) WHERE tg_id = ?", now() + READY_BAN_SEC, p.tg_id);
+      banMin[p.tg_id] = this.punish(p.tg_id);
     }
     this.sql.exec("UPDATE matches SET status = 'open', ready_deadline = NULL WHERE id = ?", mid);
     this.sql.exec("UPDATE match_players SET ready = 0 WHERE match_id = ?", mid);
-    await this.notify(notReady.map(p => p.tg_id), `⏰ Ты не подтвердил готовность — тебя убрали из лобби ${m.lobby_no} и выдали бан на ${READY_BAN_SEC / 60} минут.`);
+    await Promise.all(notReady.map(p => this.send(p.tg_id, `⏰ Ты не подтвердил готовность — тебя убрали из лобби ${m.lobby_no}.\n⛔ Бан на ${banMin[p.tg_id]} мин. Каждое следующее нарушение за ${BAN_RESET_DAYS} дней удваивает срок.`)));
     await this.notify(m.players.filter(p => p.ready).map(p => p.tg_id),
       `😕 Не все подтвердили готовность (${notReady.map(p => esc(p.nick)).join(", ")}). Лобби ${m.lobby_no} ждёт ещё ${notReady.length} игроков.`);
+  }
+
+  // нарастающий бан: 10, 20, 40, 80… минут (до суток); сбрасывается через 7 дней без нарушений
+  punish(id) {
+    const p = this.player(id);
+    const n = (p.last_offense && now() - p.last_offense < BAN_RESET_DAYS * 86400 ? p.offenses : 0) + 1;
+    const min = Math.min(BAN_MAX_MIN, BAN_BASE_MIN * 2 ** (n - 1));
+    this.sql.exec("UPDATE players SET offenses = ?, last_offense = ?, banned_until = MAX(COALESCE(banned_until, 0), ?) WHERE tg_id = ?", n, now(), now() + min * 60, id);
+    return min;
   }
 
   // ----- veto -----
@@ -616,15 +658,30 @@ export class Arena extends DurableObject {
     return r?.tg_id ?? null;
   }
 
-  async reportResult(m, uid, winner, score) {
+  async sendPhoto(chatId, bytes, caption, markup) {
+    try {
+      const fd = new FormData();
+      fd.append("chat_id", String(chatId)); fd.append("caption", caption); fd.append("parse_mode", "HTML");
+      if (markup) fd.append("reply_markup", JSON.stringify(markup));
+      fd.append("photo", new Blob([bytes], { type: "image/jpeg" }), "result.jpg");
+      const r = await (await fetch(`https://api.telegram.org/bot${this.env.BOT_TOKEN}/sendPhoto`, { method: "POST", body: fd })).json();
+      if (!r.ok) console.log("photo failed", r.description);
+    } catch (e) { console.log("photo error", e.message); }
+  }
+
+  async reportResult(m, uid, winner, score, shot) {
     const admins = this.adminIds();
+    if (shot) {
+      this.sql.exec("INSERT OR REPLACE INTO shots (match_id, data) VALUES (?, ?)", m.id, shot.buffer);
+      this.sql.exec("UPDATE matches SET shot_key = ? WHERE id = ?", crypto.randomUUID(), m.id);
+    }
     if (!admins.length || this.isAdmin(uid)) return this.applyResult(m.id, winner, score);
     this.sql.exec("UPDATE matches SET status = 'pending', pending_winner = ?, pending_score = ?, reported_by = ? WHERE id = ?", winner, score, uid, m.id);
-    const text = `📝 <b>Результат на проверку</b> · матч #${m.id} (${esc(m.map)})\n` +
-      `${esc(this.nick(m, uid))} пишет: победила <b>Команда ${winner}</b>${score ? ` ${esc(score)}` : ""}\n\n${this.teamsText(m)}`;
-    await this.notify(admins, text, { inline_keyboard: [[
-      { text: "✅ Подтвердить", callback_data: `ok:${m.id}` }, { text: "❌ Отклонить", callback_data: `no:${m.id}` },
-    ]] });
+    const text = `📝 <b>Результат на модерации</b> · матч #${m.id} (${esc(m.map)})\n` +
+      `${esc(this.nick(m, uid))}: победила <b>Команда ${winner}</b>${score ? ` ${esc(score)}` : ""}\n\n${this.teamsText(m)}`;
+    const kb = { inline_keyboard: [[{ text: "✅ Принять", callback_data: `ok:${m.id}` }, { text: "❌ Отклонить", callback_data: `no:${m.id}` }]] };
+    if (shot) await Promise.all(admins.map(a => this.sendPhoto(a, shot, text.slice(0, 1000), kb)));
+    else await this.notify(admins, text, kb);
     await this.notify(m.players.map(p => p.tg_id).filter(id => id !== uid),
       `📝 Матч #${m.id}: результат отправлен админу на проверку (победила Команда ${winner}${score ? ` ${esc(score)}` : ""}).\nНе забудь вписать свои убийства и смерти в приложении.`,
       this.appButton("📊 Вписать K/D"));
@@ -634,7 +691,9 @@ export class Arena extends DurableObject {
     const m = this.match(mid);
     if (m?.status !== "pending") throw new ApiError("Нет результата на проверке");
     this.sql.exec("UPDATE matches SET status = 'live', pending_winner = NULL, pending_score = NULL, reported_by = NULL WHERE id = ?", mid);
-    await this.notify([m.captain1, m.captain2], `❌ Админ отклонил результат матча #${mid}. Отправь правильный результат ещё раз.`, this.appButton());
+    this.sql.exec("DELETE FROM shots WHERE match_id = ?", mid);
+    this.sql.exec("UPDATE matches SET shot_key = NULL WHERE id = ?", mid);
+    await this.notify(m.players.map(p => p.tg_id), `❌ Админ отклонил результат матча #${mid}. Отправьте правильный результат со скриншотом ещё раз.`, this.appButton());
   }
 
   async applyResult(mid, winner, score) {
@@ -705,6 +764,12 @@ export class Arena extends DurableObject {
     if (this.setting("origin") !== url.origin) this.setSetting("origin", url.origin);
     await this.checkSeason();
     if (url.pathname === "/webhook") return this.webhook(request);
+    if (url.pathname.startsWith("/shot/")) {
+      const [, , id, key] = url.pathname.split("/");
+      const r = this.one("SELECT s.data FROM shots s JOIN matches m ON m.id = s.match_id WHERE m.id = ? AND m.shot_key = ?", Number(id), String(key));
+      if (!r?.data) return new Response("Not found", { status: 404 });
+      return new Response(r.data, { headers: { "content-type": "image/jpeg", "cache-control": "private, max-age=86400" } });
+    }
     if (url.pathname.startsWith("/ticketimg/")) {
       const [, , id, key] = url.pathname.split("/");
       const r = this.one("SELECT image FROM ticket_msgs WHERE id = ? AND image_key = ?", Number(id), String(key));
@@ -762,7 +827,9 @@ export class Arena extends DurableObject {
       const season = this.setting("season");
       const d = new Date(), end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
       return { maps: this.maps, levels: LEVELS, calibration_games: CALIBRATION_GAMES, lobby_size: LOBBY_SIZE, veto_turn_sec: VETO_TURN_SEC,
-        ready_sec: READY_SEC, ready_ban_min: READY_BAN_SEC / 60, shop: SHOP, premium_perks: PREMIUM_PERKS, coins: COINS, ticket_topics: TICKET_TOPICS, nick_colors: NICK_COLORS,
+        ready_sec: READY_SEC, ready_ban_min: BAN_BASE_MIN, shop: SHOP, premium_perks: PREMIUM_PERKS, coins: COINS, ticket_topics: TICKET_TOPICS, nick_colors: NICK_COLORS,
+        cases: CASES.map(c => ({ ...c, pool: SHOP.filter(i => ["frame", "chevron", "banner"].includes(i.kind) && !i.premium && !i.flag).map(i => ({ id: i.id, rarity: rarityOf(i) })) })),
+        stars: STARS, ban_base_min: BAN_BASE_MIN,
         party_max: PARTY_MAX, party_max_premium: PARTY_MAX_PREMIUM, placement_max_level: level(PLACEMENT_MAX), calibration_mult: CALIBRATION_MULT, season, season_name: seasonName(season), season_days_left: Math.ceil((end - Date.now()) / 86400000) };
     }
 
@@ -821,7 +888,12 @@ export class Arena extends DurableObject {
         .map(r => this.publicMatch(this.match(r.id)));
     }
 
-    if (method === "GET" && (mm = path.match(/^\/matches\/(\d+)$/))) return this.publicMatch(getMatch(+mm[1]));
+    if (method === "GET" && (mm = path.match(/^\/matches\/(\d+)$/))) {
+      const m = this.publicMatch(getMatch(+mm[1]));
+      m.my_rates = Object.fromEntries(this.q("SELECT to_id, value FROM rep WHERE match_id = ? AND from_id = ?", m.id, uid).map(r => [r.to_id, r.value]));
+      m.can_rate = m.status === "finished" && now() - m.finished_at < 86400 && m.players.some(p => p.tg_id === uid);
+      return m;
+    }
 
     if (method === "GET" && path === "/leaderboard") {
       return this.q("SELECT tg_id, nick, game_id, photo, elo, wins, losses, created_at, badges, banned_until, frame, chevron, banner, nick_color, premium_until, last_seen, coins FROM players ORDER BY elo DESC, wins DESC")
@@ -918,6 +990,7 @@ export class Arena extends DurableObject {
       const p = requirePlayer(), item = SHOP.find(i => i.id === body.item);
       if (!item) throw new ApiError("Нет такого товара");
       if (item.premium) throw new ApiError("Этот предмет даёт премиум");
+      if (item.case) throw new ApiError("Этот предмет выпадает только из кейсов");
       if (item.kind !== "premium" && this.one("SELECT 1 AS x FROM inventory WHERE tg_id = ? AND item = ?", uid, item.id)) throw new ApiError("Уже куплено");
       const owned = new Set(this.q("SELECT item FROM inventory WHERE tg_id = ?", uid).map(r => r.item));
       if (item.kind === "bundle" && item.items.every(x => owned.has(x))) throw new ApiError("Всё из комплекта уже есть");
@@ -943,6 +1016,33 @@ export class Arena extends DurableObject {
       if (item && !item.premium && !this.one("SELECT 1 AS x FROM inventory WHERE tg_id = ? AND item = ?", uid, item.id)) throw new ApiError("Сначала купи");
       this.sql.exec(`UPDATE players SET ${kind} = ? WHERE tg_id = ?`, item?.id ?? null, uid);
       return { ok: true };
+    }
+
+    if (method === "POST" && path === "/case/open") {
+      const p = requirePlayer(), c = CASES.find(x => x.id === body.case);
+      if (!c) throw new ApiError("Нет такого кейса");
+      if (p.coins < c.price) throw new ApiError(`Не хватает ${c.price - p.coins} TC`);
+      const pool = SHOP.filter(i => ["frame", "chevron", "banner"].includes(i.kind) && !i.premium && !i.flag);
+      let r = Math.random() * 100, rarity = "common";
+      for (const [k, w] of Object.entries(c.odds)) { if (r < w) { rarity = k; break; } r -= w; }
+      const cands = pool.filter(i => rarityOf(i) === rarity);
+      const prize = cands[Math.floor(Math.random() * cands.length)];
+      const dup = !!this.one("SELECT 1 AS x FROM inventory WHERE tg_id = ? AND item = ?", uid, prize.id);
+      const refund = dup ? Math.round(c.price * DUP_REFUND) : 0;
+      this.sql.exec("UPDATE players SET coins = coins - ? + ? WHERE tg_id = ?", c.price, refund, uid);
+      if (!dup) this.sql.exec("INSERT INTO inventory (tg_id, item, created) VALUES (?, ?, ?)", uid, prize.id, now());
+      return { ok: true, item: prize.id, rarity, dup, refund };
+    }
+    if (method === "POST" && path === "/stars/invoice") {
+      requirePlayer();
+      const pr = STARS.find(x => x.id === body.product);
+      if (!pr) throw new ApiError("Нет такого товара");
+      const r = await this.tg("createInvoiceLink", {
+        title: pr.title, description: pr.tc ? `${pr.tc} Timoha Coin на баланс SO2 Arena` : `Премиум SO2 Arena на ${pr.days} дней`,
+        payload: JSON.stringify({ u: uid, p: pr.id }), currency: "XTR", prices: [{ label: pr.title, amount: pr.stars }],
+      });
+      if (!r.ok) throw new ApiError("Telegram не создал счёт: " + (r.description || ""));
+      return { link: r.result };
     }
 
     if (method === "POST" && path === "/shop/color") {
@@ -1178,10 +1278,12 @@ export class Arena extends DurableObject {
         return { ok: true };
       }
       case "result": {
-        if (!isCaptain(m) && !isAdmin) throw new ApiError("Результат отправляет капитан");
-        if (m.status !== "live") throw new ApiError(m.status === "pending" ? "Результат уже на проверке у админа" : "Матч не идёт");
-        const winner = Number(body.winner);
-        await this.reportResult(m, uid, winner, parseScore(winner, body));
+        if (!ids.includes(uid) && !isAdmin) throw new ApiError("Ты не играл в этом матче");
+        if (m.status !== "live") throw new ApiError(m.status === "pending" ? "Результат уже на модерации" : "Матч не идёт");
+        const winner = Number(body.winner), score = parseScore(winner, body);
+        const shot = body.image ? this.decodeJpeg(body.image, 900 * 1024) : null;
+        if (!shot && !isAdmin) throw new ApiError("Приложи скриншот итоговой таблицы");
+        await this.reportResult(m, uid, winner, score, shot);
         return { ok: true, pending: this.match(mid).status === "pending" };
       }
       case "confirm": {
@@ -1208,6 +1310,13 @@ export class Arena extends DurableObject {
         if (m.status === "finished") this.computeMvp(mid);
         return { ok: true };
       }
+      case "rate": {
+        if (m.status !== "finished" || now() - m.finished_at > 86400) throw new ApiError("Оценить можно в течение суток после матча");
+        const to = Number(body.tg_id), v = Number(body.value) > 0 ? 1 : -1;
+        if (!ids.includes(uid) || !ids.includes(to) || to === uid) throw new ApiError("Оценивать можно только тиммейтов и соперников из своего матча");
+        this.sql.exec("INSERT INTO rep (match_id, from_id, to_id, value) VALUES (?, ?, ?, ?) ON CONFLICT(match_id, from_id, to_id) DO UPDATE SET value = excluded.value", mid, uid, to, v);
+        return { ok: true };
+      }
       case "cancel": {
         if (!isCaptain(m) && !isAdmin) throw new ApiError("Отменить может капитан или админ");
         if (!["veto", "live", "pending"].includes(m.status)) throw new ApiError("Этот матч нельзя отменить");
@@ -1225,10 +1334,26 @@ export class Arena extends DurableObject {
     if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== this.env.WEBHOOK_SECRET) return new Response("forbidden", { status: 403 });
     try {
       const update = await request.json();
-      if (update.message?.text) await this.handleMessage(update.message);
+      if (update.pre_checkout_query) {
+        const q = update.pre_checkout_query;
+        let ok = false;
+        try { const pl = JSON.parse(q.invoice_payload); const pr = STARS.find(x => x.id === pl.p); ok = !!pr && pr.stars === q.total_amount && !!this.player(pl.u); } catch {}
+        await this.tg("answerPreCheckoutQuery", { pre_checkout_query_id: q.id, ok, ...(ok ? {} : { error_message: "Товар недоступен, попробуй позже" }) });
+      } else if (update.message?.successful_payment) await this.handlePayment(update.message);
+      else if (update.message?.text) await this.handleMessage(update.message);
       else if (update.callback_query) await this.handleCallback(update.callback_query);
     } catch (e) { console.log("update failed", e.stack); }
     return new Response("ok");
+  }
+
+  async handlePayment(msg) {
+    const sp = msg.successful_payment;
+    const pl = JSON.parse(sp.invoice_payload), pr = STARS.find(x => x.id === pl.p);
+    if (!pr || this.one("SELECT 1 AS x FROM payments WHERE charge_id = ?", sp.telegram_payment_charge_id)) return;
+    this.sql.exec("INSERT INTO payments (charge_id, tg_id, product, stars, created) VALUES (?, ?, ?, ?, ?)", sp.telegram_payment_charge_id, pl.u, pr.id, sp.total_amount, now());
+    if (pr.tc) this.addCoins(pl.u, pr.tc);
+    if (pr.days) this.sql.exec("UPDATE players SET premium_until = MAX(COALESCE(premium_until, 0), ?) + ? WHERE tg_id = ?", now(), pr.days * 86400, pl.u);
+    await this.send(pl.u, `⭐ Оплата прошла: <b>${esc(pr.title)}</b>. Спасибо!`, this.appButton("Открыть магазин"));
   }
 
   async handleCallback(cq) {
@@ -1245,8 +1370,9 @@ export class Arena extends DurableObject {
       else await this.rejectResult(mid, cq.from.id);
     } catch (e) { return answer(e.message); }
     await answer(act === "ok" ? "Подтверждено" : "Отклонено");
-    await this.tg("editMessageText", { chat_id: cq.message.chat.id, message_id: cq.message.message_id, parse_mode: "HTML",
-      text: `${act === "ok" ? "✅ Подтверждено" : "❌ Отклонено"}: матч #${mid} (${esc(m.map)}) — Команда ${m.pending_winner} ${esc(m.pending_score || "")}` });
+    const doneText = `${act === "ok" ? "✅ Принято" : "❌ Отклонено"}: матч #${mid} (${esc(m.map)}) — Команда ${m.pending_winner} ${esc(m.pending_score || "")}`;
+    if (cq.message.photo) await this.tg("editMessageCaption", { chat_id: cq.message.chat.id, message_id: cq.message.message_id, parse_mode: "HTML", caption: doneText });
+    else await this.tg("editMessageText", { chat_id: cq.message.chat.id, message_id: cq.message.message_id, parse_mode: "HTML", text: doneText });
   }
 
   async handleMessage(msg) {

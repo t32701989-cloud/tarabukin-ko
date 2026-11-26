@@ -241,6 +241,35 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .av.f-frame_dual{box-shadow:-2px -2px 0 2px #2f7cff,2px 2px 0 2px #ff5236}
 .av.f-frame_prem{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00;animation:premf 2.4s linear infinite}
 @keyframes premf{0%,100%{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00}50%{box-shadow:0 0 0 2px #ffc400,0 0 0 4px #fff,0 0 0 6px #ff8a00}}
+.av.f-frame_galaxy{box-shadow:0 0 0 2px #c9a7ff,0 0 0 4px #3b2a8f,0 0 0 6px #1ad0ff;animation:galf 3s linear infinite}
+@keyframes galf{0%,100%{box-shadow:0 0 0 2px #c9a7ff,0 0 0 4px #3b2a8f,0 0 0 6px #1ad0ff}50%{box-shadow:0 0 0 2px #1ad0ff,0 0 0 4px #7a3fd1,0 0 0 6px #c9a7ff}}
+.av.f-frame_blood{box-shadow:0 0 0 2px #ff3a3a,0 0 0 4px #3a0006,0 0 0 6px #8a0010}
+.bn-bn_aurora{background:radial-gradient(ellipse at 30% 0%,#3fffb4aa 0 30%,transparent 60%),radial-gradient(ellipse at 75% 10%,#7a5cffaa 0 25%,transparent 55%),linear-gradient(180deg,#061226,#0d1f3a)}
+.bn-bn_galaxy{background:radial-gradient(circle at 20% 30%,#fff 0 1px,transparent 2px),radial-gradient(circle at 60% 70%,#fff 0 1px,transparent 2px),radial-gradient(circle at 85% 25%,#fff 0 1px,transparent 2px),radial-gradient(ellipse at 50% 50%,#7a3fd1aa 0 30%,transparent 60%),linear-gradient(135deg,#0b0620,#1d0f3f)}
+.flag{display:inline-block;width:22px;height:15px;border-radius:2px;vertical-align:-2px;margin-left:5px;overflow:hidden;box-shadow:0 0 0 1px #0006}
+.flag.big{width:60px;height:40px;border-radius:4px}
+.patch{width:64px;height:64px;display:grid;place-items:center;background:linear-gradient(160deg,#2a2f37,#14171b);border:2px solid #3a414b;clip-path:polygon(50% 0,100% 18%,100% 72%,50% 100%,0 72%,0 18%)}
+.patch .chevbig{width:36px;height:36px}
+/* редкость и кейсы */
+.r-common{--rc:#8b939d}.r-rare{--rc:#2f7cff}.r-epic{--rc:#b48cff}.r-legendary{--rc:#ffc400}
+.rar{font:700 12px "Fira Sans Condensed",sans-serif;color:var(--rc)}
+.case{padding:14px;display:flex;gap:14px;align-items:center}
+.case .box{width:84px;height:84px;flex-shrink:0;display:grid;place-items:center;background:linear-gradient(160deg,#3a2f12,#1a1406);border:2px solid #6b5400;border-radius:8px}
+.case.elite .box{background:linear-gradient(160deg,#2a1640,#120a1f);border-color:#7a3fd1}
+.odds{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.roul{position:relative;overflow:hidden;height:110px;border:1px solid var(--line);border-radius:6px;background:var(--bg);margin-top:12px}
+.roul .rstrip{display:flex;gap:6px;padding:8px;transition:transform 4.2s cubic-bezier(.12,.75,.15,1)}
+.roul .cell{flex:0 0 86px;height:92px;border-radius:4px;background:var(--s2);border-bottom:3px solid var(--rc);display:grid;place-items:center}
+.roul::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--gold);transform:translateX(-1px)}
+.prize{text-align:center;padding:14px 0 4px}
+.prize b{display:block;font:800 26px "Fira Sans Condensed",sans-serif;color:var(--rc)}
+.stars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
+.stars button{background:#1c2a44;border:1px solid #2f4a7a;border-radius:6px;padding:10px;text-align:left}
+.stars b{display:block;font:700 17px "Fira Sans Condensed",sans-serif}
+.thumbs{display:flex;gap:4px;justify-content:flex-end}
+.thumbs button{width:30px;height:28px;border-radius:4px;background:var(--s3);display:grid;place-items:center;color:var(--mute)}
+.thumbs button.up.on{background:#163322;color:var(--go)}.thumbs button.down.on{background:#2b1418;color:var(--bad)}
+.shotimg{display:block;width:100%;max-height:240px;object-fit:contain;background:#000;border-top:1px solid var(--line)}
 /* баннеры профиля */
 .bn{height:84px;position:relative;overflow:hidden;background:var(--s2)}
 .bn-bn_night{background:linear-gradient(180deg,#0c1330 0%,#1b2350 60%,#2a1a3f 100%)}
@@ -425,7 +454,34 @@ const CHEV = {
   chev_diamond: ['#7fe8ff', '<path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor"/><path d="M2 9h20M9 3 7 9l5 12 5-12-2-6" fill="none" stroke="#0d3b4a" stroke-width="1.2"/>'],
   chev_prem: ['#ffc400', '<path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z" fill="currentColor"/><path d="m12 7 1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z" fill="#1a1400"/>'],
 };
-const chevSvg = (id, cls = 'chev2') => CHEV[id] ? `<svg class="${cls}" viewBox="0 0 24 24" style="color:${CHEV[id][0]}">${CHEV[id][1]}</svg>` : '';
+const FLAGS = {
+  ua: ['h', '#0057b7', '#ffd700'], kz: ['solid', '#00afca'], by: ['hr', '#c8313e', '#4aa657', 2, 1], pl: ['h', '#ffffff', '#dc143c'],
+  de: ['h', '#000000', '#dd0000', '#ffce00'], us: ['us'], gb: ['gb'], ge: ['ge'], am: ['h', '#d90012', '#0033a0', '#f2a800'],
+  az: ['h', '#0092bc', '#e4002b', '#00af66'], uz: ['h', '#0099b5', '#ffffff', '#1eb53a'], md: ['v', '#0046ae', '#ffd200', '#cc092f'],
+  lt: ['h', '#fdb913', '#006a44', '#c1272d'], lv: ['hr', '#9e3039', '#ffffff', 2, 1, 2], ee: ['h', '#0072ce', '#000000', '#ffffff'],
+  kg: ['solid', '#e8112d'], tr: ['solid', '#e30a17'], ru: ['h', '#ffffff', '#0039a6', '#d52b1e'],
+};
+function flagSvg(code, big) {
+  const f = FLAGS[code]; if (!f) return '';
+  let body = '';
+  if (f[0] === 'h') { const n = f.length - 1; body = f.slice(1).map((c, i) => `<rect y="${i * 20 / n}" width="30" height="${20 / n + .1}" fill="${c}"/>`).join(''); }
+  else if (f[0] === 'v') { const n = f.length - 1; body = f.slice(1).map((c, i) => `<rect x="${i * 30 / n}" width="${30 / n + .1}" height="20" fill="${c}"/>`).join(''); }
+  else if (f[0] === 'hr') { const parts = f.slice(3), tot = parts.reduce((a, b) => a + b, 0); let y = 0; body = parts.map((w, i) => { const r = `<rect y="${y}" width="30" height="${w * 20 / tot + .1}" fill="${i % 2 ? f[2] : f[1]}"/>`; y += w * 20 / tot; return r; }).join(''); }
+  else if (f[0] === 'solid') body = `<rect width="30" height="20" fill="${f[1]}"/>` + (code === 'kz' ? '<circle cx="15" cy="9" r="4" fill="#fec50c"/>' : code === 'kg' ? '<circle cx="15" cy="10" r="5" fill="#ffef00"/>' : '<circle cx="12.5" cy="10" r="5" fill="#fff"/><circle cx="14" cy="10" r="4" fill="#e30a17"/><path d="m18 10 3-1-2 2.5v-3l2 2.5z" fill="#fff"/>');
+  else if (f[0] === 'us') body = Array.from({ length: 7 }, (_, i) => `<rect y="${i * 20 / 6.5}" width="30" height="1.54" fill="#b22234"/>`).join('') + '<rect width="13" height="10.8" fill="#3c3b6e"/>';
+  else if (f[0] === 'gb') body = '<rect width="30" height="20" fill="#012169"/><path d="M0 0 30 20M30 0 0 20" stroke="#fff" stroke-width="4"/><path d="M0 0 30 20M30 0 0 20" stroke="#c8102e" stroke-width="1.5"/><path d="M15 0v20M0 10h30" stroke="#fff" stroke-width="6"/><path d="M15 0v20M0 10h30" stroke="#c8102e" stroke-width="3.5"/>';
+  else if (f[0] === 'ge') body = '<rect width="30" height="20" fill="#fff"/><path d="M15 0v20M0 10h30" stroke="#ff0000" stroke-width="4"/>';
+  if (f[0] === 'us') body = '<rect width="30" height="20" fill="#fff"/>' + body;
+  return `<svg class="flag ${big ? 'big' : ''}" viewBox="0 0 30 20" preserveAspectRatio="none">${body}</svg>`;
+}
+Object.assign(CHEV, {
+  chev_wolf: ['#c5ced8', '<path d="M4 3l4 5h8l4-5v9l-3 4-5 5-5-5-3-4z" fill="currentColor"/><path d="M8.5 11.5l2 1M15.5 11.5l-2 1" stroke="#111316" stroke-width="1.6"/><path d="M12 17l-1.3-1.5h2.6z" fill="#111316"/>'],
+  chev_eagle: ['#e0b060', '<path d="M12 6c-2-3-6-3-10-2 2 2 3 4 3 6 2 0 4 1 5 3l2 5 2-5c1-2 3-3 5-3 0-2 1-4 3-6-4-1-8-1-10 2z" fill="currentColor"/><circle cx="12" cy="7.5" r="1.6" fill="#111316"/>'],
+  chev_knives: ['#d8dde3', '<path d="M5 3l9 9-2 2L3 5zM19 3l-9 9 2 2 9-9z" fill="currentColor"/><path d="M12 14l-4 4 2 2 4-4M12 14l4 4-2 2-4-4" fill="#8b5a2b"/>'],
+  chev_dragon: ['#ff3a3a', '<path d="M3 14c3-1 5-4 6-8 1 2 3 3 5 3l3-4 1 5 4 1-3 3 1 4-4-2c-2 2-5 3-8 2l-3 2 1-4z" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="#111316"/>'],
+  chev_phoenix: ['#ff9a1f', '<path d="M12 21c-1-3-1-5 0-7-3 0-6-2-8-6 3 1 5 1 7 0-1-2-1-4 1-6 0 3 1 4 3 5 2-1 4-1 6 1-3 0-4 1-5 3 3 0 5 1 6 3-3 0-5 0-7 1 0 2 0 4-3 6z" fill="currentColor"/>'],
+});
+const chevSvg = (id, cls = 'chev2') => id?.startsWith('flag_') ? flagSvg(id.slice(5), cls === 'chevbig') : CHEV[id] ? `<svg class="${cls}" viewBox="0 0 24 24" style="color:${CHEV[id][0]}">${CHEV[id][1]}</svg>` : '';
 const nickH = p => `<span class="${p.premium && !p.nick_color ? 'prem' : ''}" ${p.premium && p.nick_color ? `style="color:${esc(p.nick_color)}"` : ''}>${esc(p.nick)}</span>${chevSvg(p.chevron)}`;
 const coinSvg = '<span class="tcoin">TC</span>';
 const ACH = {
@@ -494,9 +550,24 @@ async function act(path, body, okMsg) {
     return res;
   } catch (e) { toast(e.message); }
 }
+let audioCtx;
+function beep(freqs = [880, 660, 880, 1175], dur = .13) {
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    freqs.forEach((f, i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + i * (dur + .04);
+      o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.15, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t + dur + .02);
+    });
+  } catch (e) {}
+}
+document.addEventListener('pointerdown', () => { try { audioCtx ||= new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) {} }, { once: true });
 async function loadMe() { S.me = await api('/me'); }
 async function refresh() {
   const [me, lobbies] = await Promise.all([api('/me'), api('/lobbies')]);
+  const myL = l => l.find(m => m.players.some(p => p.tg_id === me.user.id));
+  const was = S.lobbies && myL(S.lobbies)?.status, nowSt = myL(lobbies)?.status;
+  if (was && was !== nowSt && (nowSt === 'ready' || (nowSt === 'veto' && was !== 'ready'))) { beep(); try { tg?.HapticFeedback?.notificationOccurred('warning'); } catch (e) {} }
   S.me = me; S.lobbies = lobbies;
   if (S.tab === 'top') S.top = await api('/leaderboard');
   render();
@@ -597,7 +668,7 @@ function lobbyCard(m) {
 function matchCard(m) {
   const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me);
   const isCap = m.captain1 === me || m.captain2 === me, admin = S.me.is_admin, meP = m.players.find(p => p.tg_id === me);
-  const st = { veto: 'Бан карт', live: 'Идёт игра', pending: 'Проверка' }[m.status];
+  const st = { veto: 'Бан карт', live: 'Идёт игра', pending: 'На модерации' }[m.status];
   const head = `<div class="mhead">
       <div class="ta ${m.pending_winner === 1 ? 'win' : ''}">Команда 1<small>ср. ${m.team_avg?.[1] ?? '—'}</small></div>
       <div class="mid"><span class="state ${m.status}">${st}</span><div class="map">${m.map ? esc(m.map) : '———'}</div>
@@ -612,8 +683,9 @@ function matchCard(m) {
   };
   let body = '';
   if (m.status === 'veto') body += vetoView(m);
-  if (m.status === 'pending') body += `<div class="callout"><b>${nickOf(m, m.reported_by)}</b> отправил результат: победила Команда ${m.pending_winner}${m.pending_score ? `, ${esc(m.pending_score)}` : ''}.
-      <span class="mute">${admin ? 'Проверь и подтверди.' : 'Ждём подтверждения админа.'}</span></div>`;
+  if (m.status === 'pending') body += `<div class="callout"><b>На модерации.</b> ${nickOf(m, m.reported_by)}: победила Команда ${m.pending_winner}${m.pending_score ? `, ${esc(m.pending_score)}` : ''}.
+      <span class="mute">${admin ? 'Сверь со скриншотом и прими или отклони.' : 'Админ проверит скриншот и засчитает результат.'}</span></div>
+      ${m.shot ? `<a href="${esc(m.shot)}" target="_blank"><img class="shotimg" src="${esc(m.shot)}" alt="Скриншот результата" loading="lazy"></a>` : ''}`;
   if (m.host_nick && m.status !== 'pending') body += `<div class="info">${I.pad}<div class="grow"><div class="k">Лобби в игре создаёт</div><div class="v ell">${esc(m.host_nick)}</div></div>
       ${m.host_game_id ? `<button class="chip" onclick="copyText('${esc(m.host_game_id)}')">ID ${esc(m.host_game_id)} ${I.copy}</button>` : ''}</div>`;
   if (m.host_id === me && m.status === 'live' && !m.room) body += `<div class="callout me">Ты создаёшь комнату. Сделай её на ${esc(m.map)} и впиши код кнопкой «Код».</div>`;
@@ -625,7 +697,7 @@ function matchCard(m) {
     btns.push(`<button class="btn ghost sm" onclick="openResult(${m.id}, true)">Изменить</button>`);
     btns.push(`<button class="btn red sm" onclick="act('/lobbies/${m.id}/reject', null, 'Отклонено')">Нет</button>`);
   } else {
-    if (m.status === 'live' && (isCap || admin)) btns.push(`<button class="btn" onclick="openResult(${m.id})">Отправить результат</button>`);
+    if (m.status === 'live' && (inIt || admin)) btns.push(`<button class="btn" onclick="openResult(${m.id})">Отправить результат</button>`);
     if (m.status !== 'pending' && (inIt && (m.host_id === me || isCap) || admin)) btns.push(`<button class="btn ghost sm" onclick="openRoom(${m.id})">Код</button>`);
     if (isCap || admin) btns.push(`<button class="btn red sm" aria-label="Отменить матч" onclick="cancelMatch(${m.id})">×</button>`);
   }
@@ -754,12 +826,12 @@ async function openProfile(tgId, isTab) {
     const card = `<div class="panel" style="overflow:hidden"><div class="pc ${p.banner ? 'has-bn' : ''}">${p.banner ? `<div class="bn bn-${esc(p.banner)}"></div>` : ''}<div class="row top2" style="gap:14px;align-items:flex-end">${av(p, 'xl', false, true)}
         <div class="grow"><div class="nick ell">${nickH(p)}</div>${p.premium ? '<span class="ptag">PREMIUM</span>' : ''}
           ${p.game_id ? `<button class="idrow" onclick="copyText('${esc(p.game_id)}')">ID ${esc(p.game_id)} ${I.copy}</button>` : '<div class="idrow">ID не указан</div>'}
-          <div class="mute">${p.online ? '<span class="p">в сети</span>' : `был в сети ${ago(p.last_seen)}`}</div></div></div>
+          <div class="mute">${p.online ? '<span class="p">в сети</span>' : `был в сети ${ago(p.last_seen)}`}${(() => { const r = d.reputation, n = r.up + r.down; return n ? ` · репутация <b class="${r.up / n >= .7 ? 'p' : r.up / n >= .4 ? '' : 'm'}">${Math.round(r.up * 100 / n)}%</b> (${n})` : ''; })()}</div></div></div>
         ${mine ? `<button class="edit" aria-label="Изменить профиль" onclick="openEdit()">${I.pen}</button>` : ''}
         ${p.badges?.length ? `<div>${p.badges.map(b => `<span class="medal">${b.place} место · ${esc(seasonLabel(b.season))}</span>`).join('')}</div>` : ''}
         ${fbtn ? `<div style="margin-top:14px">${fbtn}</div>` : ''}</div>
       <div class="rowlink"><div class="ic" style="color:${p.banned ? 'var(--bad)' : 'var(--mute)'}">${I.shield}</div><div class="grow"><b>Наказания</b>
-        <span class="mute">${p.banned ? `Бан до ${new Date(p.banned_until * 1000).toLocaleString('ru')}` : 'Ничего не действует'}</span></div></div>
+        <span class="mute">${p.banned ? `Бан ещё ${banLeft(p.banned_until)}` : 'Ничего не действует'}${d.offenses ? ` · нарушений за неделю: ${d.offenses}, следующий бан ${Math.min(1440, S.cfg.ban_base_min * 2 ** d.offenses)} мин` : ''}</span></div></div>
       ${mine ? `<button class="rowlink" onclick="openSupport()"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="2" y="13" width="5" height="7" rx="1"/><rect x="17" y="13" width="5" height="7" rx="1"/></svg></div>
         <div class="grow"><b>Поддержка</b><span class="mute">${S.me.my_tickets_answered ? `<span class="p">Есть ответ админа</span>` : 'Создать тикет с доказательствами'}</span></div>${I.chev}</button>` : ''}</div>`;
     const got = d.achievements.filter(a => a.got);
@@ -794,6 +866,9 @@ function openHistory(tgId) {
     <div class="panel">${d.history.map(matchRow).join('')}</div>`);
 }
 
+async function rate(mid, tgId, v) {
+  try { await api(`/lobbies/${mid}/rate`, { tg_id: tgId, value: v }); haptic('light'); S.stack.pop(); openMatch(mid); } catch (e) { toast(e.message); }
+}
 async function openMatch(id) {
   try {
     const m = await api('/matches/' + id), [s1, s2] = (m.score || '').split(':');
@@ -806,8 +881,11 @@ async function openMatch(id) {
         return `<div class="tgrid ${p.tg_id === m.mvp ? 'mvp' : ''}" onclick="openProfile(${p.tg_id})"><div class="who">${av(p, 'sm', false)}<div style="min-width:0">
             <b>${nickH(p)}${p.tg_id === m.mvp ? '<span class="mvpb">MVP</span>' : ''}${p.tg_id === cap ? ' <span class="tagC">C</span>' : ''}</b>
             <span class="sub2">${lvl(p.level, 'xs')}${p.game_id ? 'ID ' + esc(p.game_id) : ''}</span></div></div>
-          <div>${p.kills ?? '—'}</div><div>${p.assists ?? '—'}</div><div>${p.deaths ?? '—'}</div>
-          <div class="${p.kills != null ? (kd >= 1 ? 'p' : 'mute') : 'mute'}">${kd}</div><div>${d}</div></div>`;
+          ${m.can_rate && p.tg_id !== S.me.user.id ? `` : ''}<div>${p.kills ?? '—'}</div><div>${p.assists ?? '—'}</div><div>${p.deaths ?? '—'}</div>
+          <div class="${p.kills != null ? (kd >= 1 ? 'p' : 'mute') : 'mute'}">${kd}</div><div>${d}</div></div>
+          ${m.can_rate && p.tg_id !== S.me.user.id ? `<div class="thumbs" style="padding:0 12px 8px" onclick="event.stopPropagation()"><span class="mute grow" style="text-align:left;font-size:12px;align-self:center">Оценить игрока</span>
+            <button class="up ${m.my_rates[p.tg_id] === 1 ? 'on' : ''}" aria-label="Хорошо" onclick="rate(${m.id},${p.tg_id},1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2 10h4v11H2zM8 21h9.5a2 2 0 0 0 2-1.6l1.4-7A2 2 0 0 0 19 10h-5l.8-4.2A1.6 1.6 0 0 0 13.2 4L8 10z"/></svg></button>
+            <button class="down ${m.my_rates[p.tg_id] === -1 ? 'on' : ''}" aria-label="Плохо" onclick="rate(${m.id},${p.tg_id},-1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(180deg)"><path d="M2 10h4v11H2zM8 21h9.5a2 2 0 0 0 2-1.6l1.4-7A2 2 0 0 0 19 10h-5l.8-4.2A1.6 1.6 0 0 0 13.2 4L8 10z"/></svg></button></div>` : ''}`;
       }).join('');
       return `<div class="panel tm ${won ? 'won' : ''}" style="overflow:hidden"><div class="tmh"><div style="width:6px;align-self:stretch;background:var(--${t === 1 ? 'a' : 'b'})"></div>
           <div class="grow"><div class="mute">Команда ${t === 1 ? 'A' : 'B'}</div><div class="tn">Команда ${t}</div></div>
@@ -855,12 +933,13 @@ function banLeft(u) { const s = u - Date.now() / 1000; return s < 3600 ? `${Math
 function goTab(t) { document.querySelector(`#tabs [data-tab=${t}]`)?.click(); }
 
 // ---------- магазин ----------
-const SECS = [['premium', 'Премиум'], ['frame', 'Рамки'], ['chevron', 'Шевроны'], ['banner', 'Баннеры'], ['bundle', 'Комплекты']];
+const SECS = [['premium', 'Премиум'], ['case', 'Кейсы'], ['frame', 'Рамки'], ['chevron', 'Шевроны'], ['flag', 'Флаги'], ['banner', 'Баннеры'], ['bundle', 'Комплекты']];
+const RAR = { common: 'Обычный', rare: 'Редкий', epic: 'Эпический', legendary: 'Легендарный' };
 const DESC = { frame: 'Рамка вокруг аватара в профиле, лобби и рейтинге', chevron: 'Значок рядом с ником везде, где тебя видно', banner: 'Широкий баннер в шапке профиля' };
 function itemPreview(it, p) {
   const base = { ...p, frame: null, chevron: null };
   if (it.kind === 'frame') return av({ ...base, frame: it.id }, 'xl', false);
-  if (it.kind === 'chevron') return chevSvg(it.id, 'chevbig');
+  if (it.kind === 'chevron') return it.flag ? chevSvg(it.id, 'chevbig') : `<div class="patch">${chevSvg(it.id, 'chevbig')}</div>`;
   if (it.kind === 'banner') return `<div class="bn bn-${it.id}"></div>`;
   if (it.kind === 'bundle') {
     const [f, c, b] = it.items.map(id => S.cfg.shop.find(x => x.id === id));
@@ -872,7 +951,7 @@ async function shopTab() {
   await loadMe();
   S.shopSec ||= 'premium'; S.shopSort ||= 'def';
   const p = S.me.player, inv = new Set(S.me.inventory), sec = S.shopSec;
-  let items = S.cfg.shop.filter(i => i.kind === sec);
+  let items = S.cfg.shop.filter(i => sec === 'flag' ? i.flag : sec === 'chevron' ? i.kind === 'chevron' && !i.flag && !i.case : i.kind === sec && !i.case);
   if (S.shopSort !== 'def') items = items.slice().sort((a, b) => (S.shopSort === 'up' ? 1 : -1) * (a.price - b.price));
   const daily = S.me.daily_ready
     ? `<div class="daily"><div class="grow"><b class="c" style="font-size:18px">Ежедневный бонус</b><div class="mute">+${p.premium ? S.cfg.coins.daily_premium : S.cfg.coins.daily} TC раз в сутки${p.premium ? '' : ` · с премиумом ${S.cfg.coins.daily_premium}`}</div></div><button class="btn sm" onclick="claimDaily()">Забрать</button></div>` : '';
@@ -884,7 +963,18 @@ async function shopTab() {
       <div class="plans">${items.map(i => `<div class="plan"><span class="mute">${i.days} дн.</span><b class="coins" style="font-size:20px">${coinSvg}${i.price}</b>
         ${i.tag ? `<span class="tag2">${esc(i.tag)}</span>` : '<span style="height:14px"></span>'}<button class="btn" style="background:var(--gold);min-height:36px;font-size:14px" onclick="buy('${i.id}')">Купить</button></div>`).join('')}</div>
       ${p.premium ? `<label class="f" style="color:var(--gold)">Цвет ника</label><div class="colors">${S.cfg.nick_colors.map(c => `<button aria-label="Цвет" style="background:${c}" class="${p.nick_color === c ? 'on' : ''}" onclick="setColor('${c}')"></button>`).join('')}
-        <button class="chip" onclick="setColor(null)">Сброс</button></div>` : ''}</div>`;
+        <button class="chip" onclick="setColor(null)">Сброс</button></div>` : ''}</div>
+      <h2>Telegram Stars <small>оплата прямо в Telegram</small></h2>
+      <div class="stars">${S.cfg.stars.map(x => `<button onclick="payStars('${x.id}')"><b>${esc(x.title)}</b><span class="mute">⭐ ${x.stars} Stars</span></button>`).join('')}</div>`;
+  } else if (sec === 'case') {
+    body = S.cfg.cases.map(c => {
+      const ex = c.pool.filter(x => x.rarity === 'legendary').map(x => S.cfg.shop.find(i => i.id === x.id));
+      return `<div class="panel case ${c.id === 'case_elite' ? 'elite' : ''}"><div class="box">${chevSvg(c.id === 'case_elite' ? 'chev_dragon' : 'chev_star', 'chevbig')}</div>
+        <div class="grow"><div class="c" style="font-size:22px;font-weight:800">${esc(c.title)}</div>
+          <div class="odds">${Object.entries(c.odds).filter(([, w]) => w).map(([k, w]) => `<span class="rar r-${k}">${RAR[k]} ${w}%</span>`).join('')}</div>
+          <div class="mute" style="margin-top:4px">Легендарные: ${ex.map(i => esc(i.title)).join(', ')}</div>
+          <button class="btn" style="margin-top:10px" onclick="openCase('${c.id}')"><span class="coins" style="color:inherit">${coinSvg}${c.price}</span> · Открыть</button></div></div>`;
+    }).join('') + `<p class="mute">Повторный предмет возвращает 30% цены кейса в TC. Легендарные вещи нельзя купить — только выбить.</p>`;
   } else {
     const card = it => {
       const parts = it.kind === 'bundle' ? it.items.map(id => S.cfg.shop.find(x => x.id === id)) : null;
@@ -908,7 +998,7 @@ async function shopTab() {
       <div class="mute" style="text-align:right">Победа +${S.cfg.coins.win}<br>Поражение +${S.cfg.coins.loss}<br>MVP +${S.cfg.coins.mvp}</div></div>
     ${daily}
     <div class="secs">${SECS.map(([k, t]) => `<button class="opt ${sec === k ? 'on' : ''}" onclick="S.shopSec='${k}';shopTab()">${t}</button>`).join('')}</div>
-    <h2 style="margin-top:16px">${SECS.find(x => x[0] === sec)[1]} <small>${sec === 'premium' ? '' : items.length + ' ' + plural(items.length, 'товар', 'товара', 'товаров')}</small></h2>${body}</div>`;
+    <h2 style="margin-top:16px">${SECS.find(x => x[0] === sec)[1]} <small>${sec === 'premium' || sec === 'case' ? '' : items.length + ' ' + plural(items.length, 'товар', 'товара', 'товаров')}</small></h2>${body}</div>`;
 }
 function tryOn(id) {
   const it = S.cfg.shop.find(x => x.id === id), p = { ...S.me.player };
@@ -920,6 +1010,34 @@ function tryOn(id) {
       <div class="row top2" style="gap:14px;align-items:flex-end">${av(p, 'xl', false)}<div class="grow"><div class="nick ell">${nickH(p)}</div><div class="mute">${p.calibrated ? p.elo + ' ELO' : 'калибровка'}</div></div></div></div></div>
     <div class="panel list"><div class="it">${av(p, 'sm')}<div class="grow"><div class="n ell">${nickH(p)}</div><div class="mute">так в рейтинге и лобби</div></div></div></div>
     <div class="btns"><button class="btn ghost" onclick="closeSheet()">Закрыть</button></div>`);
+}
+async function openCase(cid) {
+  const c = S.cfg.cases.find(x => x.id === cid);
+  if (S.me.player.coins < c.price) return toast(`Не хватает ${c.price - S.me.player.coins} TC`);
+  let r;
+  try { r = await api('/case/open', { case: cid }); } catch (e) { return toast(e.message); }
+  const pool = c.pool.filter(x => c.odds[x.rarity] > 0);
+  const cellOf = x => { const it = S.cfg.shop.find(i => i.id === x.id); return `<div class="cell r-${x.rarity}">${it.kind === 'frame' ? av({ ...S.me.player, frame: it.id, chevron: null }, '', false) : it.kind === 'banner' ? `<div class="bn bn-${it.id}" style="width:70px;height:46px;border-radius:3px"></div>` : chevSvg(it.id, 'chevbig')}</div>`; };
+  const cells = Array.from({ length: 34 }, (_, i) => i === 28 ? { id: r.item, rarity: r.rarity } : pool[Math.floor(Math.random() * pool.length)]);
+  sheet(`<h3>${esc(c.title)}</h3><div class="roul"><div class="rstrip" id="strip">${cells.map(cellOf).join('')}</div></div><div id="prize" class="prize" style="visibility:hidden"></div>
+    <div class="btns"><button class="btn ghost" onclick="closeSheet();shopTab()">Закрыть</button><button class="btn" onclick="openCase('${cid}')">Ещё раз · ${c.price}</button></div>`);
+  const strip = $('#strip'), roul = strip.parentElement;
+  const target = 8 + 28 * 92 + 43 - roul.clientWidth / 2 + (Math.random() * 40 - 20);
+  requestAnimationFrame(() => requestAnimationFrame(() => { strip.style.transform = `translateX(${-target}px)`; }));
+  setTimeout(() => {
+    const it = S.cfg.shop.find(i => i.id === r.item);
+    $('#prize').className = `prize r-${r.rarity}`; $('#prize').style.visibility = 'visible';
+    $('#prize').innerHTML = `<span class="rar">${RAR[r.rarity]}</span><b>${esc(it.title)}</b><span class="mute">${r.dup ? `Уже было — вернули ${r.refund} TC` : 'Добавлено в инвентарь, надень в разделе магазина'}</span>`;
+    haptic(r.rarity === 'legendary' || r.rarity === 'epic' ? 'ok' : 'light');
+    if (r.rarity === 'legendary') beep([660, 880, 1320]);
+  }, 4300);
+}
+async function payStars(id) {
+  try {
+    const { link } = await api('/stars/invoice', { product: id });
+    if (tg?.openInvoice) tg.openInvoice(link, st => { if (st === 'paid') { toast('Оплачено! Спасибо', true); setTimeout(shopTab, 1500); } else if (st === 'failed') toast('Оплата не прошла'); });
+    else window.open(link, '_blank');
+  } catch (e) { toast(e.message); }
 }
 async function buy(id) {
   const it = S.cfg.shop.find(i => i.id === id);
@@ -1130,21 +1248,25 @@ function openRoom(id) {
 }
 function openResult(id, adminEdit = false) {
   const m = findMatch(id);
-  let w = adminEdit ? m.pending_winner || 0 : 0;
+  let w = adminEdit ? m.pending_winner || 0 : 0, shot = null;
+  const needShot = !adminEdit && !S.me.is_admin;
   const draw = () => {
     const keep = [$('#s1')?.value, $('#s2')?.value];
-    const o = sheet(`<h3>Результат</h3><div class="mute">Матч #${id} · ${esc(m.map)}${adminEdit ? '' : '. Уйдёт админу на проверку'}</div>
+    const o = sheet(`<h3>Результат</h3><div class="mute">Матч #${id} · ${esc(m.map)}${adminEdit ? '' : '. Уйдёт админу на модерацию'}</div>
       <label class="f">Кто победил</label>
       <div class="seg"><button class="${w === 1 ? 'on a' : ''}" data-w="1">Команда 1</button><button class="${w === 2 ? 'on b' : ''}" data-w="2">Команда 2</button></div>
       <label class="f">Счёт, если помнишь</label>
       <div class="row"><input id="s1" type="number" inputmode="numeric" placeholder="13" style="text-align:center"><b class="c" style="font-size:22px">:</b><input id="s2" type="number" inputmode="numeric" placeholder="9" style="text-align:center"></div>
-      <div class="btns"><button class="btn" id="res-go" ${w ? '' : 'disabled'}>${adminEdit ? 'Сохранить и засчитать' : 'Отправить'}</button></div>`);
+      ${adminEdit ? '' : `<label class="f">Скриншот итоговой таблицы${needShot ? '' : ' (для админа необязательно)'}</label>
+        <div class="shot">${shot ? `<img src="${shot}" alt="">` : ''}<button class="btn ghost sm" id="res-img">${shot ? 'Заменить' : 'Прикрепить скриншот'}</button></div>`}
+      <div class="btns"><button class="btn" id="res-go" ${w && (shot || !needShot) ? '' : 'disabled'}>${adminEdit ? 'Сохранить и засчитать' : 'Отправить на модерацию'}</button></div>`);
+    if ($('#res-img')) $('#res-img').onclick = async () => { const f = await pickImage(); if (!f) return; try { shot = await compressImage(f, 1600); draw(); } catch (e) { toast(e.message); } };
     if (keep[0] != null) { $('#s1').value = keep[0]; $('#s2').value = keep[1]; }
     o.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { w = +b.dataset.w; draw(); });
     $('#res-go').onclick = async () => {
       try {
-        const r = await api(`/lobbies/${id}/${adminEdit ? 'confirm' : 'result'}`, { winner: w, score1: +$('#s1').value || 0, score2: +$('#s2').value || 0 });
-        closeSheet(); toast(r.pending ? 'Отправлено админу' : 'Засчитано, ELO обновлено', true);
+        const r = await api(`/lobbies/${id}/${adminEdit ? 'confirm' : 'result'}`, { winner: w, score1: +$('#s1').value || 0, score2: +$('#s2').value || 0, image: shot });
+        closeSheet(); toast(r.pending ? 'Отправлено на модерацию' : 'Засчитано, ELO обновлено', true);
         if (S.tab === 'admin') { await loadMe(); adminTab(); } else await refresh();
       } catch (e) { toast(e.message); }
     };
@@ -1191,7 +1313,7 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------

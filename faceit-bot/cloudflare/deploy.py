@@ -119,7 +119,7 @@ def main() -> None:
         "SO2 Arena — своя ELO-площадка для Standoff 2.\n\n"
         "🎮 Заходи в лобби 5x5\n🗺 Капитаны банят карты\n📈 ELO, калибровка и уровни 1–10\n🏆 Рейтинг друзей\n\n"
         "Жми «Старт» и открывай приложение."))
-    tg("setWebhook", url=f"{url}/webhook", secret_token=webhook_secret, allowed_updates=["message", "callback_query"])
+    tg("setWebhook", url=f"{url}/webhook", secret_token=webhook_secret, allowed_updates=["message", "callback_query", "pre_checkout_query"])
     print("Telegram настроен ✅")
     print(f"Код админа: /admin {admin_secret}")
 
