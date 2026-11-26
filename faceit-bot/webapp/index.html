@@ -227,6 +227,63 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .fr .st{font-size:13px;color:var(--mute)}
 .fr .st.on{color:var(--go)}
 
+/* косметика: рамки и шевроны */
+.av.f-frame_steel{box-shadow:0 0 0 2px #aeb7c1,0 0 0 4px #4b525b}
+.av.f-frame_carbon{box-shadow:0 0 0 2px #50565e,0 0 0 4px #1b1d21,0 0 0 5px #50565e}
+.av.f-frame_fire{box-shadow:0 0 0 2px #ffb000,0 0 0 4px #ff4a1c}
+.av.f-frame_ice{box-shadow:0 0 0 2px #9be7ff,0 0 0 4px #2f7cff}
+.av.f-frame_toxic{box-shadow:0 0 0 2px #b6ff3a,0 0 0 4px #2f7a12}
+.av.f-frame_gold{box-shadow:0 0 0 2px #ffe27a,0 0 0 4px #c48a00}
+.av.f-frame_prem{box-shadow:0 0 0 2px #fff,0 0 0 4px #ffc400,0 0 0 6px #7a5a00}
+.av.xl[class*=f-frame]{outline:0}
+.chev2{display:inline-block;width:16px;height:16px;vertical-align:-2px;margin-left:4px}
+.prem{color:var(--gold)!important}
+.ptag{display:inline-block;font:800 10px "Fira Sans Condensed",sans-serif;background:var(--gold);color:#1a1400;padding:1px 5px;border-radius:2px;vertical-align:2px;margin-left:4px;letter-spacing:.04em}
+.coins{display:inline-flex;align-items:center;gap:5px;font:700 16px "Fira Sans Condensed",sans-serif;color:var(--gold)}
+.coins svg{width:16px;height:16px}
+/* найти игру и пати */
+.find{display:flex;align-items:center;gap:12px;margin-top:6px;padding:14px;background:var(--ink);color:#0d0f11;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);width:100%;text-align:left}
+.find b{display:block;font:800 24px/1 "Fira Sans Condensed",sans-serif}
+.find span{font-size:13px;opacity:.7}
+.party{padding:14px}
+.party .mem{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:12px}
+.party .m1{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;font:600 13px "Fira Sans Condensed",sans-serif;text-align:center}
+.party .m1 .n{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.party .slotp{width:44px;height:44px;border:1px dashed var(--line);border-radius:4px;display:grid;place-items:center;color:var(--dim)}
+.invite{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#1a2a3f;border-left:3px solid var(--a);margin-bottom:8px}
+/* магазин */
+.wallet{display:flex;align-items:center;gap:14px;padding:16px}
+.wallet .big{font:800 40px/1 "Fira Sans Condensed",sans-serif;color:var(--gold);font-variant-numeric:tabular-nums}
+.premc{padding:16px;background:#221d0b;border:1px solid #6b5400}
+.premc h3{margin:0;font:800 26px "Fira Sans Condensed",sans-serif;color:var(--gold)}
+.premc ul{margin:10px 0 0;padding:0;list-style:none}
+.premc li{padding:6px 0 6px 24px;position:relative;border-top:1px solid #3a3210}
+.premc li:first-child{border-top:0}
+.premc li::before{content:"";position:absolute;left:2px;top:12px;width:10px;height:6px;border-left:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(-45deg)}
+.shopgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.item{background:var(--s1);border:1px solid var(--line);border-radius:6px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.item.eq{border-color:var(--ink)}
+.item b{font:700 15px "Fira Sans Condensed",sans-serif}
+.item .btn{min-height:34px;font-size:14px;padding:0 8px}
+.chevbig{width:40px;height:40px;flex-shrink:0}
+/* поддержка */
+.tk{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line);width:100%;text-align:left}
+.tk:first-child{border-top:0}
+.tk b{display:block;font:700 17px "Fira Sans Condensed",sans-serif}
+.tst{font:700 12px "Fira Sans Condensed",sans-serif;padding:2px 7px;border-radius:3px;white-space:nowrap}
+.tst.open{background:#2a2410;color:var(--gold)}.tst.answered{background:#163322;color:var(--go)}.tst.closed{background:var(--s3);color:var(--mute)}
+.msg{max-width:86%;padding:10px 12px;border-radius:6px;margin-bottom:8px;background:var(--s2)}
+.msg.adm{background:#16263f;margin-left:auto}
+.msg img{display:block;max-width:100%;border-radius:4px;margin-top:8px}
+.msg .who2{font:700 13px "Fira Sans Condensed",sans-serif;color:var(--mute);margin-bottom:2px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{background:var(--s3);padding:9px 12px;border-radius:4px;font-weight:600;font-size:14px}
+.opt.on{background:var(--ink);color:#0d0f11}
+textarea{font:16px "Fira Sans",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:12px;width:100%;min-height:110px;outline:none;resize:vertical}
+textarea:focus{border-color:var(--ink)}
+.shot{display:flex;align-items:center;gap:10px;margin-top:8px}
+.shot img{width:64px;height:64px;object-fit:cover;border-radius:4px}
+
 /* рейтинг */
 .season{display:flex;align-items:center;gap:12px;padding:14px;background:var(--ink);color:#0d0f11;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%)}
 .season b{font:800 22px/1 "Fira Sans Condensed",sans-serif}
@@ -279,6 +336,7 @@ label.f{display:block;margin:14px 0 6px;font-size:13px;font-weight:600;color:var
   <button data-tab="lobby" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>Лобби</button>
   <button data-tab="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Рейтинг</button>
   <button data-tab="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21.5 19"/></svg>Друзья<span class="dot" id="fr-dot" hidden></span></button>
+  <button data-tab="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>Магазин</button>
   <button data-tab="admin" id="tab-admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg>Админ<span class="dot" id="adm-dot" hidden></span></button>
   <button data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Профиль</button>
 </nav></div>
@@ -309,6 +367,18 @@ const I = {
   back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>',
   trophy: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
 };
+const CHEV = {
+  chev_star: ['#ffd23a', '<path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z" fill="currentColor"/>'],
+  chev_bolt: ['#5cc8ff', '<path d="M13 2 5 14h6l-1 8 8-12h-6z" fill="currentColor"/>'],
+  chev_target: ['#ff5236', '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="2.5"/>'],
+  chev_skull: ['#e8ecf0', '<path d="M12 3a8 8 0 0 0-8 8c0 2.6 1.3 4.4 3 5.4V20h10v-3.6c1.7-1 3-2.8 3-5.4a8 8 0 0 0-8-8z" fill="currentColor"/><circle cx="9" cy="11.5" r="1.8" fill="#111316"/><circle cx="15" cy="11.5" r="1.8" fill="#111316"/>'],
+  chev_wings: ['#b48cff', '<path d="M12 9c-2-4-6-5-10-4 1 5 4 8 8 8M12 9c2-4 6-5 10-4-1 5-4 8-8 8M12 9v10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>'],
+  chev_crown: ['#ffc400', '<path d="m3 8 4 4 5-7 5 7 4-4-2 11H5z" fill="currentColor"/>'],
+  chev_prem: ['#ffc400', '<path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z" fill="currentColor"/><path d="m12 7 1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z" fill="#1a1400"/>'],
+};
+const chevSvg = (id, cls = 'chev2') => CHEV[id] ? `<svg class="${cls}" viewBox="0 0 24 24" style="color:${CHEV[id][0]}">${CHEV[id][1]}</svg>` : '';
+const nickH = p => `<span class="${p.premium ? 'prem' : ''}">${esc(p.nick)}</span>${chevSvg(p.chevron)}`;
+const coinSvg = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#ffc400"/><circle cx="12" cy="12" r="6" fill="none" stroke="#7a5a00" stroke-width="2"/></svg>';
 const ACH = {
   first_win: '<path d="M12 3c3 4 5 6.5 5 10a5 5 0 0 1-10 0c0-3.5 2-6 5-10z"/>',
   calibrated: '<circle cx="12" cy="12" r="8"/><path d="m8 12 3 3 5-6"/>',
@@ -330,7 +400,7 @@ function lvl(l, cls = '') {
 }
 function av(p, size = '', badge = true, online = false) {
   const inner = p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy" onerror="this.remove()">` : esc((p.nick || '?').slice(0, 2).toUpperCase());
-  return `<div class="av ${size}" style="--h:hsl(${hue(p.nick || p.tg_id)} 30% 28%)">${inner}${badge ? lvl(p.level, 'xs') : ''}${online && p.online ? '<i class="onl"></i>' : ''}</div>`;
+  return `<div class="av ${size} ${p.frame ? 'f-' + p.frame : ''}" style="--h:hsl(${hue(p.nick || p.tg_id)} 30% 28%)">${inner}${badge ? lvl(p.level, 'xs') : ''}${online && p.online ? '<i class="onl"></i>' : ''}</div>`;
 }
 const ago = ts => {
   if (!ts) return 'давно';
@@ -389,7 +459,7 @@ function topbar() {
   const right = p.calibrated
     ? `<div class="mebar">${lvl(p.level)}<b style="color:${LVL[p.level]}">${p.elo}</b></div>`
     : `<div class="mebar">${lvl(null)}<b class="dim">${p.calib_played}/${p.calib_total}</b></div>`;
-  return `<div class="top"><div class="logo grow ell">SO2 Arena <i>· ${esc(S.cfg.season_name)}</i></div>${right}</div>`;
+  return `<div class="top"><div class="logo grow ell">SO2 Arena</div><button class="coins" onclick="goTab('shop')">${coinSvg}${p.coins}</button>${right}</div>`;
 }
 function render() {
   const app = $('#app');
@@ -403,6 +473,7 @@ function render() {
   if (S.tab === 'profile') return openProfile(S.me.player.tg_id, true);
   if (S.tab === 'admin') return adminTab();
   if (S.tab === 'friends') return friendsTab();
+  if (S.tab === 'shop') return shopTab();
   app.innerHTML = topbar() + `<div class="wrap">${S.tab === 'lobby' ? lobbyTab() : topTab()}</div>`;
 }
 
@@ -436,8 +507,16 @@ function lobbyTab() {
   const mine = active.filter(m => m.players.some(p => p.tg_id === me));
   const others = active.filter(m => !mine.includes(m));
   let h = '';
-  if (S.me.player.banned) h += `<div class="callout" style="margin-top:12px;border-left-color:var(--bad);background:#2b1418">Ты забанен до ${new Date(S.me.player.banned_until * 1000).toLocaleString('ru')}</div>`;
+  if (S.me.player.banned) h += `<div class="callout" style="margin-top:12px;border-left-color:var(--bad);background:#2b1418">Ты забанен ещё на ${banLeft(S.me.player.banned_until)}. Если это ошибка — напиши в <button style="text-decoration:underline" onclick="openSupport()">поддержку</button></div>`;
   if (mine.length) h += `<h2>Твой матч</h2>${mine.map(matchCard).join('')}`;
+  const pt = S.me.party?.party, inOpen = open.some(m => m.players.some(p => p.tg_id === me));
+  if (!mine.length && !inOpen) {
+    const lead = !pt || pt.leader === me;
+    h += `<button class="find" ${lead && !S.me.player.banned ? 'onclick="findGame()"' : 'disabled style="opacity:.5"'}><div class="grow"><b>Найти игру</b>
+      <span>${pt ? (lead ? `С пати из ${pt.members.length}. Займём самое заполненное лобби` : 'В лобби пати заводит лидер') : 'Займём место в самом заполненном лобби'}</span></div>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 6 6 6-6 6"/></svg></button>`;
+  }
+  if (pt) h += `<div class="mute" style="margin-top:8px">Пати ${pt.members.length}/${pt.max}: ${pt.members.map(x => esc(x.nick)).join(', ')}</div>`;
   h += `<h2>Лобби <small>5 на 5</small></h2>${open.map(lobbyCard).join('')}`;
   if (others.length) h += `<h2>Сейчас играют <small>${others.length}</small></h2>${others.map(matchCard).join('')}`;
   return h;
@@ -447,7 +526,7 @@ function lobbyCard(m) {
   const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me), n = m.players.length;
   const isReady = m.status === 'ready', meP = m.players.find(p => p.tg_id === me), rc = m.players.filter(p => p.ready).length;
   const slots = m.players.map(p => `<div class="slot ${p.tg_id === me ? 'me' : ''} ${isReady && !p.ready ? 'wait' : ''}">
-      ${isReady && p.ready ? `<span class="ok">${I.check}</span>` : ''}${av(p)}<div class="n">${esc(p.nick)}</div>
+      ${isReady && p.ready ? `<span class="ok">${I.check}</span>` : ''}${av(p)}<div class="n">${nickH(p)}</div>
       ${S.me.is_admin && p.tg_id !== me ? `<button class="x" aria-label="Кикнуть" onclick="kick(${m.id},${p.tg_id})">×</button>` : ''}</div>`).join('')
     + Array(m.size - n).fill('<div class="slot free"><div class="av">+</div><div class="n dim">пусто</div></div>').join('');
   let btn;
@@ -478,7 +557,7 @@ function matchCard(m) {
   const col = t => {
     const cap = t === 1 ? m.captain1 : m.captain2;
     return `<div class="col ${t === 1 ? 'a' : 'b'}">${m.players.filter(p => p.team === t).map(p => `<div class="pr">${lvl(p.level, 'xs')}
-      <span class="ell grow" style="${p.tg_id === me ? 'text-decoration:underline;text-underline-offset:3px' : ''}">${esc(p.nick)}</span>
+      <span class="ell grow" style="${p.tg_id === me ? 'text-decoration:underline;text-underline-offset:3px' : ''}">${nickH(p)}</span>
       ${p.tg_id === cap ? '<span class="tagC">C</span>' : ''}${p.tg_id === m.host_id ? I.pad : ''}
       ${p.kills != null ? `<span class="kd">${p.kills}–${p.deaths}</span>` : ''}</div>`).join('')}</div>`;
   };
@@ -534,13 +613,13 @@ function playersList() {
   const ok = p => !q || p.nick.toLowerCase().includes(q) || String(p.game_id || '').includes(q);
   const row = (p, pos) => `<div class="it ${p.tg_id === S.me.user.id ? 'me' : ''}" onclick="openProfile(${p.tg_id})">
       <div class="pos">${pos}</div>${av(p, 'sm')}
-      <div class="grow"><div class="n ell">${esc(p.nick)}${p.banned ? ' <span class="m">бан</span>' : ''}</div><div class="mute">${p.wins}W ${p.losses}L${p.badges?.length ? ` · ${p.badges.length} ${plural(p.badges.length, 'медаль', 'медали', 'медалей')}` : ''}</div></div>
+      <div class="grow"><div class="n ell">${nickH(p)}${p.premium ? '<span class="ptag">PREMIUM</span>' : ''}${p.banned ? ' <span class="m">бан</span>' : ''}</div><div class="mute">${p.wins}W ${p.losses}L${p.badges?.length ? ` · ${p.badges.length} ${plural(p.badges.length, 'медаль', 'медали', 'медалей')}` : ''}</div></div>
       ${p.calibrated ? `<div class="e" style="color:${LVL[p.level]}">${p.elo}</div>` : `<div class="mute num" style="font-size:16px">${p.calib_played}/${p.calib_total}</div>`}</div>`;
   const ranked = S.top.filter(p => p.calibrated), calib = S.top.filter(p => !p.calibrated && ok(p));
   let h = '';
   if (!q && ranked.length >= 3) {
     const pod = (p, i) => `<div class="pod ${i === 0 ? 'first' : ''}" onclick="openProfile(${p.tg_id})"><div class="pl">${i + 1}</div>${av(p, i === 0 ? '' : 'sm')}
-      <div class="n ell">${esc(p.nick)}</div><div class="num" style="font-size:20px;font-weight:700;color:${LVL[p.level]}">${p.elo}</div></div>`;
+      <div class="n ell">${nickH(p)}</div><div class="num" style="font-size:20px;font-weight:700;color:${LVL[p.level]}">${p.elo}</div></div>`;
     h += `<div class="podium">${pod(ranked[1], 1)}${pod(ranked[0], 0)}${pod(ranked[2], 2)}</div>`;
   }
   const rest = ranked.map((p, i) => ({ p, i })).filter(({ p, i }) => ok(p) && (q || ranked.length < 3 || i >= 3));
@@ -624,14 +703,16 @@ async function openProfile(tgId, isTab) {
       friends: `<button class="btn ghost" onclick="confirmDo('Удалить из друзей?',()=>friendAct('remove',${tgId}))">В друзьях · удалить</button>`,
     }[fs];
     const card = `<div class="panel" style="overflow:hidden"><div class="pc"><div class="row" style="gap:14px">${av(p, 'xl', false, true)}
-        <div class="grow"><div class="nick ell">${esc(p.nick)}</div>
+        <div class="grow"><div class="nick ell">${nickH(p)}</div>${p.premium ? '<span class="ptag">PREMIUM</span>' : ''}
           ${p.game_id ? `<button class="idrow" onclick="copyText('${esc(p.game_id)}')">ID ${esc(p.game_id)} ${I.copy}</button>` : '<div class="idrow">ID не указан</div>'}
           <div class="mute">${p.online ? '<span class="p">в сети</span>' : `был в сети ${ago(p.last_seen)}`}</div></div></div>
         ${mine ? `<button class="edit" aria-label="Изменить профиль" onclick="openEdit()">${I.pen}</button>` : ''}
         ${p.badges?.length ? `<div>${p.badges.map(b => `<span class="medal">${b.place} место · ${esc(seasonLabel(b.season))}</span>`).join('')}</div>` : ''}
         ${fbtn ? `<div style="margin-top:14px">${fbtn}</div>` : ''}</div>
       <div class="rowlink"><div class="ic" style="color:${p.banned ? 'var(--bad)' : 'var(--mute)'}">${I.shield}</div><div class="grow"><b>Наказания</b>
-        <span class="mute">${p.banned ? `Бан до ${new Date(p.banned_until * 1000).toLocaleString('ru')}` : 'Ничего не действует'}</span></div></div></div>`;
+        <span class="mute">${p.banned ? `Бан до ${new Date(p.banned_until * 1000).toLocaleString('ru')}` : 'Ничего не действует'}</span></div></div>
+      ${mine ? `<button class="rowlink" onclick="openSupport()"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="2" y="13" width="5" height="7" rx="1"/><rect x="17" y="13" width="5" height="7" rx="1"/></svg></div>
+        <div class="grow"><b>Поддержка</b><span class="mute">${S.me.my_tickets_answered ? `<span class="p">Есть ответ админа</span>` : 'Создать тикет с доказательствами'}</span></div>${I.chev}</button>` : ''}</div>`;
     const got = d.achievements.filter(a => a.got);
     const achs = `<div class="hd"><h2>Достижения <small>${got.length} из ${d.achievements.length}</small></h2><button class="lnk" onclick="openAchs()">Все ${I.chev}</button></div>
       <div class="strip">${[...got, ...d.achievements.filter(a => !a.got)].map(a => `<div class="medal2 ${a.got ? 'on' : ''}" title="${esc(a.title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${ACH[a.id] || ''}</svg></div>`).join('')}</div>`;
@@ -674,7 +755,7 @@ async function openMatch(id) {
         const kd = p.kills != null ? (p.kills / Math.max(1, p.deaths)).toFixed(2) : '—';
         const d = p.elo_delta == null ? '<span class="mute" style="font-size:12px">калибр.</span>' : `<span class="${p.elo_delta >= 0 ? 'p' : 'm'}">${p.elo_delta >= 0 ? '+' : ''}${p.elo_delta}</span>`;
         return `<div class="tgrid ${p.tg_id === m.mvp ? 'mvp' : ''}" onclick="openProfile(${p.tg_id})"><div class="who">${av(p, 'sm', false)}<div style="min-width:0">
-            <b>${esc(p.nick)}${p.tg_id === m.mvp ? '<span class="mvpb">MVP</span>' : ''}${p.tg_id === cap ? ' <span class="tagC">C</span>' : ''}</b>
+            <b>${nickH(p)}${p.tg_id === m.mvp ? '<span class="mvpb">MVP</span>' : ''}${p.tg_id === cap ? ' <span class="tagC">C</span>' : ''}</b>
             <span class="sub2">${lvl(p.level, 'xs')}${p.game_id ? 'ID ' + esc(p.game_id) : ''}</span></div></div>
           <div>${p.kills ?? '—'}</div><div>${p.assists ?? '—'}</div><div>${p.deaths ?? '—'}</div>
           <div class="${p.kills != null ? (kd >= 1 ? 'p' : 'mute') : 'mute'}">${kd}</div><div>${d}</div></div>`;
@@ -693,6 +774,144 @@ async function openMatch(id) {
   } catch (e) { toast(e.message); }
 }
 
+// ---------- пати ----------
+function partyBlock() {
+  const pv = S.me.party || {}, pt = pv.party, me = S.me.user.id;
+  let h = (pv.invites || []).map(i => `<div class="invite"><div class="grow"><b>${esc(i.nick)}</b> зовёт тебя в пати</div>
+    <button class="btn sm" onclick="partyAct('accept',{party_id:${i.party_id}},'Ты в пати')">Принять</button><button class="btn ghost sm" onclick="partyAct('decline',{party_id:${i.party_id}})">×</button></div>`).join('');
+  if (!pt) return h + `<div class="panel party"><div class="row"><div class="grow"><div class="c" style="font-size:22px;font-weight:800">Пати</div>
+    <div class="mute">Позови друзей кнопкой «В пати» в списке. Без премиума — до ${S.cfg.party_max}, с премиумом — до ${S.cfg.party_max_premium}</div></div></div></div>`;
+  const lead = pt.leader === me;
+  const mem = pt.members.map(x => `<div class="m1">${av(x, '', true, true)}<div class="n">${nickH(x)}</div><span class="mute" style="font-size:11px">${x.tg_id === pt.leader ? 'лидер' : lead ? `<button onclick="partyAct('kick',{tg_id:${x.tg_id}})" style="color:var(--bad)">убрать</button>` : ''}</span></div>`).join('')
+    + Array(Math.max(0, pt.max - pt.members.length)).fill('<div class="m1"><div class="slotp">+</div><div class="n dim">пусто</div></div>').join('');
+  return h + `<div class="panel party"><div class="row"><div class="grow"><div class="c" style="font-size:22px;font-weight:800">Пати ${pt.members.length}/${pt.max}</div>
+      <div class="mute">${pt.members.length > 1 ? 'Вы зайдёте в лобби вместе и попадёте в одну команду' : 'Ждём, пока друзья примут приглашение'}${pt.sent.length ? ` · приглашено: ${pt.sent.length}` : ''}</div></div>
+      <button class="btn ghost sm" onclick="partyAct('leave',{},'Ты вышел из пати')">Выйти</button></div>
+    <div class="mem">${mem}</div>${pt.max < S.cfg.party_max_premium ? `<div class="mute" style="margin-top:10px">Нужно больше мест? <button style="color:var(--gold);font-weight:700" onclick="goTab('shop')">Премиум даёт пати до ${S.cfg.party_max_premium}</button></div>` : ''}</div>`;
+}
+function partyBtn(x) {
+  const pt = S.me.party?.party, me = S.me.user.id;
+  if (pt?.members.some(m => m.tg_id === x.tg_id)) return '<span class="mute">в пати</span>';
+  if (pt?.sent.includes(x.tg_id)) return `<button class="chip" onclick="event.stopPropagation();partyAct('kick',{tg_id:${x.tg_id},invite:1})">Отозвать</button>`;
+  if (pt && pt.leader !== me) return I.chev;
+  return `<button class="btn sm" onclick="event.stopPropagation();partyAct('invite',{tg_id:${x.tg_id}},'Приглашение отправлено')">В пати</button>`;
+}
+async function partyAct(op, body, msg) {
+  try { await api('/party/' + op, body); if (msg) toast(msg, true); await loadMe(); friendsTab(); } catch (e) { toast(e.message); }
+}
+async function findGame() {
+  try { const r = await api('/find', {}); toast(`Ты в лобби ${r.lobby_no}`, true); await refresh(); } catch (e) { toast(e.message); }
+}
+function banLeft(u) { const s = u - Date.now() / 1000; return s < 3600 ? `${Math.max(1, Math.ceil(s / 60))} мин` : s < 86400 ? `${Math.ceil(s / 3600)} ч` : `до ${new Date(u * 1000).toLocaleString('ru')}`; }
+function goTab(t) { document.querySelector(`#tabs [data-tab=${t}]`)?.click(); }
+
+// ---------- магазин ----------
+async function shopTab() {
+  await loadMe();
+  const p = S.me.player, inv = new Set(S.me.inventory), items = S.cfg.shop;
+  const prem = p.premium ? `Активен до ${new Date(p.premium_until * 1000).toLocaleDateString('ru')}` : 'Не активен';
+  const card = it => {
+    const own = it.premium ? p.premium : inv.has(it.id), eq = p[it.kind] === it.id;
+    const pic = it.kind === 'frame' ? `<div class="av f-${it.id}" style="--h:hsl(${hue(p.nick)} 30% 28%)">${p.photo ? `<img src="${esc(p.photo)}" alt="">` : esc(p.nick.slice(0, 2).toUpperCase())}</div>` : chevSvg(it.id, 'chevbig');
+    const btn = eq ? `<button class="btn ghost" onclick="equip('${it.kind}',null)">Снять</button>`
+      : own ? `<button class="btn" onclick="equip('${it.kind}','${it.id}')">Надеть</button>`
+      : it.premium ? '<span class="mute">с премиумом</span>'
+      : `<button class="btn ${p.coins < it.price ? 'ghost' : ''}" onclick="buy('${it.id}')"><span class="coins" style="color:inherit">${coinSvg}${it.price}</span></button>`;
+    return `<div class="item ${eq ? 'eq' : ''}">${pic}<b>${esc(it.title)}</b>${btn}</div>`;
+  };
+  $('#app').innerHTML = topbar() + `<div class="wrap">
+    <div class="panel wallet" style="margin-top:8px"><div class="grow"><div class="mute">Твой баланс</div><div class="big">${p.coins}</div></div>
+      <div class="mute" style="text-align:right">Победа +${S.cfg.coins.win}<br>Поражение +${S.cfg.coins.loss}<br>MVP +${S.cfg.coins.mvp}</div></div>
+    <div class="panel premc"><div class="row"><div class="grow"><h3>Премиум</h3><div class="mute">${prem}</div></div>${chevSvg('chev_prem', 'chevbig')}</div>
+      <ul>${S.cfg.premium_perks.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+      <div class="btns">${items.filter(i => i.kind === 'premium').map(i => `<button class="btn" style="background:var(--gold)" onclick="buy('${i.id}')">${i.days} дн. · ${i.price}</button>`).join('')}</div></div>
+    <h2>Рамки <small>вокруг аватара</small></h2><div class="shopgrid">${items.filter(i => i.kind === 'frame').map(card).join('')}</div>
+    <h2>Шевроны <small>рядом с ником</small></h2><div class="shopgrid">${items.filter(i => i.kind === 'chevron').map(card).join('')}</div></div>`;
+}
+async function buy(id) {
+  const it = S.cfg.shop.find(i => i.id === id);
+  confirmDo(`Купить «${it.title}» за ${it.price} монет?`, async () => { try { await api('/shop/buy', { item: id }); toast('Куплено', true); shopTab(); } catch (e) { toast(e.message); } });
+}
+async function equip(kind, id) { try { await api('/shop/equip', { kind, item: id }); toast(id ? 'Надето' : 'Снято', true); shopTab(); } catch (e) { toast(e.message); } }
+
+// ---------- поддержка ----------
+async function compressImage(file, maxSide = 1280, square = false) {
+  const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error('Не удалось открыть картинку')); i.src = URL.createObjectURL(file); });
+  const cv = document.createElement('canvas');
+  let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+  if (square) { const side = Math.min(sw, sh); sx = (sw - side) / 2; sy = (sh - side) / 2; sw = sh = side; }
+  const k = Math.min(1, maxSide / Math.max(sw, sh));
+  cv.width = Math.round(sw * k); cv.height = Math.round(sh * k);
+  cv.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+  let q = .85, data = cv.toDataURL('image/jpeg', q);
+  while (data.length > 750000 && q > .35) { q -= .15; data = cv.toDataURL('image/jpeg', q); }
+  return data;
+}
+function pickImage() {
+  return new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = () => res(i.files[0] || null); i.click(); });
+}
+const TST = { open: 'ждёт ответа', answered: 'есть ответ', closed: 'закрыт' };
+async function openSupport() {
+  try {
+    const list = await api('/tickets');
+    pushView(`${backBtn()}<div class="hd" style="margin-top:4px"><h2 style="font-size:28px">Поддержка</h2></div>
+      <p class="mute" style="margin:-4px 0 12px">Игрок не зашёл, неверный результат, читы или баг — опиши и приложи скриншот. Админ ответит здесь и в боте.</p>
+      <button class="btn" onclick="newTicket()">Создать тикет</button>
+      <h2>Мои тикеты <small>${list.length}</small></h2>
+      <div class="panel">${list.length ? list.map(t => `<button class="tk" onclick="openTicket(${t.id})"><div class="grow"><b>#${t.id} · ${esc(t.topic)}</b><span class="mute">${fmtDate(t.updated)}</span></div>
+        <span class="tst ${t.status}">${TST[t.status]}</span>${I.chev}</button>`).join('') : '<div class="empty">Тикетов пока нет</div>'}</div>`);
+  } catch (e) { toast(e.message); }
+}
+async function newTicket() {
+  let topic = S.cfg.ticket_topics[0], match = null, image = null;
+  const recent = (await api('/players/' + S.me.user.id)).history.slice(0, 6);
+  const draw = () => {
+    const keep = { t: $('#tk-text')?.value || '', g: $('#tk-target')?.value || '' };
+    sheet(`<h3>Новый тикет</h3>
+      <label class="f">Тема</label><div class="opts">${S.cfg.ticket_topics.map(t => `<button class="opt ${t === topic ? 'on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+      ${recent.length ? `<label class="f">Матч (если касается матча)</label><div class="opts">${recent.map(h => `<button class="opt ${match === h.id ? 'on' : ''}" data-m="${h.id}">#${h.id} ${esc(h.map)}</button>`).join('')}</div>` : ''}
+      <label class="f" for="tk-target">Ник или ID нарушителя (необязательно)</label><input id="tk-target" maxlength="20" placeholder="Например, Vortex">
+      <label class="f" for="tk-text">Что случилось</label><textarea id="tk-text" maxlength="2000" placeholder="Матч #12: Vortex так и не зашёл в комнату, ждали 10 минут"></textarea>
+      <div class="shot">${image ? `<img src="${image}" alt="">` : ''}<button class="btn ghost sm" id="tk-img">${image ? 'Заменить скриншот' : 'Прикрепить скриншот'}</button></div>
+      <div class="btns"><button class="btn" id="tk-go">Отправить</button></div>`);
+    $('#tk-text').value = keep.t; $('#tk-target').value = keep.g;
+    document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { topic = b.dataset.t; draw(); });
+    document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { match = match === +b.dataset.m ? null : +b.dataset.m; draw(); });
+    $('#tk-img').onclick = async () => { const f = await pickImage(); if (!f) return; try { image = await compressImage(f); draw(); } catch (e) { toast(e.message); } };
+    $('#tk-go').onclick = async () => {
+      try {
+        const r = await api('/tickets', { topic, match_id: match, target: $('#tk-target').value, text: $('#tk-text').value, image });
+        closeSheet(); toast(`Тикет #${r.id} создан. Ждём ответа админа`, true); goBack(); openTicket(r.id);
+      } catch (e) { toast(e.message); }
+    };
+  };
+  draw();
+}
+async function openTicket(id, replace) {
+  try {
+    const d = await api('/tickets/' + id), t = d.ticket, admin = S.me.is_admin && t.tg_id !== S.me.user.id;
+    const msgs = d.msgs.map(m => `<div class="msg ${m.is_admin ? 'adm' : ''}"><div class="who2">${m.is_admin ? 'Администратор' : esc(m.nick || 'Игрок')} · ${fmtDate(m.created)}</div>
+      ${esc(m.text).replace(/\n/g, '<br>')}${m.image ? `<img src="${esc(m.image)}" alt="Скриншот" loading="lazy">` : ''}</div>`).join('');
+    const html = `${backBtn()}<div class="hd" style="margin-top:4px"><h2 style="font-size:28px">Тикет #${t.id}</h2><span class="tst ${t.status}">${TST[t.status]}</span></div>
+      <div class="mute" style="margin:-4px 0 12px">${esc(t.topic)}${t.match_id ? ` · <button style="text-decoration:underline" onclick="openMatch(${t.match_id})">матч #${t.match_id}</button>` : ''}${t.target_nick ? ` · нарушитель: ${esc(t.target_nick)}` : ''}${admin ? ` · от ${esc(t.nick)}${t.premium ? ' <span class="ptag">PREMIUM</span>' : ''}` : ''}</div>
+      ${msgs}
+      ${t.status !== 'closed' ? `<textarea id="tk-reply" placeholder="${admin ? 'Ответ игроку' : 'Дополнить тикет'}" style="min-height:80px;margin-top:6px"></textarea>
+        <div class="shot" id="tk-prev"></div>
+        <div class="btns"><button class="btn" onclick="replyTicket(${t.id})">Отправить</button><button class="btn ghost sm" onclick="attachReply()">Скрин</button>
+          <button class="btn red sm" onclick="confirmDo('Закрыть тикет?',()=>closeTicket(${t.id}))">Закрыть</button></div>` : '<div class="panel empty">Тикет закрыт</div>'}`;
+    if (replace) { S.stack.pop(); }
+    pushView(html);
+  } catch (e) { toast(e.message); }
+}
+async function attachReply() {
+  const f = await pickImage(); if (!f) return;
+  try { S.replyImg = await compressImage(f); $('#tk-prev').innerHTML = `<img src="${S.replyImg}" alt="">`; } catch (e) { toast(e.message); }
+}
+async function replyTicket(id) {
+  try { await api(`/tickets/${id}/msg`, { text: $('#tk-reply').value, image: S.replyImg || null }); S.replyImg = null; toast('Отправлено', true); openTicket(id, true); } catch (e) { toast(e.message); }
+}
+async function closeTicket(id) { try { await api(`/tickets/${id}/close`, {}); toast('Тикет закрыт', true); openTicket(id, true); } catch (e) { toast(e.message); } }
+
 // ---------- друзья ----------
 async function friendsTab() {
   $('#app').innerHTML = topbar() + '<div class="wrap"><div class="panel empty" style="margin-top:10px">Загрузка…</div></div>';
@@ -702,6 +921,7 @@ async function friendsTab() {
     const on = f.friends.filter(x => x.online).length;
     $('#app').innerHTML = topbar() + `<div class="wrap">
       <div class="hd" style="margin-top:8px"><h2 style="font-size:28px">Друзья</h2><span class="mute">${f.friends.length} в списке · ${on} в сети</span></div>
+      ${partyBlock()}
       <input class="search" placeholder="Найти игрока по нику или ID" value="${esc(S.fq || '')}" oninput="S.fq=this.value;$('#fsearch').innerHTML=friendSearch()">
       <div id="fsearch">${friendSearch()}</div>
       ${f.incoming.length ? `<div class="hd"><h2>Входящие заявки <small>${f.incoming.length}</small></h2></div><div class="panel">${f.incoming.map(x => frRow(x,
@@ -709,7 +929,7 @@ async function friendsTab() {
       ${f.outgoing.length ? `<div class="hd"><h2>Исходящие <small>${f.outgoing.length}</small></h2></div><div class="panel">${f.outgoing.map(x => frRow(x,
         `<button class="btn ghost sm" onclick="event.stopPropagation();friendAct('remove',${x.tg_id})">Отменить</button>`, 'Ожидает подтверждения')).join('')}</div>` : ''}
       <div class="hd"><h2>Список <small>${f.friends.length}</small></h2></div>
-      <div class="panel">${f.friends.length ? f.friends.map(x => frRow(x, I.chev)).join('') : '<div class="empty">Пока никого. Найди друга по нику выше</div>'}</div></div>`;
+      <div class="panel">${f.friends.length ? f.friends.map(x => frRow(x, partyBtn(x))).join('') : '<div class="empty">Пока никого. Найди друга по нику выше</div>'}</div></div>`;
   } catch (e) { toast(e.message); }
 }
 function frStatus(x) {
@@ -718,7 +938,7 @@ function frStatus(x) {
   return x.online ? '<span class="st on">в сети</span>' : `<span class="st">был в сети ${ago(x.last_seen)}</span>`;
 }
 function frRow(x, right, sub) {
-  return `<div class="fr" onclick="openProfile(${x.tg_id})">${av(x, 'sm', true, true)}<div class="grow" style="min-width:0"><b class="ell">${esc(x.nick)}</b>
+  return `<div class="fr" onclick="openProfile(${x.tg_id})">${av(x, 'sm', true, true)}<div class="grow" style="min-width:0"><b class="ell">${nickH(x)}</b>
     <div class="ell">${sub ? `<span class="st">${sub}</span>` : frStatus(x)}</div></div><div class="row" style="gap:6px">${right}</div></div>`;
 }
 function friendSearch() {
@@ -750,6 +970,8 @@ async function adminTab() {
     const [ov, players] = await Promise.all([api('/admin/overview'), api('/leaderboard')]);
     S.adm = { ov, players };
     $('#app').innerHTML = topbar() + `<div class="wrap">
+      <h2>Тикеты <small>${ov.tickets.length}</small></h2><div class="panel">${ov.tickets.length ? ov.tickets.map(t => `<button class="tk" onclick="openTicket(${t.id})"><div class="grow">
+        <b>#${t.id} · ${esc(t.topic)}${t.premium ? '<span class="ptag">PREMIUM</span>' : ''}</b><span class="mute">${esc(t.nick || '')} · ${fmtDate(t.updated)}</span></div><span class="tst ${t.status}">${TST[t.status]}</span>${I.chev}</button>`).join('') : '<div class="empty">Открытых тикетов нет</div>'}</div>
       <h2>На проверке <small>${ov.pending.length}</small></h2>${ov.pending.length ? ov.pending.map(matchCard).join('') : '<div class="panel empty">Всё проверено</div>'}
       ${ov.group_set ? '' : '<div class="callout" style="border:1px solid var(--line);border-left:3px solid var(--gold)">Чтобы итоги матчей приходили в группу друзей, добавь туда бота и напиши в группе /setgroup</div>'}
       <h2>Админы <small>${ov.admins.length}</small></h2><div class="panel list">${ov.admins.map(a => `<div class="it"><div class="grow n">${esc(a.nick || a.tg_id)}</div><span class="mute">${a.env ? 'основной' : ''}</span></div>`).join('')}</div>
@@ -773,11 +995,17 @@ function openAdminPlayer(id) {
     <label class="f" for="a-days">Бан, дней (0 — снять)</label>
     <div class="row"><input id="a-days" type="number" inputmode="decimal" value="${p.banned ? 0 : 1}"><button class="btn red sm" id="a-ban-go">${p.banned ? 'Применить' : 'Забанить'}</button></div>
     <input id="a-reason" style="margin-top:8px" placeholder="Причина: вышел из матча">
+    <label class="f" for="a-coins">Монеты (сейчас ${p.coins ?? 0}; минус — списать)</label>
+    <div class="row"><input id="a-coins" type="number" inputmode="numeric" placeholder="500"><button class="btn sm" id="a-coins-go">Начислить</button></div>
+    <label class="f" for="a-prem">Премиум, дней (0 — снять)${p.premium ? ' · сейчас активен' : ''}</label>
+    <div class="row"><input id="a-prem" type="number" inputmode="numeric" placeholder="30"><button class="btn sm" id="a-prem-go" style="background:var(--gold)">Выдать</button></div>
     <div class="btns"><button class="btn ghost" id="a-adm">${isAdm ? 'Снять админа' : 'Сделать админом'}</button></div>
     <div class="btns"><button class="btn ghost" onclick="closeSheet();openProfile(${id})">Профиль</button><button class="btn red" id="a-del">Удалить</button></div>`);
   const call = async (path, body, msg) => { try { await api(`/admin/players/${id}/${path}`, body); closeSheet(); toast(msg, true); adminTab(); } catch (e) { toast(e.message); } };
   $('#a-elo-go').onclick = () => call('elo', { elo: +$('#a-elo').value }, 'ELO изменено');
   $('#a-ban-go').onclick = () => call('ban', { days: +$('#a-days').value, reason: $('#a-reason').value }, +$('#a-days').value > 0 ? 'Игрок забанен' : 'Бан снят');
+  $('#a-coins-go').onclick = () => call('coins', { amount: +$('#a-coins').value }, 'Готово');
+  $('#a-prem-go').onclick = () => call('premium', { days: +$('#a-prem').value }, +$('#a-prem').value > 0 ? 'Премиум выдан' : 'Премиум снят');
   $('#a-adm').onclick = () => call('admin', { on: !isAdm }, isAdm ? 'Права сняты' : 'Теперь админ');
   $('#a-del').onclick = () => confirmDo(`Удалить ${p.nick}? История матчей останется.`, () => call('delete', {}, 'Игрок удалён'));
 }
@@ -856,12 +1084,7 @@ $('#avfile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = '';
   if (!f) return;
   try {
-    const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error('Не удалось открыть картинку')); i.src = URL.createObjectURL(f); });
-    const side = Math.min(img.naturalWidth, img.naturalHeight), cv = document.createElement('canvas');
-    cv.width = cv.height = 320;
-    cv.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 320, 320);
-    let q = .85, data = cv.toDataURL('image/jpeg', q);
-    while (data.length > 280000 && q > .4) { q -= .15; data = cv.toDataURL('image/jpeg', q); }
+    const data = await compressImage(f, 320, true);
     await api('/avatar', { data });
     closeSheet(); toast('Аватар обновлён', true); S.view = null; await refresh();
   } catch (err) { toast(err.message || 'Не получилось загрузить фото'); }
@@ -873,7 +1096,7 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------
