@@ -698,15 +698,14 @@ export class Arena extends DurableObject {
       this.sql.exec("UPDATE matches SET shot_key = ? WHERE id = ?", crypto.randomUUID(), m.id);
     }
     if (!admins.length || this.isAdmin(uid)) return this.applyResult(m.id, winner, score);
-    this.sql.exec("UPDATE matches SET status = 'pending', pending_winner = ?, pending_score = ?, reported_by = ? WHERE id = ?", winner, score, uid, m.id);
+    this.sql.exec("UPDATE matches SET status = 'pending', pending_winner = ?, pending_score = ?, reported_by = ? WHERE id = ?", winner || null, score, uid, m.id);
     const text = `📝 <b>Результат на модерации</b> · матч #${m.id} (${esc(m.map)})\n` +
-      `${esc(this.nick(m, uid))}: победила <b>Команда ${winner}</b>${score ? ` ${esc(score)}` : ""}\n\n${this.teamsText(m)}`;
-    const kb = { inline_keyboard: [[{ text: "✅ Принять", callback_data: `ok:${m.id}` }, { text: "❌ Отклонить", callback_data: `no:${m.id}` }]] };
+      `Скриншот загрузил ${esc(this.nick(m, uid))}. Кто победил?\n\n${this.teamsText(m)}`;
+    const kb = { inline_keyboard: [[{ text: "✅ Победа К1", callback_data: `ok1:${m.id}` }, { text: "✅ Победа К2", callback_data: `ok2:${m.id}` }], [{ text: "❌ Отклонить", callback_data: `no:${m.id}` }]] };
     if (shot) await Promise.all(admins.map(a => this.sendPhoto(a, shot, text.slice(0, 1000), kb)));
     else await this.notify(admins, text, kb);
     await this.notify(m.players.map(p => p.tg_id).filter(id => id !== uid),
-      `📝 Матч #${m.id}: результат отправлен админу на проверку (победила Команда ${winner}${score ? ` ${esc(score)}` : ""}).\nНе забудь вписать свои убийства и смерти в приложении.`,
-      this.appButton("📊 Вписать K/D"));
+      `📝 Матч #${m.id}: скриншот результата отправлен на модерацию. Админ проверит и засчитает.`);
   }
 
   async rejectResult(mid, byId) {
@@ -762,8 +761,7 @@ export class Arena extends DurableObject {
           (up ? `\n🎉 Новый уровень: ${level(p.elo)}!` : down ? `\n📉 Уровень понижен до ${level(p.elo)}` : "");
       }
       text += `\n🪙 +${earned[p.tg_id]} TC`;
-      if (p.kills == null) text += "\n\n📊 Впиши свои убийства/смерти — так считается MVP и K/D.";
-      return this.send(p.tg_id, text, p.kills == null ? this.appButton("📊 Вписать K/D") : null);
+      return this.send(p.tg_id, text);
     }));
     await this.postMatchCard(m2, mvp);
   }
@@ -883,8 +881,9 @@ export class Arena extends DurableObject {
 
     if (method === "POST" && path === "/register") {
       const nick = String(body.nick || "").trim();
-      const gameId = String(body.game_id || "").replace(/\D/g, "").slice(0, 15);
+      const gameId = String(body.game_id || "").replace(/\D/g, "");
       if (!NICK_RE.test(nick)) throw new ApiError("Ник: 2–20 символов");
+      if (!/^\d{7,9}$/.test(gameId)) throw new ApiError("ID в игре — от 7 до 9 цифр");
       if (this.one("SELECT 1 AS x FROM players WHERE lower(nick) = lower(?) AND tg_id != ?", nick, uid)) throw new ApiError("Этот ник уже занят");
       this.sql.exec(`INSERT INTO players (tg_id, tg_username, tg_name, nick, game_id, elo, created_at, photo, tg_photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(tg_id) DO UPDATE SET nick = excluded.nick, game_id = excluded.game_id, tg_username = excluded.tg_username,
@@ -1358,8 +1357,9 @@ export class Arena extends DurableObject {
         if (m.status !== "live") throw new ApiError(m.status === "pending" ? "Результат уже на модерации" : "Матч не идёт");
         const wait = (m.started_at || 0) + RESULT_DELAY_SEC - now();
         if (wait > 0) throw new ApiError(`Результат можно отправить через ${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, "0")}`);
-        const winner = Number(body.winner), score = parseScore(winner, body);
+        const winner = Number(body.winner) || 0, score = winner ? parseScore(winner, body) : "";
         const shot = body.image ? this.decodeJpeg(body.image, 900 * 1024) : null;
+        if (isAdmin && !winner) throw new ApiError("Выбери победителя");
         if (!shot && !isAdmin) throw new ApiError("Приложи скриншот итоговой таблицы");
         await this.reportResult(m, uid, winner, score, shot);
         return { ok: true, pending: this.match(mid).status === "pending" };
@@ -1412,7 +1412,7 @@ export class Arena extends DurableObject {
         return { ok: true };
       }
       case "cancel": {
-        if (!isCaptain(m) && !isAdmin) throw new ApiError("Отменить может капитан или админ");
+        if (!isAdmin) throw new ApiError("Отменить матч может только админ");
         if (!["veto", "live", "pending"].includes(m.status)) throw new ApiError("Этот матч нельзя отменить");
         this.sql.exec("UPDATE matches SET status = 'cancelled', veto_deadline = NULL WHERE id = ?", mid);
         await this.scheduleAlarm();
@@ -1460,11 +1460,12 @@ export class Arena extends DurableObject {
       return this.tg("editMessageReplyMarkup", { chat_id: cq.message.chat.id, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } });
     }
     try {
-      if (act === "ok") await this.applyResult(mid, m.pending_winner, m.pending_score);
+      if (act === "ok1" || act === "ok2") await this.applyResult(mid, act === "ok1" ? 1 : 2, "");
+      else if (act === "ok") { if (!m.pending_winner) return answer("Выбери победителя"); await this.applyResult(mid, m.pending_winner, m.pending_score); }
       else await this.rejectResult(mid, cq.from.id);
     } catch (e) { return answer(e.message); }
-    await answer(act === "ok" ? "Подтверждено" : "Отклонено");
-    const doneText = `${act === "ok" ? "✅ Принято" : "❌ Отклонено"}: матч #${mid} (${esc(m.map)}) — Команда ${m.pending_winner} ${esc(m.pending_score || "")}`;
+    await answer(act === "no" ? "Отклонено" : "Засчитано");
+    const doneText = act === "no" ? `❌ Отклонено: матч #${mid} (${esc(m.map)})` : `✅ Принято: матч #${mid} (${esc(m.map)}) — победила Команда ${act === "ok2" ? 2 : act === "ok1" ? 1 : m.pending_winner}`;
     if (cq.message.photo) await this.tg("editMessageCaption", { chat_id: cq.message.chat.id, message_id: cq.message.message_id, parse_mode: "HTML", caption: doneText });
     else await this.tg("editMessageText", { chat_id: cq.message.chat.id, message_id: cq.message.message_id, parse_mode: "HTML", text: doneText });
   }
