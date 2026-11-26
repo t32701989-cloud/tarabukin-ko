@@ -252,18 +252,22 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .thumbs button{width:30px;height:28px;border-radius:4px;background:var(--s3);display:grid;place-items:center;color:var(--mute)}
 .thumbs button.up.on{background:#163322;color:var(--go)}.thumbs button.down.on{background:#2b1418;color:var(--bad)}
 .shotimg{display:block;width:100%;max-height:240px;object-fit:contain;background:#000;border-top:1px solid var(--line)}
-/* чат матча */
-.chat{border-top:1px solid var(--line);padding:10px 12px}
-.chat .log{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-bottom:6px}
-.cm{font-size:14px;line-height:1.35}
-.cm b{font:700 14px "Fira Sans Condensed",sans-serif;margin-right:4px}
-.cm.sys{color:var(--mute);font-size:12.5px;border-left:2px solid var(--gold);padding-left:8px}
-.cm audio{height:34px;max-width:220px;vertical-align:middle}
-.cin{display:flex;gap:6px;margin-top:6px}
-.cin input{padding:10px}
-.mic{width:44px;height:44px;flex-shrink:0;border-radius:6px;background:var(--s3);display:grid;place-items:center}
-.mic.rec{background:var(--bad);animation:blink .9s infinite}
-@keyframes blink{50%{opacity:.55}}
+/* голос и чат матча */
+.vbar{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);background:#141a24}
+.vbar .who{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.vbar .who span{font:600 12px "Fira Sans Condensed",sans-serif;background:var(--s3);padding:2px 7px;border-radius:10px}
+.vbar .who span.talk{background:#163322;color:var(--go)}
+.vdot{width:10px;height:10px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.vdot.on{background:var(--go);box-shadow:0 0 0 4px #27c96f33}
+.chat{border-top:1px solid var(--line);padding:10px 12px 12px}
+.chat .log{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:2px 0 8px}
+.cm{max-width:82%;padding:7px 10px;border-radius:10px 10px 10px 2px;background:var(--s2);font-size:14px;line-height:1.35;align-self:flex-start;word-wrap:break-word}
+.cm b{display:block;font:700 12px "Fira Sans Condensed",sans-serif;color:var(--mute);margin-bottom:1px}
+.cm.me{align-self:flex-end;background:#1f3550;border-radius:10px 10px 2px 10px}
+.cm.me b{display:none}
+.cin{display:flex;gap:6px}
+.cin input{padding:10px 12px;border-radius:20px;background:var(--s2)}
+.cin .send{width:42px;height:42px;border-radius:50%;background:var(--ink);color:#0d0f11;display:grid;place-items:center;flex-shrink:0}
 /* рисованная косметика */
 .frm{position:absolute;left:-8px;top:-8px;width:calc(100% + 16px);height:calc(100% + 16px);pointer-events:none;z-index:1}
 .av .lvl,.av .onl{z-index:2}
@@ -836,19 +840,24 @@ function matchCard(m) {
     btns.push(`<button class="btn ghost sm" onclick="openResult(${m.id}, true)">Изменить</button>`);
     btns.push(`<button class="btn red sm" onclick="act('/lobbies/${m.id}/reject', null, 'Отклонено')">Нет</button>`);
   } else {
-    if (m.status === 'live' && (inIt || admin)) btns.push(`<button class="btn" onclick="openResult(${m.id})">Отправить результат</button>`);
+    if (m.status === 'live' && (inIt || admin)) btns.push(m.result_in > 0
+      ? `<button class="btn ghost" disabled>Результат через <span class="rtimer" data-end="${Date.now() / 1000 + m.result_in}">${Math.floor(m.result_in / 60)}:${String(m.result_in % 60).padStart(2, '0')}</span></button>`
+      : `<button class="btn" onclick="openResult(${m.id})">Отправить результат</button>`);
     if (m.status !== 'pending' && (inIt && (m.host_id === me || isCap) || admin)) btns.push(`<button class="btn ghost sm" onclick="openRoom(${m.id})">Код</button>`);
     if (isCap || admin) btns.push(`<button class="btn red sm" aria-label="Отменить матч" onclick="cancelMatch(${m.id})">×</button>`);
   }
   const stats = inIt && (m.status === 'live' || m.status === 'pending')
     ? `<button class="btn ${meP.kills == null ? '' : 'ghost'}" style="margin-top:${btns.length ? 8 : 0}px" onclick="openStats(${m.id})">${meP.kills == null ? 'Вписать свои убийства и смерти' : `Мои K/D: ${meP.kills}–${meP.deaths}`}</button>` : '';
-  const chat = m.chat ? `<div class="chat"><div class="c" style="font-size:17px;font-weight:700;margin-bottom:6px">Чат матча</div>
-      <div class="log" id="log-${m.id}">${m.chat.map(c => c.from_id === 0 ? `<div class="cm sys">${esc(c.text)}</div>`
-        : `<div class="cm"><b style="${c.from_id === me ? 'color:var(--gold)' : ''}">${esc(c.nick || '?')}:</b>${c.voice ? `<audio controls preload="none" src="${esc(c.voice)}" data-vid="${c.id}" data-mine="${c.from_id === me ? 1 : 0}"></audio>` : esc(c.text)}</div>`).join('') || '<div class="mute">Пока тихо</div>'}</div>
-      <div class="cin"><input id="chat-${m.id}" maxlength="300" placeholder="Сообщение команде и соперникам" onkeydown="if(event.key==='Enter')sendChat(${m.id})">
-        <button class="mic ${S.rec?.mid === m.id ? 'rec' : ''}" aria-label="Голосовое" onclick="toggleVoice(${m.id})"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
-        <button class="btn sm" onclick="sendChat(${m.id})">→</button></div></div>` : '';
-  return `<div class="panel board">${head}${body}<div class="sb">${col(1)}${col(2)}</div>${chat}
+  const v = S.voice?.mid === m.id ? S.voice : null;
+  const voice = inIt && (m.status === 'veto' || m.status === 'live') ? `<div class="vbar"><span class="vdot ${v ? 'on' : ''}"></span>
+      <div class="grow"><b class="c" style="font-size:16px">Голосовой канал</b>
+        <div class="who">${v ? [`<span class="${v.muted ? '' : 'talk'}">Ты${v.muted ? ' (мик. выкл.)' : ''}</span>`, ...v.members.map(x => `<span class="${v.live?.has(x.tg_id) ? 'talk' : ''}">${esc(x.nick)}</span>`)].join('') : '<span class="mute" style="background:none;padding:0">Поговорите во время бана карт</span>'}</div></div>
+      ${v ? `<button class="btn ghost sm" onclick="muteVoice()">${v.muted ? 'Вкл. мик' : 'Выкл. мик'}</button><button class="btn red sm" onclick="leaveVoice()">Выйти</button>`
+          : `<button class="btn sm" onclick="joinVoice(${m.id})">Подключиться</button>`}</div>` : '';
+  const chat = m.chat ? `<div class="chat"><div class="log" id="log-${m.id}">${m.chat.filter(c => c.text).map(c => `<div class="cm ${c.from_id === me ? 'me' : ''}"><b>${esc(c.nick || '?')}</b>${esc(c.text)}</div>`).join('') || '<div class="mute" style="text-align:center;padding:6px 0">Напиши команде: кто создаёт комнату, какую карту банить</div>'}</div>
+      <div class="cin"><input id="chat-${m.id}" maxlength="300" placeholder="Сообщение" onkeydown="if(event.key==='Enter')sendChat(${m.id})">
+        <button class="send" aria-label="Отправить" onclick="sendChat(${m.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5 21 12 3 3.5 3 10l12 2-12 2z"/></svg></button></div></div>` : '';
+  return `<div class="panel board">${head}${body}<div class="sb">${col(1)}${col(2)}</div>${voice}${chat}
     ${btns.length || stats ? `<div class="foot">${btns.length ? `<div class="btns">${btns.join('')}</div>` : ''}${stats}</div>` : ''}</div>`;
 }
 
@@ -1326,34 +1335,63 @@ async function sendChat(mid) {
   const el = $('#chat-' + mid), t = el?.value.trim(); if (!t) return;
   try { await api(`/lobbies/${mid}/say`, { text: t }); el.value = ''; await refresh(); } catch (e) { toast(e.message); }
 }
-async function toggleVoice(mid) {
-  if (S.rec) { S.rec.r.stop(); return; }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find(x => window.MediaRecorder?.isTypeSupported?.(x)) || '';
-    const r = new MediaRecorder(stream, mime ? { mimeType: mime } : {}), parts = [];
-    r.ondataavailable = e => parts.push(e.data);
-    r.onstop = async () => {
-      stream.getTracks().forEach(t => t.stop()); clearTimeout(S.rec?.t); S.rec = null;
-      const blob = new Blob(parts, { type: r.mimeType || 'audio/webm' });
-      const data = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(blob); });
-      try { await api(`/lobbies/${mid}/say`, { voice: data }); } catch (e) { toast(e.message); }
-      await refresh();
-    };
-    r.start(); S.rec = { r, mid, t: setTimeout(() => r.state === 'recording' && r.stop(), 30000) };
-    haptic('light'); toast('Запись… нажми микрофон ещё раз, чтобы отправить', true); render();
-  } catch (e) { toast('Нет доступа к микрофону. Разреши его в настройках Telegram'); }
-}
-// автопроигрывание новых чужих голосовых
-S.heard = new Set();
 function autoplayVoices() {
-  document.querySelectorAll('audio[data-vid]').forEach(a => {
-    const id = a.dataset.vid;
-    if (S.heard.has(id)) return; S.heard.add(id);
-    if (S.voiceInit && a.dataset.mine !== '1') a.play().catch(() => {});
-  });
-  S.voiceInit = true;
   document.querySelectorAll('.log').forEach(l => l.scrollTop = l.scrollHeight);
+  if (S.voice && !S.lobbies.some(m => m.id === S.voice.mid && (m.status === 'veto' || m.status === 'live'))) leaveVoice();
+}
+// ---------- голосовой канал (WebRTC, звук идёт напрямую между телефонами) ----------
+const ICE = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+async function joinVoice(mid) {
+  if (S.voice) await leaveVoice();
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { return toast('Нет доступа к микрофону. Разреши его Telegram в настройках телефона'); }
+  try {
+    const r = await api('/voice/join', { mid });
+    S.voice = { mid, stream, peers: {}, members: r.members, muted: false, live: new Set() };
+    r.members.forEach(x => voicePeer(x.tg_id, true));
+    S.voice.timer = setInterval(voicePoll, 1000);
+    haptic('ok'); render();
+  } catch (e) { stream.getTracks().forEach(t => t.stop()); toast(e.message); }
+}
+function voicePeer(id, initiator) {
+  const V = S.voice; if (!V || V.peers[id]) return V?.peers[id];
+  const pc = new RTCPeerConnection({ iceServers: ICE });
+  V.stream.getTracks().forEach(t => pc.addTrack(t, V.stream));
+  pc.onicecandidate = e => e.candidate && api('/voice/signal', { mid: V.mid, to: id, data: { ice: e.candidate } }).catch(() => {});
+  pc.ontrack = e => {
+    let a = document.getElementById('va-' + id);
+    if (!a) { a = document.createElement('audio'); a.id = 'va-' + id; a.autoplay = true; a.playsInline = true; document.body.appendChild(a); }
+    a.srcObject = e.streams[0]; a.play().catch(() => {});
+  };
+  pc.onconnectionstatechange = () => { V.live[pc.connectionState === 'connected' ? 'add' : 'delete'](id); if (S.tab === 'lobby' && !S.view) render(); };
+  V.peers[id] = pc;
+  if (initiator) pc.createOffer().then(o => pc.setLocalDescription(o)).then(() => api('/voice/signal', { mid: V.mid, to: id, data: { sdp: pc.localDescription } })).catch(() => {});
+  return pc;
+}
+async function voicePoll() {
+  const V = S.voice; if (!V) return;
+  try {
+    const r = await api('/voice/poll', { mid: V.mid });
+    for (const { from, data } of r.msgs) {
+      const pc = voicePeer(from, false);
+      if (data.sdp) {
+        await pc.setRemoteDescription(data.sdp);
+        if (data.sdp.type === 'offer') { await pc.setLocalDescription(await pc.createAnswer()); api('/voice/signal', { mid: V.mid, to: from, data: { sdp: pc.localDescription } }).catch(() => {}); }
+      } else if (data.ice) await pc.addIceCandidate(data.ice).catch(() => {});
+    }
+    const ids = new Set(r.members.map(x => x.tg_id));
+    for (const id of Object.keys(V.peers).map(Number)) if (!ids.has(id)) { V.peers[id].close(); delete V.peers[id]; V.live.delete(id); document.getElementById('va-' + id)?.remove(); }
+    const changed = r.members.length !== V.members.length; V.members = r.members;
+    if (changed && S.tab === 'lobby' && !S.view) render();
+  } catch (e) { if (/игрокам матча/.test(e.message)) leaveVoice(); }
+}
+function muteVoice() { const V = S.voice; if (!V) return; V.muted = !V.muted; V.stream.getAudioTracks().forEach(t => t.enabled = !V.muted); render(); }
+async function leaveVoice() {
+  const V = S.voice; if (!V) return; S.voice = null;
+  clearInterval(V.timer); Object.values(V.peers).forEach(pc => pc.close()); V.stream.getTracks().forEach(t => t.stop());
+  document.querySelectorAll('audio[id^="va-"]').forEach(a => a.remove());
+  api('/voice/leave', { mid: V.mid }).catch(() => {}); render();
 }
 async function addBots(mid, count) { try { const r = await api(`/lobbies/${mid}/addbot`, { count }); toast(`Добавлено ботов: ${r.added}`, true); await refresh(); } catch (e) { toast(e.message); } }
 async function grantAll() { try { await api(`/admin/players/${S.me.user.id}/grant_all`, {}); toast('Готово: всё выдано', true); await loadMe(); adminTab(); } catch (e) { toast(e.message); } }
@@ -1495,7 +1533,7 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { sendChat, toggleVoice, addBots, grantAll, openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { sendChat, joinVoice, muteVoice, leaveVoice, addBots, grantAll, openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------
@@ -1508,8 +1546,13 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = async () => {
   try {
     S.cfg = await api('/config');
     await refresh();
-    setInterval(() => { const busy = (document.activeElement?.id || '').startsWith('chat-') || S.rec || [...document.querySelectorAll('audio')].some(a => !a.paused);
+    setInterval(() => { const busy = (document.activeElement?.id || '').startsWith('chat-');
       if (S.tab === 'lobby' && !S.view && !busy && !document.querySelector('.ov') && S.me?.player) refresh().catch(() => {}); }, 3000);
+    setInterval(() => document.querySelectorAll('.rtimer').forEach(el => {
+      const left = Math.max(0, Math.round(+el.dataset.end - Date.now() / 1000));
+      el.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      if (!left) refresh().catch(() => {});
+    }), 1000);
     setInterval(() => document.querySelectorAll('.timer[data-end]').forEach(el => {
       const left = Math.max(0, Math.round(+el.dataset.end - Date.now() / 1000));
       el.textContent = left; el.classList.toggle('low', left <= 10);

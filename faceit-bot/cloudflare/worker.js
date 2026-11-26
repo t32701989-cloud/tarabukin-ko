@@ -88,7 +88,7 @@ const PREMIUM_PERKS = [
 const TICKET_TOPICS = ["Игрок не зашёл в игру", "Неверный результат", "Читы или нарушение", "Баг в приложении", "Другое"];
 const START_ELO = 1000;
 const READY_SEC = 30;          // время на «Готов»
-const VETO_TURN_SEC = 20; const BOT_THINK_SEC = 3;      // время на один бан, потом — случайный автобан
+const RESULT_DELAY_SEC = 180; const VETO_TURN_SEC = 20; const BOT_THINK_SEC = 3;      // время на один бан, потом — случайный автобан
 const STATS_WINDOW = 12 * 3600; // сколько после матча можно вписать K/D
 const NICK_RE = /^[\p{L}\p{N}_\-.\[\]|★☆ ]{2,20}$/u;
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -341,7 +341,7 @@ export class Arena extends DurableObject {
       veto_left: m.status === "veto" && m.veto_deadline ? Math.max(0, m.veto_deadline - now()) : null,
       ready_left: m.status === "ready" && m.ready_deadline ? Math.max(0, m.ready_deadline - now()) : null,
       pending_winner: m.pending_winner, pending_score: m.pending_score, reported_by: m.reported_by,
-      finished_at: m.finished_at, team_avg: {}, shot: m.shot_key ? `/shot/${m.id}/${m.shot_key}` : null,
+      finished_at: m.finished_at, team_avg: {}, result_in: m.status === "live" ? Math.max(0, (m.started_at || 0) + RESULT_DELAY_SEC - now()) : null, shot: m.shot_key ? `/shot/${m.id}/${m.shot_key}` : null,
     };
     for (const t of [1, 2]) {
       const ps = m.players.filter(p => p.team === t);
@@ -593,7 +593,6 @@ export class Arena extends DurableObject {
     await this.notify(m2.players.map(p => p.tg_id),
       `✅ <b>Все готовы!</b> Матч #${mid}\n\nКапитаны: <b>${esc(this.nick(m2, cap1))}</b> vs <b>${esc(this.nick(m2, cap2))}</b>\n` +
       `Капитаны по очереди банят карты (${this.maps.length - 1} банов), последняя карта играется.\n\n${this.teamsText(m2)}`, this.appButton("🗺 Открыть вето"));
-    this.say(mid, 0, `Бан карт начался. Капитаны: ${this.nick(m2, cap1)} (Команда 1) и ${this.nick(m2, cap2)} (Команда 2). На каждый бан ${VETO_TURN_SEC} сек.`);
     await this.send(cap1, `🗺 Ты капитан! Твой ход — забань карту (${VETO_TURN_SEC} сек).`, this.appButton("Забанить карту"));
     await this.notifyGroup(`🔔 Лобби ${m2.lobby_no} собрано (матч #${mid}). Капитаны: ${esc(this.nick(m2, cap1))} vs ${esc(this.nick(m2, cap2))}`);
   }
@@ -603,8 +602,6 @@ export class Arena extends DurableObject {
     const remaining = this.maps.filter(x => !m.bans.some(b => b.map === x));
     if (!remaining.includes(map)) throw new ApiError("Эта карта уже забанена");
     m.bans.push({ map, by: byId, auto });
-    const team = byId === m.captain1 ? 1 : 2;
-    this.say(mid, 0, auto ? `Команда ${team} (капитан ${this.nick(m, byId)}) не успела — автобан ${map}` : `Команда ${team} (${this.nick(m, byId)}) банит ${map}`);
     const left = remaining.filter(x => x !== map);
     if (left.length === 1) {
       this.sql.exec(`UPDATE matches SET bans = ?, map = ?, status = 'live', started_at = ?, veto_deadline = NULL WHERE id = ?`,
@@ -618,7 +615,6 @@ export class Arena extends DurableObject {
       await this.send(this.vetoTurn(m), `🗺 Матч #${mid}: ${esc(this.nick(m, byId))} забанил ${esc(map)}${auto ? " (авто)" : ""}. Твой ход — бань (${VETO_TURN_SEC} сек).`,
         this.appButton("Забанить карту"));
     }
-    if (left.length === 1) this.say(mid, 0, `Играем на ${left[0]}. Удачи!`);
     await this.scheduleAlarm();
   }
 
@@ -656,7 +652,7 @@ export class Arena extends DurableObject {
   say(mid, from, text) { this.sql.exec("INSERT INTO chat (match_id, from_id, text, created) VALUES (?, ?, ?, ?)", mid, from, String(text).slice(0, 500), now()); }
   chatOf(mid) {
     return this.q(`SELECT c.id, c.from_id, c.text, c.voice_key, c.created, p.nick FROM chat c LEFT JOIN players p ON p.tg_id = c.from_id
-      WHERE c.match_id = ? ORDER BY c.id DESC LIMIT 50`, mid).reverse()
+      WHERE c.match_id = ? AND c.from_id != 0 ORDER BY c.id DESC LIMIT 50`, mid).reverse()
       .map(({ voice_key, ...r }) => ({ ...r, voice: voice_key ? `/voice/${r.id}/${voice_key}` : null }));
   }
 
@@ -945,6 +941,22 @@ export class Arena extends DurableObject {
 
     if (method === "GET" && path === "/seasons") {
       return this.q("SELECT * FROM seasons ORDER BY season DESC, place").map(r => ({ ...r, season_name: seasonName(r.season) }));
+    }
+
+    // ----- голосовой канал матча: WebRTC, сервер только пересылает сигналы -----
+    if (method === "POST" && (mm = path.match(/^\/voice\/(join|leave|signal|poll)$/))) {
+      const mid = Number(body.mid), m = getMatch(mid);
+      if (!["veto", "live"].includes(m.status) || !m.players.some(p => p.tg_id === uid)) throw new ApiError("Голос доступен игрокам матча");
+      this.vroom ||= {}; this.vbox ||= {};
+      const room = (this.vroom[mid] ||= {}), t = Date.now();
+      for (const [id, seen] of Object.entries(room)) if (t - seen > 8000) delete room[id];
+      const members = () => Object.keys(room).map(Number).filter(id => id !== uid).map(id => ({ tg_id: id, nick: this.nick(m, id) }));
+      switch (mm[1]) {
+        case "join": { const before = members(); room[uid] = t; this.vbox[uid] = []; return { members: before }; }
+        case "leave": delete room[uid]; delete this.vbox[uid]; return { ok: true };
+        case "signal": { const to = Number(body.to); if (room[to]) (this.vbox[to] ||= []).push({ from: uid, data: body.data }); return { ok: true }; }
+        case "poll": { room[uid] = t; const msgs = this.vbox[uid] || []; this.vbox[uid] = []; return { msgs, members: members() }; }
+      }
     }
 
     // ----- party -----
@@ -1344,6 +1356,8 @@ export class Arena extends DurableObject {
       case "result": {
         if (!ids.includes(uid) && !isAdmin) throw new ApiError("Ты не играл в этом матче");
         if (m.status !== "live") throw new ApiError(m.status === "pending" ? "Результат уже на модерации" : "Матч не идёт");
+        const wait = (m.started_at || 0) + RESULT_DELAY_SEC - now();
+        if (wait > 0) throw new ApiError(`Результат можно отправить через ${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, "0")}`);
         const winner = Number(body.winner), score = parseScore(winner, body);
         const shot = body.image ? this.decodeJpeg(body.image, 900 * 1024) : null;
         if (!shot && !isAdmin) throw new ApiError("Приложи скриншот итоговой таблицы");
