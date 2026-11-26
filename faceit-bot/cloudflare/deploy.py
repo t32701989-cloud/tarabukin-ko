@@ -106,6 +106,11 @@ def main() -> None:
         {"command": "id", "description": "Узнать ID"},
     ])
     tg("setChatMenuButton", menu_button={"type": "web_app", "text": "Играть", "web_app": {"url": url}})
+    tg("setMyShortDescription", short_description="Матчи Standoff 2 с друзьями: лобби 5x5, бан карт, ELO и уровни 1–10.")
+    tg("setMyDescription", description=(
+        "SO2 Arena — своя ELO-площадка для Standoff 2.\n\n"
+        "🎮 Заходи в лобби 5x5\n🗺 Капитаны банят карты\n📈 ELO, калибровка и уровни 1–10\n🏆 Рейтинг друзей\n\n"
+        "Жми «Старт» и открывай приложение."))
     tg("setWebhook", url=f"{url}/webhook", secret_token=webhook_secret, allowed_updates=["message"])
     print("Telegram настроен ✅")
 

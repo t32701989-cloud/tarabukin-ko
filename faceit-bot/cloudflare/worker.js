@@ -122,6 +122,7 @@ export class Arena extends DurableObject {
       "ALTER TABLE matches ADD COLUMN captain2 INTEGER",
       "ALTER TABLE matches ADD COLUMN bans TEXT NOT NULL DEFAULT '[]'",
       "ALTER TABLE matches ADD COLUMN veto_deadline INTEGER",
+      "ALTER TABLE players ADD COLUMN photo TEXT",
     ]) { try { this.sql.exec(ddl); } catch {} }
     // лобби старого формата (созданные вручную) больше не используются
     this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
@@ -156,7 +157,7 @@ export class Arena extends DurableObject {
     const m = this.one("SELECT * FROM matches WHERE id = ?", id);
     if (!m) return null;
     m.bans = JSON.parse(m.bans || "[]");
-    m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, p.nick, p.elo, p.game_id, p.tg_username,
+    m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, p.nick, p.elo, p.game_id, p.tg_username, p.photo,
         p.wins + p.losses AS games
       FROM match_players mp JOIN players p ON p.tg_id = mp.tg_id WHERE mp.match_id = ? ORDER BY mp.joined_at`, id);
     return m;
@@ -193,7 +194,7 @@ export class Arena extends DurableObject {
     }
     out.players = m.players.map(p => {
       const calibrated = p.games >= CALIBRATION_GAMES;
-      return { tg_id: p.tg_id, team: p.team, nick: p.nick, game_id: p.game_id, calibrated, calib_played: Math.min(p.games, CALIBRATION_GAMES),
+      return { tg_id: p.tg_id, team: p.team, nick: p.nick, game_id: p.game_id, photo: p.photo, calibrated, calib_played: Math.min(p.games, CALIBRATION_GAMES),
         level: calibrated ? level(p.elo) : null, elo: calibrated ? p.elo : null };
     });
     const host = m.players.find(p => p.tg_id === m.creator_id);
@@ -312,7 +313,8 @@ export class Arena extends DurableObject {
     if (initData) {
       try {
         const u = await checkInitData(initData, this.env.BOT_TOKEN);
-        user = { id: u.id, username: u.username || null, name: [u.first_name, u.last_name].filter(Boolean).join(" ") };
+        user = { id: u.id, username: u.username || null, name: [u.first_name, u.last_name].filter(Boolean).join(" "),
+          photo: /^https:\/\//.test(u.photo_url || "") ? u.photo_url : null };
       } catch { return json({ error: "unauthorized" }, 401); }
     } else if (this.env.DEV_MODE === "1" && request.headers.get("X-Dev-User")) {
       const id = Number(request.headers.get("X-Dev-User"));
@@ -342,7 +344,11 @@ export class Arena extends DurableObject {
     }
 
     if (method === "GET" && path === "/me") {
-      const p = this.player(uid);
+      let p = this.player(uid);
+      if (p && user.photo && p.photo !== user.photo) {  // обновляем аватар из Telegram
+        this.sql.exec("UPDATE players SET photo = ? WHERE tg_id = ?", user.photo, uid);
+        p = this.player(uid);
+      }
       return { user, player: p ? this.publicPlayer(p) : null, rank: this.rankOf(uid), active_match: this.activeMatchOf(uid), is_admin: isAdmin };
     }
 
@@ -351,9 +357,10 @@ export class Arena extends DurableObject {
       const gameId = String(body.game_id || "").replace(/\D/g, "").slice(0, 15);
       if (!NICK_RE.test(nick)) throw new ApiError("Ник: 2–20 символов");
       if (this.one("SELECT 1 AS x FROM players WHERE lower(nick) = lower(?) AND tg_id != ?", nick, uid)) throw new ApiError("Этот ник уже занят");
-      this.sql.exec(`INSERT INTO players (tg_id, tg_username, tg_name, nick, game_id, elo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(tg_id) DO UPDATE SET nick = excluded.nick, game_id = excluded.game_id, tg_username = excluded.tg_username, tg_name = excluded.tg_name`,
-        uid, user.username, user.name, nick, gameId, START_ELO, now());
+      this.sql.exec(`INSERT INTO players (tg_id, tg_username, tg_name, nick, game_id, elo, created_at, photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(tg_id) DO UPDATE SET nick = excluded.nick, game_id = excluded.game_id, tg_username = excluded.tg_username,
+          tg_name = excluded.tg_name, photo = COALESCE(excluded.photo, players.photo)`,
+        uid, user.username, user.name, nick, gameId, START_ELO, now(), user.photo || null);
       return { ok: true };
     }
 
@@ -368,7 +375,7 @@ export class Arena extends DurableObject {
 
     if (method === "GET" && path === "/leaderboard") {
       // вся база игроков: сначала откалиброванные по ELO, потом те, кто на калибровке
-      return this.q("SELECT tg_id, nick, game_id, elo, wins, losses, created_at FROM players ORDER BY elo DESC, wins DESC")
+      return this.q("SELECT tg_id, nick, game_id, photo, elo, wins, losses, created_at FROM players ORDER BY elo DESC, wins DESC")
         .map(r => this.publicPlayer(r))
         .sort((a, b) => (b.calibrated - a.calibrated) || (a.calibrated ? 0 : b.calib_played - a.calib_played));
     }

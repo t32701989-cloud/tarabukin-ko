@@ -5,169 +5,238 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>SO2 Arena</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Russo+One&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1115; --card: #181b22; --card2: #1f232c; --line: #2a2f3a;
-    --text: #eef0f4; --muted: #8b92a3; --accent: #ff6a13; --accent2: #ff8c42;
-    --win: #2ecc71; --loss: #ff4d4f; --t1: #3d8bff; --t2: #ff6a13;
-    --radius: 14px;
+    --bg: #0b0d12; --bg2: #10131a; --card: #151922; --card2: #1c212c; --card3: #232937; --line: #262c39; --line2: #313848;
+    --text: #f1f3f7; --muted: #8890a2; --dim: #5d6476;
+    --accent: #ff5a1f; --accent2: #ff8a3d; --glow: rgba(255,90,31,.35);
+    --win: #22d36b; --loss: #ff4757; --t1: #4d8dff; --t2: #ff5a1f; --gold: #ffc800;
+    --r: 18px; --display: "Russo One", "Inter", sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); min-height: 100vh; }
-  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
-  input, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line);
-    border-radius: 10px; padding: 11px 12px; width: 100%; outline: none; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding-bottom: calc(84px + env(safe-area-inset-bottom)); min-height: 100vh;
+    background: radial-gradient(120% 50% at 50% -10%, #2a160c 0%, transparent 60%), var(--bg); background-attachment: fixed; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; background: none; }
+  input { font: inherit; color: var(--text); background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; width: 100%; outline: none; transition: border-color .15s; }
   input:focus { border-color: var(--accent); }
-  .wrap { padding: 14px 16px; max-width: 560px; margin: 0 auto; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 2px 10px; font-weight: 600; }
-  .card { background: var(--card); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; border: 1px solid var(--line); }
+  .wrap { padding: 0 16px; max-width: 560px; margin: 0 auto; }
+  .display { font-family: var(--display); font-weight: 400; letter-spacing: .01em; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .dim { color: var(--dim); }
   .row { display: flex; align-items: center; gap: 10px; }
   .grow { flex: 1; min-width: 0; }
-  .muted { color: var(--muted); font-size: 13px; }
-  .btn { background: var(--accent); color: #fff; font-weight: 700; padding: 12px 16px; border-radius: 12px; width: 100%; }
-  .btn:active { transform: scale(.98); }
-  .btn.sec { background: var(--card2); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
-  .btn.danger { background: transparent; color: var(--loss); border: 1px solid #4a2326; font-weight: 600; }
-  .btn.small { width: auto; padding: 8px 14px; font-size: 14px; border-radius: 10px; }
-  .btn:disabled { opacity: .45; }
-  .btns { display: flex; gap: 8px; margin-top: 12px; }
-  .btns > * { flex: 1; }
-  .btns > .small { flex: 0 0 auto; min-width: 48px; }
-  .tabs[hidden] { display: none; }
+  .ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  /* level badge */
+  /* section title */
+  .stitle { display: flex; align-items: center; gap: 8px; margin: 22px 2px 10px; font-family: var(--display); font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--text); }
+  .stitle::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 10px var(--glow); }
+  .stitle .cnt { color: var(--muted); font-family: Inter; font-weight: 700; font-size: 12px; }
+
+  .card { background: linear-gradient(180deg, var(--card) 0%, #131720 100%); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; margin-bottom: 12px; position: relative; }
+  .card.mine { border-color: rgba(255,90,31,.45); box-shadow: 0 0 0 1px rgba(255,90,31,.12), 0 10px 30px -12px var(--glow); }
+
+  /* buttons */
+  .btn { background: linear-gradient(180deg, #ff6a2b, #f0480f); color: #fff; font-weight: 800; padding: 14px 16px; border-radius: 14px; width: 100%;
+    box-shadow: 0 8px 20px -8px var(--glow), inset 0 1px 0 rgba(255,255,255,.2); letter-spacing: .01em; transition: transform .08s, opacity .15s; }
+  .btn:active { transform: scale(.98); }
+  .btn.sec { background: var(--card2); border: 1px solid var(--line2); box-shadow: none; font-weight: 700; }
+  .btn.danger { background: rgba(255,71,87,.08); color: var(--loss); border: 1px solid rgba(255,71,87,.3); box-shadow: none; font-weight: 700; }
+  .btn.small { width: auto; padding: 12px 14px; font-size: 14px; }
+  .btn:disabled { opacity: .4; box-shadow: none; }
+  .btns { display: flex; gap: 8px; margin-top: 14px; }
+  .btns > * { flex: 1; }
+  .btns > .small { flex: 0 0 auto; }
+
+  /* top bar */
+  .topbar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 12px 16px; max-width: 560px; margin: 0 auto;
+    background: linear-gradient(180deg, rgba(11,13,18,.96) 70%, rgba(11,13,18,0)); backdrop-filter: blur(8px); }
+  .logo { font-family: var(--display); font-size: 20px; letter-spacing: .02em; }
+  .logo span { color: var(--accent); text-shadow: 0 0 14px var(--glow); }
+  .mechip { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 30px; padding: 4px 12px 4px 4px; }
+  .mechip b { font-family: var(--display); font-weight: 400; font-size: 15px; }
+
+  /* level badge (FACEIT-style) */
   .lvl { position: relative; width: 30px; height: 30px; display: grid; place-items: center; flex-shrink: 0; font-size: 13px; }
   .lvl svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(135deg); }
-  .lvl .trk { fill: #14161b; stroke: rgba(255,255,255,.12); stroke-width: 3.2; }
+  .lvl .trk { fill: #0e1016; stroke: rgba(255,255,255,.12); stroke-width: 3.2; }
   .lvl .arc { fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; filter: drop-shadow(0 0 2px currentColor); }
-  .lvl b { position: relative; font-weight: 900; font-size: 1em; line-height: 1; }
-  .lvl.calib { color: #8b92a3; } .lvl.calib .trk { stroke-dasharray: 2.4 2.4; }
-  .lvl.big { width: 58px; height: 58px; font-size: 22px; }
-  .calbar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 12px; }
-  .calbar i { height: 6px; border-radius: 3px; background: var(--card2); }
-  .calbar i.w { background: var(--win); } .calbar i.l { background: var(--loss); } .calbar i.d { background: var(--accent); }
-  .search { margin: 0 0 10px; }
-  .sub { font-size: 12px; color: var(--muted); }
+  .lvl b { position: relative; font-family: var(--display); font-weight: 400; font-size: 1em; line-height: 1; }
+  .lvl.calib { color: #7d8497; } .lvl.calib .trk { stroke-dasharray: 2.4 2.4; }
+  .lvl.big { width: 64px; height: 64px; font-size: 24px; }
+  .lvl.xs { width: 20px; height: 20px; font-size: 9px; }
 
-  /* header */
-  .hero { background: linear-gradient(135deg, #22160f 0%, #181b22 60%); border: 1px solid #3a2617; }
-  .nick { font-size: 20px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .elo { font-size: 22px; font-weight: 800; color: var(--accent2); }
-  .bar { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; margin-top: 10px; }
-  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), #ffb347); border-radius: 3px; }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
-  .stat { background: var(--card2); border-radius: 10px; padding: 8px 4px; text-align: center; }
-  .stat b { display: block; font-size: 17px; }
+  /* avatar */
+  .av { position: relative; width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
+    font-family: var(--display); font-size: 16px; color: #fff; background: var(--c, #2a3040); overflow: visible; }
+  .av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+  .av .lvl { position: absolute; right: -5px; bottom: -5px; }
+  .av.sm { width: 34px; height: 34px; font-size: 13px; }
+  .av.lg { width: 76px; height: 76px; font-size: 28px; }
+
+  /* hero */
+  .hero { padding: 18px; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(80% 90% at 100% 0%, var(--lc, transparent) 0%, transparent 55%); opacity: .16; pointer-events: none; }
+  .hero .nick { font-family: var(--display); font-size: 22px; }
+  .hero .elo { font-family: var(--display); font-size: 30px; line-height: 1; text-align: right; }
+  .bar { height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; margin-top: 16px; }
+  .bar > i { display: block; height: 100%; border-radius: 4px; box-shadow: 0 0 12px currentColor; }
+  .calbar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 16px; }
+  .calbar i { height: 8px; border-radius: 3px; background: var(--bg2); border: 1px solid var(--line); }
+  .calbar i.w { background: var(--win); border-color: var(--win); } .calbar i.l { background: var(--loss); border-color: var(--loss); } .calbar i.d { background: var(--accent); border-color: var(--accent); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .stat { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; text-align: center; }
+  .stat b { display: block; font-family: var(--display); font-weight: 400; font-size: 18px; }
   .stat span { font-size: 11px; color: var(--muted); }
 
-  /* tabs */
-  .tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: rgba(15,17,21,.96);
-    border-top: 1px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); backdrop-filter: blur(10px); z-index: 5; }
-  .tabs button { flex: 1; background: none; padding: 6px 0; color: var(--muted); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .tabs button .ic { font-size: 21px; filter: grayscale(1); opacity: .7; }
-  .tabs button.on { color: var(--accent); }
-  .tabs button.on .ic { filter: none; opacity: 1; }
-
   /* lobby */
-  .tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: var(--card2); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .tag.open { background: rgba(46,204,113,.12); color: var(--win); }
-  .tag.live { background: rgba(255,106,19,.15); color: var(--accent); }
-  .tag.veto { background: rgba(61,139,255,.15); color: #7fb0ff; }
-  .card.mine { border-color: #5a3418; box-shadow: 0 0 0 1px rgba(255,106,19,.15) inset; }
-  .count { font-size: 24px; font-weight: 900; } .count span { font-size: 14px; color: var(--muted); font-weight: 700; }
-  .fill { height: 4px; background: var(--card2); border-radius: 2px; margin-top: 10px; overflow: hidden; }
-  .fill i { display: block; height: 100%; background: var(--win); border-radius: 2px; transition: width .3s; }
-  .veto { margin-top: 12px; background: var(--card2); border-radius: 12px; padding: 12px; }
-  .veto-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .cd { font-size: 20px; font-weight: 900; color: var(--accent2); min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
-  .cd.low { color: var(--loss); }
-  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .mapc { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; font-weight: 700; text-align: left; display: flex; flex-direction: column; gap: 2px; }
-  .mapc:disabled { opacity: .85; }
-  .mapc.can { border-color: var(--accent); }
-  .mapc.can:active { background: rgba(255,77,79,.2); }
-  .mapc.banned { opacity: .55; }
-  .mapc.banned s { color: var(--loss); }
-  .mapc.banned span { font-size: 11px; color: var(--muted); font-weight: 600; }
-  .hostline { margin-top: 12px; background: rgba(255,106,19,.08); border: 1px solid #4a2c18; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
-  .hostline .gid { display: inline-block; margin-left: 4px; background: var(--card2); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent2); cursor: pointer; }
-  .hostline .you { margin-top: 6px; color: var(--accent2); font-weight: 700; font-size: 13px; }
-  .team .tp i { font-style: normal; font-size: 10px; font-weight: 900; margin-left: auto; }
-  .team .tp i.cap { background: #ffc800; color: #000; border-radius: 4px; padding: 1px 5px; }
-  .team .tp i.hst { margin-left: 4px; }
-  .lobby-title { font-weight: 800; font-size: 16px; }
-  .slots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .slot { display: flex; align-items: center; gap: 6px; background: var(--card2); padding: 5px 9px 5px 5px; border-radius: 20px; font-size: 13px; max-width: 100%; }
-  .slot .lvl { width: 24px; height: 24px; font-size: 10px; }
-  .slot.empty { color: var(--muted); padding: 5px 12px; border: 1px dashed var(--line); background: none; }
-  .slot .x { background: none; color: var(--muted); padding: 0 0 0 4px; font-size: 15px; }
-  .slot .host { font-size: 11px; }
-  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-  .team { background: var(--card2); border-radius: 10px; padding: 10px; border-top: 3px solid var(--t1); min-width: 0; }
-  .team.t2 { border-top-color: var(--t2); }
-  .team .tp { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; }
-  .team .tp .lvl { width: 22px; height: 22px; font-size: 9px; }
-  .team .tp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .room { margin-top: 10px; background: var(--card2); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
-  .room code { font-size: 16px; font-weight: 700; color: var(--accent2); }
+  .lhead { display: flex; align-items: flex-start; gap: 10px; }
+  .ltitle { font-family: var(--display); font-size: 19px; }
+  .count { font-family: var(--display); font-size: 28px; line-height: 1; } .count span { font-size: 15px; color: var(--muted); }
+  .segs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin-top: 12px; }
+  .segs i { height: 5px; border-radius: 3px; background: var(--card3); }
+  .segs i.on { background: var(--win); box-shadow: 0 0 8px rgba(34,211,107,.5); }
+  .grid10 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px 6px; margin-top: 16px; }
+  .pl { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; position: relative; }
+  .pl .nm { font-size: 11px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cfd3dc; }
+  .pl.me .nm { color: var(--accent2); }
+  .pl .empty { width: 44px; height: 44px; border-radius: 50%; border: 1.5px dashed var(--line2); display: grid; place-items: center; color: var(--dim); font-size: 20px; }
+  .pl .kick { position: absolute; top: -4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--loss); color: #fff; font-size: 11px; line-height: 18px; }
 
-  .seg { display: flex; background: var(--card2); border-radius: 10px; padding: 3px; gap: 3px; }
-  .seg button { flex: 1; background: none; padding: 9px; border-radius: 8px; font-weight: 700; color: var(--muted); }
-  .seg button.on { background: var(--accent); color: #fff; }
-  .seg.teamsel button.on.t1 { background: var(--t1); }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { background: var(--card2); border: 1px solid var(--line); padding: 7px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-  .chip.on { border-color: var(--accent); color: var(--accent2); background: rgba(255,106,19,.1); }
-  label.f { display: block; font-size: 12px; color: var(--muted); margin: 12px 2px 6px; font-weight: 600; }
-  .score { display: flex; align-items: center; gap: 8px; }
-  .score input { text-align: center; font-size: 18px; font-weight: 700; }
+  .tag { font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+  .tag.veto { background: rgba(77,141,255,.14); color: #8fb6ff; }
+  .tag.live { background: rgba(255,90,31,.14); color: var(--accent2); }
+  .tag.live::before { content: "● "; animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .2 } }
 
-  /* leaderboard */
-  .lb { padding: 4px 0; }
-  .lb .r { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  /* map banner */
+  .banner { margin: -14px -14px 14px; height: 92px; border-radius: var(--r) var(--r) 0 0; position: relative; overflow: hidden; padding: 14px; display: flex; flex-direction: column; justify-content: flex-end;
+    background: var(--mapbg); }
+  .banner::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0 2px, transparent 2px 12px); }
+  .banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 20%, rgba(11,13,18,.85)); }
+  .banner > * { position: relative; z-index: 1; }
+  .banner .mapn { font-family: var(--display); font-size: 26px; line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
+  .banner .tag { position: absolute; top: 12px; right: 12px; z-index: 1; background: rgba(0,0,0,.45); backdrop-filter: blur(4px); }
+
+  /* veto */
+  .veto-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .cd { font-family: var(--display); font-size: 26px; color: var(--accent2); min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+  .cd.low { color: var(--loss); animation: blink .8s infinite; }
+  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mapc { height: 64px; border-radius: 12px; position: relative; overflow: hidden; text-align: left; padding: 10px 12px; display: flex; flex-direction: column; justify-content: flex-end;
+    background: var(--mapbg); border: 1.5px solid transparent; transition: transform .1s; }
+  .mapc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(0,0,0,.55)); }
+  .mapc > * { position: relative; z-index: 1; }
+  .mapc .mn { font-family: var(--display); font-size: 16px; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+  .mapc .by { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.75); }
+  .mapc.can { border-color: rgba(255,255,255,.35); }
+  .mapc.can:active { transform: scale(.96); }
+  .mapc.banned { filter: grayscale(1) brightness(.45); }
+  .mapc.banned::before { content: "✕"; position: absolute; right: 10px; top: 4px; z-index: 2; font-size: 30px; font-weight: 900; color: var(--loss); filter: none; }
+  .mapc:disabled { cursor: default; }
+  .vturn { font-weight: 700; }
+
+  /* host + room */
+  .hostline { margin-top: 12px; display: flex; align-items: center; gap: 10px; background: rgba(255,90,31,.07); border: 1px solid rgba(255,90,31,.3); border-radius: 14px; padding: 10px 12px; }
+  .hostline .lbl { font-size: 11px; color: var(--accent2); font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+  .hostline .hn { font-weight: 800; }
+  .chipbtn { background: var(--card3); border: 1px solid var(--line2); padding: 6px 10px; border-radius: 10px; font-weight: 700; font-size: 13px; color: var(--accent2); white-space: nowrap; }
+  .you { margin-top: 4px; color: var(--text); font-size: 12px; }
+  .room { margin-top: 10px; display: flex; align-items: center; gap: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  .room code { font-family: var(--display); font-size: 17px; color: var(--accent2); }
+
+  /* teams vs */
+  .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; margin-top: 14px; align-items: start; }
+  .vs .mid { font-family: var(--display); color: var(--dim); font-size: 14px; padding-top: 8px; }
+  .team { min-width: 0; }
+  .team .th { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding-bottom: 6px; border-bottom: 2px solid var(--t1); margin-bottom: 4px; }
+  .team.t2 .th { border-color: var(--t2); flex-direction: row-reverse; }
+  .team.t1 .th b { color: var(--t1); } .team.t2 .th b { color: var(--t2); }
+  .team .th span { color: var(--muted); font-weight: 600; }
+  .tp { display: flex; align-items: center; gap: 6px; padding: 5px 0; font-size: 13px; font-weight: 600; min-width: 0; }
+  .team.t2 .tp { flex-direction: row-reverse; text-align: right; }
+  .tp .ell { flex: 1; }
+  .tp i { font-style: normal; font-size: 10px; font-weight: 900; flex-shrink: 0; }
+  .tp i.cap { background: var(--gold); color: #000; border-radius: 4px; padding: 1px 5px; }
+
+  /* players */
+  .search { margin-bottom: 4px; padding-left: 40px; background: var(--bg2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%238890a2' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 14px center no-repeat; }
+  .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 8px; align-items: end; margin-bottom: 12px; }
+  .pod { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 16px; padding: 14px 6px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+  .pod.p1 { padding-top: 20px; border-color: rgba(255,200,0,.45); box-shadow: 0 10px 30px -14px rgba(255,200,0,.5); }
+  .pod .place { font-family: var(--display); font-size: 13px; color: var(--muted); }
+  .pod.p1 .place { color: var(--gold); }
+  .pod .n { font-weight: 800; font-size: 13px; max-width: 100%; }
+  .pod .e { font-family: var(--display); font-size: 17px; }
+  .lb { padding: 0; overflow: hidden; }
+  .lb .r { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
   .lb .r:last-child { border-bottom: 0; }
-  .lb .r.me { background: rgba(255,106,19,.08); }
-  .lb .pos { width: 26px; text-align: center; font-weight: 800; color: var(--muted); }
-  .lb .n { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb .e { font-weight: 800; }
+  .lb .r.me { background: rgba(255,90,31,.07); }
+  .lb .pos { width: 22px; text-align: center; font-family: var(--display); color: var(--muted); font-size: 14px; }
+  .lb .n { font-weight: 700; }
+  .lb .e { font-family: var(--display); font-size: 17px; }
+  .sub { font-size: 12px; color: var(--muted); font-weight: 600; }
 
-  .hist { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  /* history */
+  .hist { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
   .hist:last-child { border-bottom: 0; }
-  .hist .res { width: 4px; align-self: stretch; border-radius: 2px; }
-  .d { font-weight: 800; }
+  .hmap { width: 46px; height: 46px; border-radius: 12px; background: var(--mapbg); display: grid; place-items: center; font-family: var(--display); font-size: 17px; flex-shrink: 0; position: relative; overflow: hidden; }
+  .hmap::after { content: ""; position: absolute; inset: auto 0 0 0; height: 4px; background: var(--res); }
+  .d { font-family: var(--display); font-size: 16px; }
   .d.p { color: var(--win); } .d.m { color: var(--loss); }
-  .empty { text-align: center; color: var(--muted); padding: 26px 10px; }
-  .empty .big { font-size: 40px; margin-bottom: 6px; }
+  .wl { font-weight: 800; font-size: 12px; }
 
-  /* sheet */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 10; display: flex; align-items: flex-end; animation: fade .15s; }
-  .sheet { background: var(--card); width: 100%; max-width: 560px; margin: 0 auto; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); animation: up .2s ease-out; max-height: 90vh; overflow: auto; }
-  .sheet h3 { margin: 0 0 4px; font-size: 18px; }
-  @keyframes up { from { transform: translateY(40px); opacity: 0 } }
+  .empty { text-align: center; color: var(--muted); padding: 28px 10px; }
+  .empty .big { font-size: 38px; margin-bottom: 8px; }
+
+  /* tabs */
+  .tabs { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; padding: 8px 16px calc(10px + env(safe-area-inset-bottom)); z-index: 5;
+    background: linear-gradient(0deg, rgba(11,13,18,1) 60%, rgba(11,13,18,0)); }
+  .tabs[hidden] { display: none; }
+  .tabs nav { display: flex; width: 100%; max-width: 420px; background: rgba(21,25,34,.95); border: 1px solid var(--line); border-radius: 22px; padding: 6px; backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .tabs button { flex: 1; padding: 8px 0 6px; color: var(--dim); font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 3px; border-radius: 16px; transition: color .15s, background .15s; }
+  .tabs button svg { width: 22px; height: 22px; }
+  .tabs button.on { color: var(--accent); background: rgba(255,90,31,.1); }
+
+  /* sheet / toast */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 10; display: flex; align-items: flex-end; animation: fade .15s; backdrop-filter: blur(2px); }
+  .sheet { background: var(--card); border-top: 1px solid var(--line2); width: 100%; max-width: 560px; margin: 0 auto; border-radius: 22px 22px 0 0; padding: 10px 16px calc(18px + env(safe-area-inset-bottom)); animation: up .22s cubic-bezier(.2,.9,.3,1); max-height: 90vh; overflow: auto; }
+  .sheet::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line2); margin: 0 auto 14px; }
+  .sheet h3 { margin: 0 0 4px; font-family: var(--display); font-weight: 400; font-size: 20px; }
+  label.f { display: block; font-size: 12px; color: var(--muted); margin: 14px 2px 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .seg { display: flex; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 4px; gap: 4px; }
+  .seg button { flex: 1; padding: 11px; border-radius: 10px; font-weight: 800; color: var(--muted); }
+  .seg button.on.t1 { background: var(--t1); color: #fff; } .seg button.on.t2 { background: var(--t2); color: #fff; }
+  .score { display: flex; align-items: center; gap: 10px; }
+  .score input { text-align: center; font-family: var(--display); font-size: 22px; }
+  @keyframes up { from { transform: translateY(60px); opacity: 0 } }
   @keyframes fade { from { opacity: 0 } }
-  .toast { position: fixed; left: 16px; right: 16px; top: 14px; background: #2a1414; border: 1px solid #5c2323; color: #ffb3b3; padding: 12px 14px; border-radius: 12px; z-index: 20; font-weight: 600; animation: fade .2s; }
-  .toast.ok { background: #12261a; border-color: #1f5c35; color: #9ff0bd; }
-  .back { background: none; color: var(--accent2); font-weight: 700; padding: 4px 0 10px; }
-  .logo { text-align: center; padding: 30px 0 10px; }
-  .logo .t { font-size: 30px; font-weight: 900; letter-spacing: -.02em; }
-  .logo .t span { color: var(--accent); }
-  .spin { text-align: center; padding: 60px; color: var(--muted); }
+  .toast { position: fixed; left: 16px; right: 16px; top: 12px; max-width: 528px; margin: 0 auto; background: #2a1216; border: 1px solid #5c2329; color: #ffb7bd; padding: 13px 16px; border-radius: 14px; z-index: 20; font-weight: 700; animation: up .2s; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  .toast.ok { background: #0f2619; border-color: #1d5a35; color: #9ff0bd; }
+  .back { color: var(--accent2); font-weight: 800; padding: 4px 0 12px; }
+
+  /* register */
+  .reg-logo { text-align: center; padding: 44px 0 22px; }
+  .reg-logo .t { font-family: var(--display); font-size: 40px; line-height: 1; }
+  .reg-logo .t span { color: var(--accent); text-shadow: 0 0 24px var(--glow); }
+  .note { margin-top: 14px; display: flex; gap: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; color: var(--muted); }
+  .spin { display: grid; place-items: center; height: 70vh; font-family: var(--display); font-size: 24px; color: var(--dim); }
 </style>
 </head>
 <body>
-<div id="app"><div class="spin">Загрузка…</div></div>
-<div class="tabs" id="tabs" hidden>
-  <button data-tab="lobby" class="on"><span class="ic">🎮</span>Лобби</button>
-  <button data-tab="top"><span class="ic">🏆</span>Игроки</button>
-  <button data-tab="profile"><span class="ic">👤</span>Профиль</button>
-</div>
+<div id="app"><div class="spin">SO2 ARENA</div></div>
+<div class="tabs" id="tabs" hidden><nav>
+  <button data-tab="lobby" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>Лобби</button>
+  <button data-tab="top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>Игроки</button>
+  <button data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Профиль</button>
+</nav></div>
 
 <script>
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
-try { tg?.setHeaderColor('#0f1115'); tg?.setBackgroundColor('#0f1115'); } catch (e) {}
+try { tg?.setHeaderColor('#0b0d12'); tg?.setBackgroundColor('#0b0d12'); tg?.setBottomBarColor?.('#0b0d12'); } catch (e) {}
 
 const devUser = new URLSearchParams(location.search).get('dev');
 const S = { tab: 'lobby', me: null, cfg: null, lobbies: [], top: [], view: null, poll: null };
@@ -175,9 +244,11 @@ const S = { tab: 'lobby', me: null, cfg: null, lobbies: [], top: [], view: null,
 // ---------- utils ----------
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = sel => document.querySelector(sel);
+const hashHue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+
 // Цвета уровней как на FACEIT: 1 — серый, 2–3 — зелёный, 4–7 — жёлтый, 8–9 — оранжевый, 10 — красный
 const LVL_COLORS = { 1: '#eeeeee', 2: '#1ce400', 3: '#1ce400', 4: '#ffc800', 5: '#ffc800', 6: '#ffc800', 7: '#ffc800', 8: '#ff6309', 9: '#ff6309', 10: '#fe1f00' };
-const RING = 2 * Math.PI * 15 * 0.75;  // кольцо на 270°, как у FACEIT
+const RING = 2 * Math.PI * 15 * 0.75;  // кольцо на 270°
 function lvl(l, cls = '') {
   const C = 2 * Math.PI * 15;
   const track = `<circle cx="18" cy="18" r="15" class="trk" stroke-dasharray="${RING} ${C}"/>`;
@@ -185,7 +256,20 @@ function lvl(l, cls = '') {
   return `<div class="lvl ${cls}" style="color:${LVL_COLORS[l]}" title="${l} уровень"><svg viewBox="0 0 36 36">${track}
     <circle cx="18" cy="18" r="15" class="arc" stroke-dasharray="${RING * l / 10} ${C}"/></svg><b>${l}</b></div>`;
 }
-const haptic = t => { try { tg?.HapticFeedback?.[t === 'ok' || t === 'err' ? 'notificationOccurred' : 'impactOccurred'](t === 'ok' ? 'success' : t === 'err' ? 'error' : 'light'); } catch (e) {} };
+// аватар: фото из Telegram или инициалы на цветном фоне + значок уровня
+function av(p, size = '', badge = true) {
+  const h = hashHue(p.nick || p.tg_id);
+  const inner = p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy" onerror="this.remove()">` : esc((p.nick || '?').slice(0, 2).toUpperCase());
+  return `<div class="av ${size}" style="--c:linear-gradient(135deg,hsl(${h} 45% 34%),hsl(${(h + 40) % 360} 50% 22%))">${inner}${badge ? lvl(p.level, 'xs') : ''}</div>`;
+}
+// у каждой карты свой цвет плитки
+const MAP_HUES = { Sandstone: [38, 25], Rust: [18, 8], Province: [140, 95], Hanami: [330, 300], Prison: [210, 230], Dune: [32, 12], Breeze: [190, 170] };
+function mapBg(name) {
+  const [a, b] = MAP_HUES[name] || [hashHue(name), (hashHue(name) + 30) % 360];
+  return `--mapbg:linear-gradient(135deg,hsl(${a} 55% 38%),hsl(${b} 50% 18%))`;
+}
+
+const haptic = t => { try { t === 'ok' || t === 'err' ? tg?.HapticFeedback?.notificationOccurred(t === 'ok' ? 'success' : 'error') : tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
 const fmtDate = ts => new Date(ts * 1000).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 function toast(msg, ok = false) {
@@ -226,40 +310,46 @@ async function refresh() {
 }
 
 // ---------- render ----------
+function topbar() {
+  const p = S.me.player;
+  const right = p.calibrated
+    ? `<div class="mechip">${lvl(p.level)}<b style="color:${LVL_COLORS[p.level]}">${p.elo}</b></div>`
+    : `<div class="mechip">${lvl(null)}<b class="dim">${p.calib_played}/${p.calib_total}</b></div>`;
+  return `<div class="topbar"><div class="logo grow">SO2 <span>ARENA</span></div>${right}</div>`;
+}
+
 function render() {
   const app = $('#app');
   if (!S.me.player) { $('#tabs').hidden = true; app.innerHTML = registerView(); bindRegister(); return; }
   $('#tabs').hidden = false;
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
-  if (S.view) { app.innerHTML = `<div class="wrap">${S.view}</div>`; return; }
-  app.innerHTML = `<div class="wrap">${heroView()}${S.tab === 'lobby' ? lobbyTab() : S.tab === 'top' ? topTab() : ''}</div>`;
-  if (S.tab === 'profile') openProfile(S.me.player.tg_id, true);
+  if (S.view) { app.innerHTML = topbar() + `<div class="wrap">${S.view}</div>`; return; }
+  if (S.tab === 'profile') { openProfile(S.me.player.tg_id, true); return; }
+  app.innerHTML = topbar() + `<div class="wrap">${S.tab === 'lobby' ? lobbyTab() : topTab()}</div>`;
 }
 
-function heroView(p = S.me.player, rank = S.me.rank, hist = null) {
+function heroView(p, rank, hist = null) {
   const games = p.wins + p.losses;
   const wr = games ? Math.round(p.wins * 100 / games) : 0;
-  const idLine = p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : '';
+  const color = p.calibrated ? LVL_COLORS[p.level] : '#7d8497';
   let progress;
   if (!p.calibrated) {
-    // 10 ячеек калибровки: зелёные — победы, красные — поражения (по истории, если она есть)
     const res = hist ? hist.slice(0, p.calib_played).reverse().map(h => h.team === h.winner ? 'w' : 'l') : Array(p.calib_played).fill('d');
     progress = `<div class="calbar">${Array.from({ length: p.calib_total }, (_, i) => `<i class="${res[i] || ''}"></i>`).join('')}</div>
-      <div class="muted" style="margin-top:6px">Сыграй ещё <b style="color:var(--text)">${p.calib_total - p.calib_played}</b> из ${p.calib_total} матчей, чтобы получить уровень</div>`;
+      <div class="muted" style="margin-top:8px">Калибровка: ещё <b style="color:var(--text)">${p.calib_total - p.calib_played}</b> из ${p.calib_total} матчей до уровня</div>`;
   } else {
     const prev = S.cfg.levels.filter(([, low]) => low <= p.elo).pop()[1];
     const pct = p.next_level_at ? Math.round((p.elo - prev) * 100 / (p.next_level_at - prev)) : 100;
-    progress = `<div class="bar"><i style="width:${pct}%;background:${LVL_COLORS[p.level]}"></i></div>
-      <div class="muted" style="margin-top:6px">${p.next_level_at ? `До ${p.level + 1} уровня: <b style="color:var(--text)">${p.next_level_at - p.elo}</b> ELO` : 'Максимальный уровень 🔥'}</div>`;
+    progress = `<div class="bar"><i style="width:${pct}%;background:${color};color:${color}"></i></div>
+      <div class="row muted" style="margin-top:8px"><span class="grow">${p.level} lvl</span><span>${p.next_level_at ? `до ${p.level + 1} lvl: <b style="color:var(--text)">${p.next_level_at - p.elo}</b> ELO` : 'Максимальный уровень 🔥'}</span></div>`;
   }
-  return `<div class="card hero">
-    <div class="row">${lvl(p.level, 'big')}
-      <div class="grow"><div class="nick">${esc(p.nick)}</div>
-        <div class="muted">${idLine}${p.calibrated ? `#${rank} в рейтинге` : 'Калибровка'}</div></div>
-      <div style="text-align:right">${p.calibrated
-        ? `<div class="elo" style="color:${LVL_COLORS[p.level]}">${p.elo}</div><div class="muted">ELO</div>`
-        : `<div class="elo" style="color:var(--muted)">${p.calib_played}/${p.calib_total}</div><div class="muted">калибровка</div>`}</div>
+  return `<div class="card hero" style="--lc:${color}">
+    <div class="row" style="gap:14px">${av(p, 'lg', false)}
+      <div class="grow"><div class="nick ell">${esc(p.nick)}</div>
+        <div class="muted">${p.game_id ? 'ID ' + esc(p.game_id) + ' · ' : ''}${p.calibrated ? `#${rank} в рейтинге` : 'на калибровке'}</div></div>
+      ${lvl(p.level, 'big')}
     </div>
+    ${p.calibrated ? `<div class="row" style="margin-top:14px;align-items:baseline"><div class="elo" style="color:${color}">${p.elo}</div><div class="muted grow">ELO</div></div>` : ''}
     ${progress}
     <div class="stats">
       <div class="stat"><b>${games}</b><span>матчей</span></div>
@@ -271,14 +361,14 @@ function heroView(p = S.me.player, rank = S.me.rank, hist = null) {
 
 function registerView() {
   const u = S.me.user;
-  return `<div class="wrap"><div class="logo"><div class="t">SO2 <span>ARENA</span></div>
-    <div class="muted">Матчи Standoff 2 с друзьями · ELO · рейтинг</div></div>
-    <div class="card"><h3 style="margin:0 0 4px">Регистрация</h3>
+  return `<div class="wrap"><div class="reg-logo"><div class="t">SO2 <span>ARENA</span></div>
+    <div class="muted" style="margin-top:8px">Матчи Standoff 2 с друзьями · ELO · уровни 1–10</div></div>
+    <div class="card" style="padding:18px"><h3 class="display" style="margin:0 0 4px;font-weight:400;font-size:20px">Регистрация</h3>
       <div class="muted">Привет, ${esc(u.name)}! Укажи свой игровой профиль.</div>
       <label class="f">Ник в Standoff 2</label><input id="r-nick" maxlength="20" placeholder="Например, Sn1per">
-      <label class="f">ID в игре (необязательно)</label><input id="r-id" inputmode="numeric" maxlength="15" placeholder="123456789">
-      <div class="muted" style="margin-top:12px">🎯 Первые ${S.cfg.calibration_games || 10} матчей — калибровка. После неё получишь уровень от 1 до 10.</div>
-      <button class="btn" id="r-go" style="margin-top:14px">Начать калибровку</button>
+      <label class="f">ID в игре</label><input id="r-id" inputmode="numeric" maxlength="15" placeholder="123456789">
+      <div class="note"><span>🎯</span><span>Первые ${S.cfg.calibration_games || 10} матчей — калибровка. После неё получишь уровень от 1 до 10.</span></div>
+      <button class="btn" id="r-go" style="margin-top:16px">Начать калибровку</button>
     </div></div>`;
 }
 
@@ -291,6 +381,8 @@ function bindRegister(edit) {
   };
 }
 
+function sec(title, cnt) { return `<div class="stitle">${title}${cnt != null ? `<span class="cnt">${cnt}</span>` : ''}</div>`; }
+
 function lobbyTab() {
   const me = S.me.user.id;
   const open = S.lobbies.filter(m => m.status === 'open');
@@ -298,9 +390,9 @@ function lobbyTab() {
   const mine = active.filter(m => m.players.some(p => p.tg_id === me));
   const others = active.filter(m => !mine.includes(m));
   let html = '';
-  if (mine.length) html += `<h2>Твой матч</h2>${mine.map(matchCard).join('')}`;
-  html += `<h2>Лобби 5x5</h2>${open.map(openLobbyCard).join('')}`;
-  if (others.length) html += `<h2>Идут матчи · ${others.length}</h2>${others.map(matchCard).join('')}`;
+  if (mine.length) html += sec('Твой матч') + mine.map(matchCard).join('');
+  html += sec('Лобби 5x5') + open.map(openLobbyCard).join('');
+  if (others.length) html += sec('Идут матчи', others.length) + others.map(matchCard).join('');
   return html;
 }
 
@@ -308,69 +400,69 @@ const nickOf = (m, id) => esc(m.players.find(p => p.tg_id === id)?.nick ?? '?');
 
 function openLobbyCard(m) {
   const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me), n = m.players.length;
-  const slots = m.players.map(p => `<div class="slot">${lvl(p.level)}<span>${esc(p.nick)}</span>
-      ${S.me.is_admin && p.tg_id !== me ? `<button class="x" onclick="kick(${m.id},${p.tg_id})">✕</button>` : ''}</div>`).join('')
-    + Array(m.size - n).fill('<div class="slot empty">свободно</div>').join('');
+  const cells = m.players.map(p => `<div class="pl ${p.tg_id === me ? 'me' : ''}">${av(p)}<div class="nm">${esc(p.nick)}</div>
+      ${S.me.is_admin && p.tg_id !== me ? `<button class="kick" onclick="kick(${m.id},${p.tg_id})">✕</button>` : ''}</div>`).join('')
+    + Array(m.size - n).fill('<div class="pl"><div class="empty">+</div><div class="nm dim">свободно</div></div>').join('');
   const btn = inIt
     ? `<button class="btn sec" onclick="act('/lobbies/${m.id}/leave', null, 'Ты вышел из лобби')">Выйти из лобби</button>`
-    : `<button class="btn" ${S.me.active_match ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби! Ждём остальных')">Войти</button>`;
+    : `<button class="btn" ${S.me.active_match ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби! Ждём остальных')">Войти в лобби</button>`;
   return `<div class="card ${inIt ? 'mine' : ''}">
-    <div class="row"><div class="grow"><div class="lobby-title">Лобби ${m.lobby_no}</div>
+    <div class="lhead"><div class="grow"><div class="ltitle">Лобби ${m.lobby_no}</div>
       <div class="muted">${inIt ? 'Ты в лобби · ждём игроков' : 'Капитаны и карта — когда соберётся 10'}</div></div>
       <div class="count">${n}<span>/${m.size}</span></div></div>
-    <div class="fill"><i style="width:${n * 100 / m.size}%"></i></div>
-    <div class="slots">${slots}</div><div class="btns">${btn}</div></div>`;
+    <div class="segs">${Array.from({ length: m.size }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="grid10">${cells}</div><div class="btns">${btn}</div></div>`;
 }
 
 function matchCard(m) {
   const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me);
   const isCap = m.captain1 === me || m.captain2 === me, admin = S.me.is_admin;
-  const head = `<div class="row"><div class="grow"><div class="lobby-title">Матч #${m.id}${m.map ? ' · ' + esc(m.map) : ''}</div>
-      <div class="muted">Лобби ${m.lobby_no ?? '—'} · 5x5${m.room && inIt ? '' : ''}</div></div>
-      <span class="tag ${m.status}">${m.status === 'veto' ? 'бан карт' : 'идёт матч'}</span></div>`;
+  const banner = m.status === 'live'
+    ? `<div class="banner" style="${mapBg(m.map)}"><span class="tag live">идёт матч</span><div class="muted" style="color:rgba(255,255,255,.75)">Матч #${m.id} · Лобби ${m.lobby_no ?? '—'}</div><div class="mapn">${esc(m.map)}</div></div>`
+    : `<div class="lhead" style="margin-bottom:12px"><div class="grow"><div class="ltitle">Матч #${m.id}</div><div class="muted">Лобби ${m.lobby_no ?? '—'} · выбор карты</div></div><span class="tag veto">бан карт</span></div>`;
   const team = t => {
     const cap = t === 1 ? m.captain1 : m.captain2;
     const ps = m.players.filter(p => p.team === t);
-    return `<div class="team t${t}"><div class="muted" style="margin-bottom:4px"><b style="color:var(--${t === 1 ? 't1' : 't2'})">Команда ${t}</b> · ${m.team_avg?.[t] ?? ''}</div>
-      ${ps.map(p => `<div class="tp">${lvl(p.level)}<span>${esc(p.nick)}</span>${p.tg_id === cap ? '<i class="cap">C</i>' : ''}${p.tg_id === m.host_id ? '<i class="hst">🎮</i>' : ''}</div>`).join('')}</div>`;
+    return `<div class="team t${t}"><div class="th"><b>Команда ${t}</b><span>${m.team_avg?.[t] ?? ''}</span></div>
+      ${ps.map(p => `<div class="tp">${lvl(p.level, 'xs')}<span class="ell">${esc(p.nick)}</span>${p.tg_id === cap ? '<i class="cap">C</i>' : ''}${p.tg_id === m.host_id ? '<i>🎮</i>' : ''}</div>`).join('')}</div>`;
   };
-  const hostLine = m.host_nick ? `<div class="hostline">🎮 Лобби в игре создаёт: <b>${esc(m.host_nick)}</b>
-      ${m.host_game_id ? `<span class="gid" onclick="copyText('${esc(m.host_game_id)}')">ID ${esc(m.host_game_id)} ⧉</span>` : ''}
-      ${m.host_id === me ? '<div class="you">Это ты! Создай комнату в игре и впиши код 🔑</div>' : ''}</div>` : '';
+  const hostLine = m.host_nick ? `<div class="hostline"><div class="grow"><div class="lbl">🎮 Лобби в игре создаёт</div>
+      <div class="hn ell">${esc(m.host_nick)}</div>${m.host_id === me ? '<div class="you">Это ты! Создай комнату и впиши код 🔑</div>' : ''}</div>
+      ${m.host_game_id ? `<button class="chipbtn" onclick="copyText('${esc(m.host_game_id)}')">ID ${esc(m.host_game_id)} ⧉</button>` : ''}</div>` : '';
   const btns = [];
   if (m.status === 'live' && (isCap || admin)) btns.push(`<button class="btn" onclick="openResult(${m.id})">🏁 Результат</button>`);
   if (inIt && (m.host_id === me || isCap) || admin) btns.push(`<button class="btn sec small" onclick="openRoom(${m.id})">🔑 Код</button>`);
   if (isCap || admin) btns.push(`<button class="btn danger small" onclick="cancelMatch(${m.id})">✕</button>`);
-  return `<div class="card ${inIt ? 'mine' : ''}">${head}
+  return `<div class="card ${inIt ? 'mine' : ''}">${banner}
     ${m.status === 'veto' ? vetoView(m) : ''}
     ${hostLine}${roomView(m, inIt)}
-    <div class="teams">${team(1)}${team(2)}</div>
+    <div class="vs">${team(1)}<div class="mid">VS</div>${team(2)}</div>
     ${btns.length ? `<div class="btns">${btns.join('')}</div>` : ''}</div>`;
 }
 
 function vetoView(m) {
   const me = S.me.user.id, canBan = m.veto_turn === me || S.me.is_admin;
   const total = S.cfg.maps.length - 1;
-  const turn = m.veto_turn === me ? '🫵 <b>Твой ход — забань карту</b>' : `Банит капитан <b>${nickOf(m, m.veto_turn)}</b>`;
+  const turn = m.veto_turn === me ? '<span style="color:var(--accent2)">Твой ход — забань карту</span>' : `Банит <b>${nickOf(m, m.veto_turn)}</b>`;
   const maps = S.cfg.maps.map((map, i) => {
     const ban = m.bans.find(b => b.map === map);
-    if (ban) return `<div class="mapc banned"><s>${esc(map)}</s><span>✕ ${nickOf(m, ban.by)}${ban.auto ? ' · авто' : ''}</span></div>`;
-    return `<button class="mapc ${canBan ? 'can' : ''}" ${canBan ? '' : 'disabled'} onclick="banMap(${m.id}, ${i})">${esc(map)}</button>`;
+    if (ban) return `<div class="mapc banned" style="${mapBg(map)}"><div class="mn">${esc(map)}</div><div class="by">${nickOf(m, ban.by)}${ban.auto ? ' · авто' : ''}</div></div>`;
+    return `<button class="mapc ${canBan ? 'can' : ''}" style="${mapBg(map)}" ${canBan ? '' : 'disabled'} onclick="banMap(${m.id}, ${i})"><div class="mn">${esc(map)}</div></button>`;
   }).join('');
-  return `<div class="veto"><div class="veto-h"><div class="grow">${turn}<div class="muted">Бан ${m.bans.length + 1} из ${total} · последняя карта играется</div></div>
-      <div class="cd" data-end="${Date.now() / 1000 + (m.veto_left ?? 0)}">${m.veto_left ?? ''}</div></div>
-    <div class="maps">${maps}</div></div>`;
+  return `<div class="veto-h"><div class="grow"><div class="vturn">${turn}</div><div class="muted">Бан ${m.bans.length + 1} из ${total} · последняя карта играется</div></div>
+      <div class="cd" data-end="${Date.now() / 1000 + (m.veto_left ?? 0)}">${m.veto_left ?? ''}с</div></div>
+    <div class="maps">${maps}</div>`;
 }
 
 function roomView(m, inIt) {
   if (!m.room || !inIt) return '';
-  return `<div class="room"><span class="muted">Комната:</span><code class="grow">${esc(m.room)}</code>
-    <button class="btn sec small" onclick="copyRoom(${m.id})">Копировать</button></div>`;
+  return `<div class="room"><span class="muted">Комната</span><code class="grow ell">${esc(m.room)}</code>
+    <button class="chipbtn" onclick="copyRoom(${m.id})">Копировать</button></div>`;
 }
 
 function topTab() {
-  return `<h2>База игроков · ${S.top.length}</h2>
-    <input class="search" id="psearch" placeholder="🔍 Поиск по нику или ID" value="${esc(S.q || '')}" oninput="S.q=this.value;$('#plist').innerHTML=playersList()">
+  return `${sec('База игроков', S.top.length || '')}
+    <input class="search" id="psearch" placeholder="Поиск по нику или ID" value="${esc(S.q || '')}" oninput="S.q=this.value;$('#plist').innerHTML=playersList()">
     <div id="plist">${playersList()}</div>`;
 }
 
@@ -378,18 +470,22 @@ function playersList() {
   if (!S.top.length) return `<div class="card empty">Загрузка…</div>`;
   const q = (S.q || '').trim().toLowerCase();
   const match = p => !q || p.nick.toLowerCase().includes(q) || String(p.game_id || '').includes(q);
-  const medals = ['🥇', '🥈', '🥉'];
   const row = (p, pos) => `<div class="r ${p.tg_id === S.me.user.id ? 'me' : ''}" onclick="openProfile(${p.tg_id})">
-      <div class="pos">${pos}</div>${lvl(p.level)}
-      <div class="grow"><div class="n">${esc(p.nick)}</div><div class="muted">${p.wins}W · ${p.losses}L${p.game_id ? ' · ID ' + esc(p.game_id) : ''}</div></div>
+      <div class="pos">${pos}</div>${av(p, 'sm')}
+      <div class="grow" style="min-width:0"><div class="n ell">${esc(p.nick)}</div><div class="sub">${p.wins}W · ${p.losses}L${p.game_id ? ' · ID ' + esc(p.game_id) : ''}</div></div>
       ${p.calibrated ? `<div class="e" style="color:${LVL_COLORS[p.level]}">${p.elo}</div>` : `<div class="sub">${p.calib_played}/${p.calib_total}</div>`}</div>`;
   const ranked = S.top.filter(p => p.calibrated);
   const calib = S.top.filter(p => !p.calibrated && match(p));
-  const rankedRows = ranked.map((p, i) => match(p) ? row(p, medals[i] || i + 1) : '').join('');
   let html = '';
-  html += `<h2>Рейтинг</h2>` + (rankedRows ? `<div class="card lb" style="padding:0">${rankedRows}</div>`
-    : `<div class="card empty">${q ? 'Никого не найдено' : 'Пока никто не прошёл калибровку'}</div>`);
-  if (calib.length) html += `<h2>На калибровке · ${calib.length}</h2><div class="card lb" style="padding:0">${calib.map(p => row(p, '🎯')).join('')}</div>`;
+  if (!q && ranked.length >= 3) {
+    const pod = (p, place) => `<div class="pod p${place}" onclick="openProfile(${p.tg_id})"><div class="place">#${place}</div>${av(p, place === 1 ? 'lg' : '')}
+      <div class="n ell">${esc(p.nick)}</div><div class="e" style="color:${LVL_COLORS[p.level]}">${p.elo}</div></div>`;
+    html += `${sec('Топ-3')}<div class="podium">${pod(ranked[1], 2)}${pod(ranked[0], 1)}${pod(ranked[2], 3)}</div>`;
+  }
+  const rest = ranked.map((p, i) => ({ p, i })).filter(({ p, i }) => match(p) && (q || ranked.length < 3 || i >= 3));
+  if (rest.length) html += `${sec('Рейтинг')}<div class="card lb">${rest.map(({ p, i }) => row(p, i + 1)).join('')}</div>`;
+  else if (!ranked.length || q) html += `${sec('Рейтинг')}<div class="card empty">${q ? 'Никого не найдено' : 'Пока никто не прошёл калибровку'}</div>`;
+  if (calib.length) html += `${sec('На калибровке', calib.length)}<div class="card lb">${calib.map(p => row(p, '🎯')).join('')}</div>`;
   return html;
 }
 
@@ -399,17 +495,18 @@ async function openProfile(tgId, isTab) {
     const mine = tgId === S.me.user.id;
     const hist = d.history.length ? d.history.map(h => {
       const won = h.team === h.winner;
-      return `<div class="hist"><div class="res" style="background:var(--${won ? 'win' : 'loss'})"></div>
-        <div class="grow"><b>${esc(h.map)}</b> <span class="muted">${h.mode}</span><div class="muted">${fmtDate(h.finished_at)} · #${h.id}</div></div>
-        <div style="text-align:right"><div>${esc(h.score) || (won ? 'W' : 'L')}</div>${h.elo_delta == null
+      return `<div class="hist"><div class="hmap" style="${mapBg(h.map)};--res:var(--${won ? 'win' : 'loss'})">${esc(h.map[0] || '?')}</div>
+        <div class="grow"><b>${esc(h.map)}</b> <span class="wl" style="color:var(--${won ? 'win' : 'loss'})">${won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}</span>
+          <div class="muted">${fmtDate(h.finished_at)} · #${h.id}</div></div>
+        <div style="text-align:right"><div style="font-weight:700">${esc(h.score) || '—'}</div>${h.elo_delta == null
           ? `<div class="sub">калибровка</div>`
           : `<div class="d ${h.elo_delta >= 0 ? 'p' : 'm'}">${h.elo_delta >= 0 ? '+' : ''}${h.elo_delta}</div>`}</div></div>`;
     }).join('') : `<div class="empty"><div class="big">🕹</div>Ещё нет сыгранных матчей</div>`;
     const html = `${isTab ? '' : '<button class="back" onclick="S.view=null;render()">‹ Назад</button>'}
       ${heroView(d.player, d.rank, d.history)}
       ${mine ? '<button class="btn sec" onclick="openEdit()">✏️ Изменить ник / ID</button>' : ''}
-      <h2>История матчей</h2><div class="card">${hist}</div>`;
-    if (isTab) $('#app').innerHTML = `<div class="wrap">${html}</div>`;
+      ${sec('История матчей')}<div class="card" style="padding:4px 14px">${hist}</div>`;
+    if (isTab) $('#app').innerHTML = topbar() + `<div class="wrap">${html}</div>`;
     else { S.view = html; render(); window.scrollTo(0, 0); }
   } catch (e) { toast(e.message); }
 }
@@ -434,16 +531,15 @@ function banMap(id, i) {
 function copyText(t) {
   navigator.clipboard?.writeText(t).then(() => toast('Скопировано', true), () => toast('Не удалось скопировать'));
 }
-
 function copyRoom(id) { copyText(S.lobbies.find(x => x.id === id)?.room || ''); }
 
 function openRoom(id) {
   const cur = esc(S.lobbies.find(x => x.id === id)?.room || '');
-  sheet(`<h3>Комната в игре</h3><div class="muted">Код или пароль комнаты в Standoff 2 — придёт всем 10 игрокам</div>
-    <input id="room" style="margin-top:12px" maxlength="60" value="${cur}" placeholder="Например: 4821 / пароль 123">
-    <button class="btn" id="room-go" style="margin-top:14px">Сохранить</button>`);
+  sheet(`<h3>Комната в игре</h3><div class="muted">Код или пароль комнаты в Standoff 2 — бот отправит его всем 10 игрокам</div>
+    <input id="room" style="margin-top:14px" maxlength="60" value="${cur}" placeholder="Например: 4821 / пароль 123">
+    <button class="btn" id="room-go" style="margin-top:14px">Сохранить и разослать</button>`);
   $('#room').focus();
-  $('#room-go').onclick = async () => { const room = $('#room').value; closeSheet(); await act(`/lobbies/${id}/room`, { room }, 'Сохранено'); };
+  $('#room-go').onclick = async () => { const room = $('#room').value; closeSheet(); await act(`/lobbies/${id}/room`, { room }, 'Код отправлен всем'); };
 }
 
 function openResult(id) {
@@ -452,9 +548,9 @@ function openResult(id) {
   const draw = () => {
     const o = sheet(`<h3>Результат матча #${id}</h3><div class="muted">${esc(m.map)} · кто победил?</div>
       <label class="f">Победитель</label>
-      <div class="seg teamsel"><button class="${winner === 1 ? 'on t1' : ''}" data-w="1">Команда 1</button><button class="${winner === 2 ? 'on' : ''}" data-w="2">Команда 2</button></div>
+      <div class="seg"><button class="${winner === 1 ? 'on t1' : ''}" data-w="1">Команда 1</button><button class="${winner === 2 ? 'on t2' : ''}" data-w="2">Команда 2</button></div>
       <label class="f">Счёт (необязательно)</label>
-      <div class="score"><input id="s1" type="number" inputmode="numeric" min="0" max="99" placeholder="К1"><b>:</b><input id="s2" type="number" inputmode="numeric" min="0" max="99" placeholder="К2"></div>
+      <div class="score"><input id="s1" type="number" inputmode="numeric" min="0" max="99" placeholder="К1"><b class="dim">:</b><input id="s2" type="number" inputmode="numeric" min="0" max="99" placeholder="К2"></div>
       <button class="btn" id="res-go" style="margin-top:18px" ${winner ? '' : 'disabled'}>Подтвердить</button>`);
     o.querySelectorAll('[data-w]').forEach(b => b.onclick = () => {
       const s1 = $('#s1').value, s2 = $('#s2').value;
@@ -502,7 +598,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = async () => {
       el.textContent = left + 'с'; el.classList.toggle('low', left <= 10);
     }), 500);
   } catch (e) {
-    $('#app').innerHTML = `<div class="wrap"><div class="card empty"><div class="big">⚠️</div>${esc(e.message)}</div></div>`;
+    $('#app').innerHTML = `<div class="wrap"><div class="card empty" style="margin-top:40px"><div class="big">⚠️</div>${esc(e.message)}</div></div>`;
   }
 })();
 </script>
