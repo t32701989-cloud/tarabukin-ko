@@ -252,6 +252,18 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 .thumbs button{width:30px;height:28px;border-radius:4px;background:var(--s3);display:grid;place-items:center;color:var(--mute)}
 .thumbs button.up.on{background:#163322;color:var(--go)}.thumbs button.down.on{background:#2b1418;color:var(--bad)}
 .shotimg{display:block;width:100%;max-height:240px;object-fit:contain;background:#000;border-top:1px solid var(--line)}
+/* чат матча */
+.chat{border-top:1px solid var(--line);padding:10px 12px}
+.chat .log{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-bottom:6px}
+.cm{font-size:14px;line-height:1.35}
+.cm b{font:700 14px "Fira Sans Condensed",sans-serif;margin-right:4px}
+.cm.sys{color:var(--mute);font-size:12.5px;border-left:2px solid var(--gold);padding-left:8px}
+.cm audio{height:34px;max-width:220px;vertical-align:middle}
+.cin{display:flex;gap:6px;margin-top:6px}
+.cin input{padding:10px}
+.mic{width:44px;height:44px;flex-shrink:0;border-radius:6px;background:var(--s3);display:grid;place-items:center}
+.mic.rec{background:var(--bad);animation:blink .9s infinite}
+@keyframes blink{50%{opacity:.55}}
 /* рисованная косметика */
 .frm{position:absolute;left:-8px;top:-8px;width:calc(100% + 16px);height:calc(100% + 16px);pointer-events:none;z-index:1}
 .av .lvl,.av .onl{z-index:2}
@@ -720,6 +732,7 @@ function render() {
   if (S.tab === 'friends') return friendsTab();
   if (S.tab === 'shop') return shopTab();
   app.innerHTML = topbar() + `<div class="wrap">${S.tab === 'lobby' ? lobbyTab() : topTab()}</div>`;
+  if (S.tab === 'lobby') autoplayVoices();
 }
 
 // ---------- регистрация ----------
@@ -829,7 +842,13 @@ function matchCard(m) {
   }
   const stats = inIt && (m.status === 'live' || m.status === 'pending')
     ? `<button class="btn ${meP.kills == null ? '' : 'ghost'}" style="margin-top:${btns.length ? 8 : 0}px" onclick="openStats(${m.id})">${meP.kills == null ? 'Вписать свои убийства и смерти' : `Мои K/D: ${meP.kills}–${meP.deaths}`}</button>` : '';
-  return `<div class="panel board">${head}${body}<div class="sb">${col(1)}${col(2)}</div>
+  const chat = m.chat ? `<div class="chat"><div class="c" style="font-size:17px;font-weight:700;margin-bottom:6px">Чат матча</div>
+      <div class="log" id="log-${m.id}">${m.chat.map(c => c.from_id === 0 ? `<div class="cm sys">${esc(c.text)}</div>`
+        : `<div class="cm"><b style="${c.from_id === me ? 'color:var(--gold)' : ''}">${esc(c.nick || '?')}:</b>${c.voice ? `<audio controls preload="none" src="${esc(c.voice)}" data-vid="${c.id}" data-mine="${c.from_id === me ? 1 : 0}"></audio>` : esc(c.text)}</div>`).join('') || '<div class="mute">Пока тихо</div>'}</div>
+      <div class="cin"><input id="chat-${m.id}" maxlength="300" placeholder="Сообщение команде и соперникам" onkeydown="if(event.key==='Enter')sendChat(${m.id})">
+        <button class="mic ${S.rec?.mid === m.id ? 'rec' : ''}" aria-label="Голосовое" onclick="toggleVoice(${m.id})"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+        <button class="btn sm" onclick="sendChat(${m.id})">→</button></div></div>` : '';
+  return `<div class="panel board">${head}${body}<div class="sb">${col(1)}${col(2)}</div>${chat}
     ${btns.length || stats ? `<div class="foot">${btns.length ? `<div class="btns">${btns.join('')}</div>` : ''}${stats}</div>` : ''}</div>`;
 }
 
@@ -837,7 +856,7 @@ function vetoView(m) {
   const me = S.me.user.id, can = m.veto_turn === me || S.me.is_admin, total = S.cfg.maps.length - 1;
   const maps = S.cfg.maps.map((name, i) => {
     const ban = m.bans.find(b => b.map === name);
-    if (ban) return `<div class="map out"><s>${esc(name)}</s><small>${nickOf(m, ban.by)}${ban.auto ? ', авто' : ''}</small></div>`;
+    if (ban) return `<div class="map out"><s>${esc(name)}</s><small>${ban.auto ? `автобан · К${ban.by === m.captain1 ? 1 : 2}` : nickOf(m, ban.by)}</small></div>`;
     return `<button class="map ${can ? 'can' : ''}" style="--m:${mapColor(name)}" ${can ? '' : 'disabled'} onclick="banMap(${m.id},${i})">${esc(name)}${can ? '<small>убрать</small>' : ''}</button>`;
   }).join('');
   return `<div class="veto"><div class="row"><div class="grow">
@@ -1303,6 +1322,39 @@ async function friendAct(op, id) {
 }
 
 // ---------- админка ----------
+async function sendChat(mid) {
+  const el = $('#chat-' + mid), t = el?.value.trim(); if (!t) return;
+  try { await api(`/lobbies/${mid}/say`, { text: t }); el.value = ''; await refresh(); } catch (e) { toast(e.message); }
+}
+async function toggleVoice(mid) {
+  if (S.rec) { S.rec.r.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find(x => window.MediaRecorder?.isTypeSupported?.(x)) || '';
+    const r = new MediaRecorder(stream, mime ? { mimeType: mime } : {}), parts = [];
+    r.ondataavailable = e => parts.push(e.data);
+    r.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop()); clearTimeout(S.rec?.t); S.rec = null;
+      const blob = new Blob(parts, { type: r.mimeType || 'audio/webm' });
+      const data = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(blob); });
+      try { await api(`/lobbies/${mid}/say`, { voice: data }); } catch (e) { toast(e.message); }
+      await refresh();
+    };
+    r.start(); S.rec = { r, mid, t: setTimeout(() => r.state === 'recording' && r.stop(), 30000) };
+    haptic('light'); toast('Запись… нажми микрофон ещё раз, чтобы отправить', true); render();
+  } catch (e) { toast('Нет доступа к микрофону. Разреши его в настройках Telegram'); }
+}
+// автопроигрывание новых чужих голосовых
+S.heard = new Set();
+function autoplayVoices() {
+  document.querySelectorAll('audio[data-vid]').forEach(a => {
+    const id = a.dataset.vid;
+    if (S.heard.has(id)) return; S.heard.add(id);
+    if (S.voiceInit && a.dataset.mine !== '1') a.play().catch(() => {});
+  });
+  S.voiceInit = true;
+  document.querySelectorAll('.log').forEach(l => l.scrollTop = l.scrollHeight);
+}
 async function addBots(mid, count) { try { const r = await api(`/lobbies/${mid}/addbot`, { count }); toast(`Добавлено ботов: ${r.added}`, true); await refresh(); } catch (e) { toast(e.message); } }
 async function grantAll() { try { await api(`/admin/players/${S.me.user.id}/grant_all`, {}); toast('Готово: всё выдано', true); await loadMe(); adminTab(); } catch (e) { toast(e.message); } }
 async function adminTab() {
@@ -1443,7 +1495,7 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { addBots, grantAll, openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { sendChat, toggleVoice, addBots, grantAll, openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------
@@ -1456,7 +1508,8 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = async () => {
   try {
     S.cfg = await api('/config');
     await refresh();
-    setInterval(() => { if (S.tab === 'lobby' && !S.view && !document.querySelector('.ov') && S.me?.player) refresh().catch(() => {}); }, 3000);
+    setInterval(() => { const busy = (document.activeElement?.id || '').startsWith('chat-') || S.rec || [...document.querySelectorAll('audio')].some(a => !a.paused);
+      if (S.tab === 'lobby' && !S.view && !busy && !document.querySelector('.ov') && S.me?.player) refresh().catch(() => {}); }, 3000);
     setInterval(() => document.querySelectorAll('.timer[data-end]').forEach(el => {
       const left = Math.max(0, Math.round(+el.dataset.end - Date.now() / 1000));
       el.textContent = left; el.classList.toggle('low', left <= 10);

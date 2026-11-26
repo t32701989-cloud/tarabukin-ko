@@ -88,7 +88,7 @@ const PREMIUM_PERKS = [
 const TICKET_TOPICS = ["Игрок не зашёл в игру", "Неверный результат", "Читы или нарушение", "Баг в приложении", "Другое"];
 const START_ELO = 1000;
 const READY_SEC = 30;          // время на «Готов»
-const VETO_TURN_SEC = 45;      // время на один бан, потом — случайный автобан
+const VETO_TURN_SEC = 20; const BOT_THINK_SEC = 3;      // время на один бан, потом — случайный автобан
 const STATS_WINDOW = 12 * 3600; // сколько после матча можно вписать K/D
 const NICK_RE = /^[\p{L}\p{N}_\-.\[\]|★☆ ]{2,20}$/u;
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -170,7 +170,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/") {
       return new Response(INDEX_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
     }
-    if (url.pathname.startsWith("/api/") || url.pathname === "/webhook" || url.pathname.startsWith("/avatar/") || url.pathname.startsWith("/ticketimg/") || url.pathname.startsWith("/shot/")) {
+    if (url.pathname.startsWith("/api/") || url.pathname === "/webhook" || url.pathname.startsWith("/avatar/") || url.pathname.startsWith("/ticketimg/") || url.pathname.startsWith("/shot/") || url.pathname.startsWith("/voice/")) {
       return env.ARENA.get(env.ARENA.idFromName("main")).fetch(request);
     }
     return new Response("Not found", { status: 404 });
@@ -196,6 +196,8 @@ export class Arena extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS admins (tg_id INTEGER PRIMARY KEY)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS rep (match_id INTEGER NOT NULL, from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (match_id, from_id, to_id))");
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, match_id INTEGER NOT NULL, from_id INTEGER NOT NULL,
+      text TEXT, voice BLOB, voice_key TEXT, mime TEXT, created INTEGER NOT NULL)`);
     this.sql.exec("CREATE TABLE IF NOT EXISTS shots (match_id INTEGER PRIMARY KEY, data BLOB NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS payments (charge_id TEXT PRIMARY KEY, tg_id INTEGER NOT NULL, product TEXT NOT NULL, stars INTEGER NOT NULL, created INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS parties (id INTEGER PRIMARY KEY AUTOINCREMENT, leader INTEGER NOT NULL, created INTEGER NOT NULL)");
@@ -584,15 +586,15 @@ export class Arena extends DurableObject {
         WHERE match_id = ? AND tg_id = ?`, team, +id, +id, mid, +id);
     }
     this.sql.exec(`UPDATE matches SET status = 'veto', captain1 = ?, captain2 = ?, creator_id = ?, bans = '[]', veto_deadline = ?, ready_deadline = NULL
-      WHERE id = ?`, cap1, cap2, host, now() + VETO_TURN_SEC, mid);
+      WHERE id = ?`, cap1, cap2, host, now() + (cap1 < 0 ? BOT_THINK_SEC : VETO_TURN_SEC), mid);
     this.ensureLobbies();
     await this.scheduleAlarm();
     const m2 = this.match(mid);
     await this.notify(m2.players.map(p => p.tg_id),
       `✅ <b>Все готовы!</b> Матч #${mid}\n\nКапитаны: <b>${esc(this.nick(m2, cap1))}</b> vs <b>${esc(this.nick(m2, cap2))}</b>\n` +
       `Капитаны по очереди банят карты (${this.maps.length - 1} банов), последняя карта играется.\n\n${this.teamsText(m2)}`, this.appButton("🗺 Открыть вето"));
+    this.say(mid, 0, `Бан карт начался. Капитаны: ${this.nick(m2, cap1)} (Команда 1) и ${this.nick(m2, cap2)} (Команда 2). На каждый бан ${VETO_TURN_SEC} сек.`);
     await this.send(cap1, `🗺 Ты капитан! Твой ход — забань карту (${VETO_TURN_SEC} сек).`, this.appButton("Забанить карту"));
-    await this.botVeto(mid);
     await this.notifyGroup(`🔔 Лобби ${m2.lobby_no} собрано (матч #${mid}). Капитаны: ${esc(this.nick(m2, cap1))} vs ${esc(this.nick(m2, cap2))}`);
   }
 
@@ -601,6 +603,8 @@ export class Arena extends DurableObject {
     const remaining = this.maps.filter(x => !m.bans.some(b => b.map === x));
     if (!remaining.includes(map)) throw new ApiError("Эта карта уже забанена");
     m.bans.push({ map, by: byId, auto });
+    const team = byId === m.captain1 ? 1 : 2;
+    this.say(mid, 0, auto ? `Команда ${team} (капитан ${this.nick(m, byId)}) не успела — автобан ${map}` : `Команда ${team} (${this.nick(m, byId)}) банит ${map}`);
     const left = remaining.filter(x => x !== map);
     if (left.length === 1) {
       this.sql.exec(`UPDATE matches SET bans = ?, map = ?, status = 'live', started_at = ?, veto_deadline = NULL WHERE id = ?`,
@@ -610,12 +614,12 @@ export class Arena extends DurableObject {
       await this.send(m2.creator_id, `👑 <b>Ты создаёшь лобби в игре.</b> Создай комнату на ${esc(left[0])} и впиши её код в приложении — все увидят.`,
         this.appButton("🔑 Вписать код комнаты"));
     } else {
-      this.sql.exec("UPDATE matches SET bans = ?, veto_deadline = ? WHERE id = ?", JSON.stringify(m.bans), now() + VETO_TURN_SEC, mid);
+      this.sql.exec("UPDATE matches SET bans = ?, veto_deadline = ? WHERE id = ?", JSON.stringify(m.bans), now() + (this.vetoTurn(m) < 0 ? BOT_THINK_SEC : VETO_TURN_SEC), mid);
       await this.send(this.vetoTurn(m), `🗺 Матч #${mid}: ${esc(this.nick(m, byId))} забанил ${esc(map)}${auto ? " (авто)" : ""}. Твой ход — бань (${VETO_TURN_SEC} сек).`,
         this.appButton("Забанить карту"));
     }
+    if (left.length === 1) this.say(mid, 0, `Играем на ${left[0]}. Удачи!`);
     await this.scheduleAlarm();
-    if (this.vetoTurn(this.match(mid)) < 0) await this.botVeto(mid);
   }
 
   // если сейчас банит бот-капитан — банит сам, сразу
@@ -643,9 +647,17 @@ export class Arena extends DurableObject {
     for (const r of this.q("SELECT id FROM matches WHERE status = 'veto' AND veto_deadline <= ?", now())) {
       const m = this.match(r.id);
       const remaining = this.maps.filter(x => !m.bans.some(b => b.map === x));
-      try { await this.ban(m.id, this.vetoTurn(m), pick(remaining), true); } catch (e) { console.log("autoban", e.message); }
+      try { await this.ban(m.id, this.vetoTurn(m), pick(remaining), this.vetoTurn(m) >= 0); } catch (e) { console.log("autoban", e.message); }
     }
     await this.scheduleAlarm();
+  }
+
+  // ----- чат матча -----
+  say(mid, from, text) { this.sql.exec("INSERT INTO chat (match_id, from_id, text, created) VALUES (?, ?, ?, ?)", mid, from, String(text).slice(0, 500), now()); }
+  chatOf(mid) {
+    return this.q(`SELECT c.id, c.from_id, c.text, c.voice_key, c.created, p.nick FROM chat c LEFT JOIN players p ON p.tg_id = c.from_id
+      WHERE c.match_id = ? ORDER BY c.id DESC LIMIT 50`, mid).reverse()
+      .map(({ voice_key, ...r }) => ({ ...r, voice: voice_key ? `/voice/${r.id}/${voice_key}` : null }));
   }
 
   // ----- calibration -----
@@ -781,6 +793,12 @@ export class Arena extends DurableObject {
     if (this.setting("origin") !== url.origin) this.setSetting("origin", url.origin);
     await this.checkSeason();
     if (url.pathname === "/webhook") return this.webhook(request);
+    if (url.pathname.startsWith("/voice/")) {
+      const [, , id, key] = url.pathname.split("/");
+      const r = this.one("SELECT voice, mime FROM chat WHERE id = ? AND voice_key = ?", Number(id), String(key));
+      if (!r?.voice) return new Response("Not found", { status: 404 });
+      return new Response(r.voice, { headers: { "content-type": r.mime || "audio/webm", "cache-control": "private, max-age=86400" } });
+    }
     if (url.pathname.startsWith("/shot/")) {
       const [, , id, key] = url.pathname.split("/");
       const r = this.one("SELECT s.data FROM shots s JOIN matches m ON m.id = s.match_id WHERE m.id = ? AND m.shot_key = ?", Number(id), String(key));
@@ -902,7 +920,9 @@ export class Arena extends DurableObject {
       this.ensureLobbies();
       return this.q(`SELECT id FROM matches WHERE status IN ('open','ready','veto','live','pending')
           ORDER BY CASE WHEN status IN ('open','ready') THEN 1 ELSE 0 END, CASE WHEN status IN ('open','ready') THEN lobby_no ELSE -id END`)
-        .map(r => this.publicMatch(this.match(r.id)));
+        .map(r => { const m = this.publicMatch(this.match(r.id));
+          if (["veto", "live", "pending"].includes(m.status) && (m.players.some(p => p.tg_id === uid) || isAdmin)) m.chat = this.chatOf(m.id);
+          return m; });
     }
 
     if (method === "GET" && (mm = path.match(/^\/matches\/(\d+)$/))) {
@@ -1352,6 +1372,22 @@ export class Arena extends DurableObject {
         if (!(kills >= 0 && kills <= 99 && deaths >= 0 && deaths <= 99 && assists >= 0 && assists <= 99)) throw new ApiError("Значения от 0 до 99");
         this.sql.exec("UPDATE match_players SET kills = ?, deaths = ?, assists = ? WHERE match_id = ? AND tg_id = ?", kills, deaths, assists, mid, uid);
         if (m.status === "finished") this.computeMvp(mid);
+        return { ok: true };
+      }
+      case "say": {
+        if (!["veto", "live", "pending"].includes(m.status)) throw new ApiError("Чат доступен во время матча");
+        if (!ids.includes(uid) && !isAdmin) throw new ApiError("Ты не в этом матче");
+        if (body.voice) {
+          const mv = /^data:(audio\/[\w.+-]+)(?:;[^,]*)?;base64,([A-Za-z0-9+/=]+)$/.exec(String(body.voice));
+          if (!mv) throw new ApiError("Не удалось записать голос");
+          const bin = Uint8Array.from(atob(mv[2]), c => c.charCodeAt(0));
+          if (bin.length > 400 * 1024) throw new ApiError("Голосовое слишком длинное");
+          this.sql.exec("INSERT INTO chat (match_id, from_id, voice, voice_key, mime, created) VALUES (?, ?, ?, ?, ?, ?)", mid, uid, bin.buffer, crypto.randomUUID(), mv[1], now());
+        } else {
+          const t = String(body.text || "").trim();
+          if (!t) throw new ApiError("Пустое сообщение");
+          this.say(mid, uid, t);
+        }
         return { ok: true };
       }
       case "rate": {
