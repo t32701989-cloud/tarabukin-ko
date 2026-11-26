@@ -74,6 +74,29 @@
   .tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: var(--card2); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   .tag.open { background: rgba(46,204,113,.12); color: var(--win); }
   .tag.live { background: rgba(255,106,19,.15); color: var(--accent); }
+  .tag.veto { background: rgba(61,139,255,.15); color: #7fb0ff; }
+  .card.mine { border-color: #5a3418; box-shadow: 0 0 0 1px rgba(255,106,19,.15) inset; }
+  .count { font-size: 24px; font-weight: 900; } .count span { font-size: 14px; color: var(--muted); font-weight: 700; }
+  .fill { height: 4px; background: var(--card2); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  .fill i { display: block; height: 100%; background: var(--win); border-radius: 2px; transition: width .3s; }
+  .veto { margin-top: 12px; background: var(--card2); border-radius: 12px; padding: 12px; }
+  .veto-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .cd { font-size: 20px; font-weight: 900; color: var(--accent2); min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+  .cd.low { color: var(--loss); }
+  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .mapc { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; font-weight: 700; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .mapc:disabled { opacity: .85; }
+  .mapc.can { border-color: var(--accent); }
+  .mapc.can:active { background: rgba(255,77,79,.2); }
+  .mapc.banned { opacity: .55; }
+  .mapc.banned s { color: var(--loss); }
+  .mapc.banned span { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .hostline { margin-top: 12px; background: rgba(255,106,19,.08); border: 1px solid #4a2c18; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .hostline .gid { display: inline-block; margin-left: 4px; background: var(--card2); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent2); cursor: pointer; }
+  .hostline .you { margin-top: 6px; color: var(--accent2); font-weight: 700; font-size: 13px; }
+  .team .tp i { font-style: normal; font-size: 10px; font-weight: 900; margin-left: auto; }
+  .team .tp i.cap { background: #ffc800; color: #000; border-radius: 4px; padding: 1px 5px; }
+  .team .tp i.hst { margin-left: 4px; }
   .lobby-title { font-weight: 800; font-size: 16px; }
   .slots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .slot { display: flex; align-items: center; gap: 6px; background: var(--card2); padding: 5px 9px 5px 5px; border-radius: 20px; font-size: 13px; max-width: 100%; }
@@ -269,50 +292,74 @@ function bindRegister(edit) {
 }
 
 function lobbyTab() {
-  const mine = S.me.active_match;
-  const list = [...S.lobbies].sort((a, b) => (b.id === mine) - (a.id === mine));
-  const create = mine ? '' : `<button class="btn" onclick="openCreate()">＋ Создать лобби</button>`;
-  const cards = list.length ? list.map(lobbyCard).join('') :
-    `<div class="card empty"><div class="big">🎯</div>Открытых лобби нет.<br>Создай своё и позови друзей!</div>`;
-  return `${create}<h2>Лобби и матчи</h2>${cards}`;
+  const me = S.me.user.id;
+  const open = S.lobbies.filter(m => m.status === 'open');
+  const active = S.lobbies.filter(m => m.status !== 'open');
+  const mine = active.filter(m => m.players.some(p => p.tg_id === me));
+  const others = active.filter(m => !mine.includes(m));
+  let html = '';
+  if (mine.length) html += `<h2>Твой матч</h2>${mine.map(matchCard).join('')}`;
+  html += `<h2>Лобби 5x5</h2>${open.map(openLobbyCard).join('')}`;
+  if (others.length) html += `<h2>Идут матчи · ${others.length}</h2>${others.map(matchCard).join('')}`;
+  return html;
 }
 
-function lobbyCard(m) {
-  const me = S.me.user.id;
-  const inIt = m.players.some(p => p.tg_id === me);
-  const host = m.creator_id === me || S.me.is_admin;
-  const full = m.players.length === m.size;
-  const head = `<div class="row">
-      <div class="grow"><div class="lobby-title">#${m.id} · ${esc(m.map)}</div>
-      <div class="muted">${m.mode} · ${m.players.length}/${m.size} игроков</div></div>
-      <span class="tag ${m.status}">${m.status === 'open' ? 'набор' : 'идёт матч'}</span></div>`;
+const nickOf = (m, id) => esc(m.players.find(p => p.tg_id === id)?.nick ?? '?');
 
-  if (m.status === 'open') {
-    const slots = m.players.map(p => `<div class="slot">${lvl(p.level)}<span>${esc(p.nick)}</span>
-        ${p.tg_id === m.creator_id ? '<span class="host">👑</span>' : ''}
-        ${host && inIt && p.tg_id !== m.creator_id ? `<button class="x" onclick="kick(${m.id},${p.tg_id})">✕</button>` : ''}</div>`).join('')
-      + Array(m.size - m.players.length).fill('<div class="slot empty">свободно</div>').join('');
-    let btns = '';
-    if (!inIt) btns = `<button class="btn" ${full || S.me.active_match ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби!')">Войти</button>`;
-    else if (host) btns = `<button class="btn" ${full ? '' : 'disabled'} onclick="startMatch(${m.id})">${full ? '🚀 Старт' : `Ждём игроков (${m.players.length}/${m.size})`}</button>
-        <button class="btn sec small" onclick="openRoom(${m.id})">🔑</button>
-        <button class="btn danger small" onclick="cancelMatch(${m.id})">✕</button>`;
-    else btns = `<button class="btn sec" onclick="act('/lobbies/${m.id}/leave')">Выйти из лобби</button>`;
-    const leaveHost = inIt && m.creator_id === me ? `<button class="btn sec" style="margin-top:8px" onclick="act('/lobbies/${m.id}/leave')">Выйти (хост перейдёт другому)</button>` : '';
-    return `<div class="card">${head}<div class="slots">${slots}</div>${roomView(m, inIt)}<div class="btns">${btns}</div>${leaveHost}</div>`;
-  }
+function openLobbyCard(m) {
+  const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me), n = m.players.length;
+  const slots = m.players.map(p => `<div class="slot">${lvl(p.level)}<span>${esc(p.nick)}</span>
+      ${S.me.is_admin && p.tg_id !== me ? `<button class="x" onclick="kick(${m.id},${p.tg_id})">✕</button>` : ''}</div>`).join('')
+    + Array(m.size - n).fill('<div class="slot empty">свободно</div>').join('');
+  const btn = inIt
+    ? `<button class="btn sec" onclick="act('/lobbies/${m.id}/leave', null, 'Ты вышел из лобби')">Выйти из лобби</button>`
+    : `<button class="btn" ${S.me.active_match ? 'disabled' : ''} onclick="act('/lobbies/${m.id}/join', null, 'Ты в лобби! Ждём остальных')">Войти</button>`;
+  return `<div class="card ${inIt ? 'mine' : ''}">
+    <div class="row"><div class="grow"><div class="lobby-title">Лобби ${m.lobby_no}</div>
+      <div class="muted">${inIt ? 'Ты в лобби · ждём игроков' : 'Капитаны и карта — когда соберётся 10'}</div></div>
+      <div class="count">${n}<span>/${m.size}</span></div></div>
+    <div class="fill"><i style="width:${n * 100 / m.size}%"></i></div>
+    <div class="slots">${slots}</div><div class="btns">${btn}</div></div>`;
+}
 
-  // live
+function matchCard(m) {
+  const me = S.me.user.id, inIt = m.players.some(p => p.tg_id === me);
+  const isCap = m.captain1 === me || m.captain2 === me, admin = S.me.is_admin;
+  const head = `<div class="row"><div class="grow"><div class="lobby-title">Матч #${m.id}${m.map ? ' · ' + esc(m.map) : ''}</div>
+      <div class="muted">Лобби ${m.lobby_no ?? '—'} · 5x5${m.room && inIt ? '' : ''}</div></div>
+      <span class="tag ${m.status}">${m.status === 'veto' ? 'бан карт' : 'идёт матч'}</span></div>`;
   const team = t => {
+    const cap = t === 1 ? m.captain1 : m.captain2;
     const ps = m.players.filter(p => p.team === t);
-    const avg = m.team_avg?.[t] ?? '';
-    return `<div class="team t${t}"><div class="muted" style="margin-bottom:4px"><b style="color:var(--${t === 1 ? 't1' : 't2'})">Команда ${t}</b> · ${avg}</div>
-      ${ps.map(p => `<div class="tp">${lvl(p.level)}<span>${esc(p.nick)}${p.tg_id === m.creator_id ? ' 👑' : ''}</span></div>`).join('')}</div>`;
+    return `<div class="team t${t}"><div class="muted" style="margin-bottom:4px"><b style="color:var(--${t === 1 ? 't1' : 't2'})">Команда ${t}</b> · ${m.team_avg?.[t] ?? ''}</div>
+      ${ps.map(p => `<div class="tp">${lvl(p.level)}<span>${esc(p.nick)}</span>${p.tg_id === cap ? '<i class="cap">C</i>' : ''}${p.tg_id === m.host_id ? '<i class="hst">🎮</i>' : ''}</div>`).join('')}</div>`;
   };
-  const btns = host && (inIt || S.me.is_admin) ? `<div class="btns"><button class="btn" onclick="openResult(${m.id})">🏁 Внести результат</button>
-      <button class="btn sec small" onclick="openRoom(${m.id})">🔑</button>
-      <button class="btn danger small" onclick="cancelMatch(${m.id})">✕</button></div>` : '';
-  return `<div class="card" style="${inIt ? 'border-color:#4a2c18' : ''}">${head}<div class="teams">${team(1)}${team(2)}</div>${roomView(m, inIt)}${btns}</div>`;
+  const hostLine = m.host_nick ? `<div class="hostline">🎮 Лобби в игре создаёт: <b>${esc(m.host_nick)}</b>
+      ${m.host_game_id ? `<span class="gid" onclick="copyText('${esc(m.host_game_id)}')">ID ${esc(m.host_game_id)} ⧉</span>` : ''}
+      ${m.host_id === me ? '<div class="you">Это ты! Создай комнату в игре и впиши код 🔑</div>' : ''}</div>` : '';
+  const btns = [];
+  if (m.status === 'live' && (isCap || admin)) btns.push(`<button class="btn" onclick="openResult(${m.id})">🏁 Результат</button>`);
+  if (inIt && (m.host_id === me || isCap) || admin) btns.push(`<button class="btn sec small" onclick="openRoom(${m.id})">🔑 Код</button>`);
+  if (isCap || admin) btns.push(`<button class="btn danger small" onclick="cancelMatch(${m.id})">✕</button>`);
+  return `<div class="card ${inIt ? 'mine' : ''}">${head}
+    ${m.status === 'veto' ? vetoView(m) : ''}
+    ${hostLine}${roomView(m, inIt)}
+    <div class="teams">${team(1)}${team(2)}</div>
+    ${btns.length ? `<div class="btns">${btns.join('')}</div>` : ''}</div>`;
+}
+
+function vetoView(m) {
+  const me = S.me.user.id, canBan = m.veto_turn === me || S.me.is_admin;
+  const total = S.cfg.maps.length - 1;
+  const turn = m.veto_turn === me ? '🫵 <b>Твой ход — забань карту</b>' : `Банит капитан <b>${nickOf(m, m.veto_turn)}</b>`;
+  const maps = S.cfg.maps.map((map, i) => {
+    const ban = m.bans.find(b => b.map === map);
+    if (ban) return `<div class="mapc banned"><s>${esc(map)}</s><span>✕ ${nickOf(m, ban.by)}${ban.auto ? ' · авто' : ''}</span></div>`;
+    return `<button class="mapc ${canBan ? 'can' : ''}" ${canBan ? '' : 'disabled'} onclick="banMap(${m.id}, ${i})">${esc(map)}</button>`;
+  }).join('');
+  return `<div class="veto"><div class="veto-h"><div class="grow">${turn}<div class="muted">Бан ${m.bans.length + 1} из ${total} · последняя карта играется</div></div>
+      <div class="cd" data-end="${Date.now() / 1000 + (m.veto_left ?? 0)}">${m.veto_left ?? ''}</div></div>
+    <div class="maps">${maps}</div></div>`;
 }
 
 function roomView(m, inIt) {
@@ -379,30 +426,20 @@ function sheet(html) {
 }
 function closeSheet() { document.querySelector('.overlay')?.remove(); }
 
-function openCreate() {
-  const st = { mode: '5x5', map: 'random' };
-  const draw = () => sheet(`<h3>Новое лобби</h3><div class="muted">Команды поделятся по ELO автоматически</div>
-    <label class="f">Режим</label>
-    <div class="seg">${Object.keys(S.cfg.modes).map(m => `<button class="${st.mode === m ? 'on' : ''}" data-mode="${m}">${m}</button>`).join('')}</div>
-    <label class="f">Карта</label>
-    <div class="chips">${['random', ...S.cfg.maps].map(m => `<button class="chip ${st.map === m ? 'on' : ''}" data-map="${esc(m)}">${m === 'random' ? '🎲 Случайная' : esc(m)}</button>`).join('')}</div>
-    <button class="btn" id="c-go" style="margin-top:18px">Создать</button>`);
-  const bind = () => {
-    document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { st.mode = b.dataset.mode; draw(); bind(); });
-    document.querySelectorAll('[data-map]').forEach(b => b.onclick = () => { st.map = b.dataset.map; draw(); bind(); });
-    $('#c-go').onclick = async () => { closeSheet(); await act('/lobbies', st, 'Лобби создано!'); };
-  };
-  draw(); bind();
+function banMap(id, i) {
+  const map = S.cfg.maps[i];
+  act(`/lobbies/${id}/ban`, { map }, `${map} забанена`);
 }
 
-function copyRoom(id) {
-  const room = S.lobbies.find(x => x.id === id)?.room || '';
-  navigator.clipboard?.writeText(room).then(() => toast('Скопировано', true), () => toast('Не удалось скопировать'));
+function copyText(t) {
+  navigator.clipboard?.writeText(t).then(() => toast('Скопировано', true), () => toast('Не удалось скопировать'));
 }
+
+function copyRoom(id) { copyText(S.lobbies.find(x => x.id === id)?.room || ''); }
 
 function openRoom(id) {
   const cur = esc(S.lobbies.find(x => x.id === id)?.room || '');
-  sheet(`<h3>Комната в игре</h3><div class="muted">Код или пароль комнаты — увидят только участники</div>
+  sheet(`<h3>Комната в игре</h3><div class="muted">Код или пароль комнаты в Standoff 2 — придёт всем 10 игрокам</div>
     <input id="room" style="margin-top:12px" maxlength="60" value="${cur}" placeholder="Например: 4821 / пароль 123">
     <button class="btn" id="room-go" style="margin-top:14px">Сохранить</button>`);
   $('#room').focus();
@@ -445,7 +482,6 @@ function confirmDo(text, fn) {
   if (tg?.showConfirm && tg.initData) tg.showConfirm(text, ok => ok && fn());
   else if (confirm(text)) fn();
 }
-const startMatch = id => confirmDo('Начать матч? Команды будут поделены по ELO.', () => act(`/lobbies/${id}/start`, null, 'Матч начался! Команды в чате бота'));
 const cancelMatch = id => confirmDo('Отменить матч? ELO не изменится.', () => act(`/lobbies/${id}/cancel`, null, 'Матч отменён'));
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
@@ -460,7 +496,11 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = async () => {
   try {
     S.cfg = await api('/config');
     await refresh();
-    S.poll = setInterval(() => { if (S.tab === 'lobby' && !S.view && !document.querySelector('.overlay') && S.me?.player) refresh().catch(() => {}); }, 4000);
+    S.poll = setInterval(() => { if (S.tab === 'lobby' && !S.view && !document.querySelector('.overlay') && S.me?.player) refresh().catch(() => {}); }, 3000);
+    setInterval(() => document.querySelectorAll('.cd[data-end]').forEach(el => {
+      const left = Math.max(0, Math.round(+el.dataset.end - Date.now() / 1000));
+      el.textContent = left + 'с'; el.classList.toggle('low', left <= 10);
+    }), 500);
   } catch (e) {
     $('#app').innerHTML = `<div class="wrap"><div class="card empty"><div class="big">⚠️</div>${esc(e.message)}</div></div>`;
   }

@@ -1,9 +1,16 @@
 // SO2 Arena на Cloudflare Workers: Mini App + API + webhook Telegram-бота.
 // Все данные хранятся в одном Durable Object со встроенной SQLite.
+//
+// Жизненный цикл матча:
+//   open  — постоянное лобби («Лобби 1», «Лобби 2»), игроки заходят и выходят;
+//   veto  — набралось 10: выбраны 2 капитана и игрок-хост, капитаны по очереди банят карты;
+//   live  — осталась одна карта, игра идёт; капитан или админ вносит результат;
+//   finished / cancelled.
 import { DurableObject } from "cloudflare:workers";
 import INDEX_HTML from "./index.html";
 
-const MODES = { "5x5": 10, "2x2": 4 };
+const TEAM_SIZE = 5;
+const LOBBY_SIZE = TEAM_SIZE * 2;
 const K_FACTOR = 50;
 // [уровень, нижняя граница ELO]
 const LEVELS = [[1, 0], [2, 800], [3, 950], [4, 1100], [5, 1250], [6, 1400], [7, 1550], [8, 1700], [9, 1850], [10, 2000]];
@@ -11,11 +18,14 @@ const DEFAULT_MAPS = "Sandstone,Rust,Province,Hanami,Prison,Dune,Breeze";
 const CALIBRATION_GAMES = 10;
 const CALIBRATION_MULT = 2; // на калибровке ELO меняется в 2 раза сильнее
 const START_ELO = 1000;
+const VETO_TURN_SEC = 45;   // время на один бан, потом — случайный автобан
 const NICK_RE = /^[\p{L}\p{N}_\-.\[\]|★☆ ]{2,20}$/u;
 
 // ---------- ELO ----------
 const level = elo => LEVELS.reduce((l, [lv, low]) => (elo >= low ? lv : l), 1);
 const nextLevelAt = elo => (LEVELS.find(([, low]) => low > elo) || [])[1] ?? null;
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 function combinations(arr, k, start = 0, cur = [], out = []) {
   if (cur.length === k) { out.push(cur.slice()); return out; }
@@ -23,18 +33,18 @@ function combinations(arr, k, start = 0, cur = [], out = []) {
   return out;
 }
 
-function balance(players) {
-  const ps = players.slice().sort(() => Math.random() - 0.5);
-  const n = ps.length / 2, total = ps.reduce((s, p) => s + p.elo, 0);
-  const [first, ...rest] = ps;
+// Капитан 1 всегда в команде 1, капитан 2 — в команде 2, остальные делятся по ELO.
+function balanceWithCaptains(players, cap1, cap2) {
+  const c1 = players.find(p => p.tg_id === cap1), c2 = players.find(p => p.tg_id === cap2);
+  const rest = shuffle(players.filter(p => p !== c1 && p !== c2));
+  const total = players.reduce((s, p) => s + p.elo, 0);
   let best = null, bestDiff = Infinity;
-  for (const combo of combinations(rest, n - 1)) {
-    const team = [first, ...combo];
-    const diff = Math.abs(total - 2 * team.reduce((s, p) => s + p.elo, 0));
-    if (diff < bestDiff) { best = team; bestDiff = diff; }
+  for (const combo of combinations(rest, rest.length / 2)) {
+    const diff = Math.abs(total - 2 * (c1.elo + combo.reduce((s, p) => s + p.elo, 0)));
+    if (diff < bestDiff) { best = combo; bestDiff = diff; }
   }
-  const ids = new Set(best.map(p => p.tg_id));
-  return Object.fromEntries(ps.map(p => [p.tg_id, ids.has(p.tg_id) ? 1 : 2]));
+  const team1 = new Set([cap1, ...best.map(p => p.tg_id)]);
+  return Object.fromEntries(players.map(p => [p.tg_id, team1.has(p.tg_id) ? 1 : 2]));
 }
 
 // players: [{tg_id, team, elo_before, calibrating}]
@@ -104,16 +114,39 @@ export class Arena extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS match_players (
       match_id INTEGER NOT NULL, tg_id INTEGER NOT NULL, team INTEGER, elo_before INTEGER, elo_delta INTEGER,
       joined_at REAL NOT NULL, PRIMARY KEY (match_id, tg_id))`);
-    try { this.sql.exec("ALTER TABLE match_players ADD COLUMN calibrating INTEGER NOT NULL DEFAULT 0"); } catch {}
+    // миграции для старых баз
+    for (const ddl of [
+      "ALTER TABLE match_players ADD COLUMN calibrating INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE matches ADD COLUMN lobby_no INTEGER",
+      "ALTER TABLE matches ADD COLUMN captain1 INTEGER",
+      "ALTER TABLE matches ADD COLUMN captain2 INTEGER",
+      "ALTER TABLE matches ADD COLUMN bans TEXT NOT NULL DEFAULT '[]'",
+      "ALTER TABLE matches ADD COLUMN veto_deadline INTEGER",
+    ]) { try { this.sql.exec(ddl); } catch {} }
+    // лобби старого формата (созданные вручную) больше не используются
+    this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
+
     this.maps = (env.MAPS || DEFAULT_MAPS).split(",").map(s => s.trim()).filter(Boolean);
     this.admins = new Set((env.ADMIN_IDS || "").split(",").map(s => Number(s.trim())).filter(Boolean));
+    this.lobbyCount = Math.max(1, Number(env.LOBBY_COUNT || 2));
+    this.ensureLobbies();
   }
 
   q(query, ...b) { return this.sql.exec(query, ...b).toArray(); }
   one(query, ...b) { return this.q(query, ...b)[0] || null; }
 
+  // ----- lobbies -----
+  ensureLobbies() {
+    for (let no = 1; no <= this.lobbyCount; no++) {
+      if (!this.one("SELECT id FROM matches WHERE status = 'open' AND lobby_no = ?", no)) {
+        this.sql.exec("INSERT INTO matches (mode, map, status, creator_id, lobby_no, created_at) VALUES ('5x5', '', 'open', 0, ?, ?)", no, now());
+      }
+    }
+  }
+
   // ----- db -----
   player(id) { return this.one("SELECT * FROM players WHERE tg_id = ?", id); }
+  isCalibrated(p) { return p.wins + p.losses >= CALIBRATION_GAMES; }
   rankOf(id) {
     const p = this.player(id);
     if (!p || !this.isCalibrated(p)) return null;
@@ -122,6 +155,7 @@ export class Arena extends DurableObject {
   match(id) {
     const m = this.one("SELECT * FROM matches WHERE id = ?", id);
     if (!m) return null;
+    m.bans = JSON.parse(m.bans || "[]");
     m.players = this.q(`SELECT mp.tg_id, mp.team, mp.elo_before, mp.elo_delta, mp.calibrating, p.nick, p.elo, p.game_id, p.tg_username,
         p.wins + p.losses AS games
       FROM match_players mp JOIN players p ON p.tg_id = mp.tg_id WHERE mp.match_id = ? ORDER BY mp.joined_at`, id);
@@ -129,9 +163,12 @@ export class Arena extends DurableObject {
   }
   activeMatchOf(id) {
     const r = this.one(`SELECT m.id FROM matches m JOIN match_players mp ON mp.match_id = m.id
-      WHERE mp.tg_id = ? AND m.status IN ('open','live')`, id);
+      WHERE mp.tg_id = ? AND m.status IN ('open','veto','live')`, id);
     return r ? r.id : null;
   }
+  vetoTurn(m) { return m.bans.length % 2 === 0 ? m.captain1 : m.captain2; }
+  nick(m, id) { return m.players.find(p => p.tg_id === id)?.nick ?? "?"; }
+
   // До конца калибровки ELO и уровень скрыты
   publicPlayer(p) {
     const games = p.wins + p.losses, calibrated = games >= CALIBRATION_GAMES;
@@ -142,20 +179,28 @@ export class Arena extends DurableObject {
     };
   }
   publicMatch(m) {
-    m.team_avg = {};
+    const out = {
+      id: m.id, lobby_no: m.lobby_no, status: m.status, mode: m.mode, map: m.map, room: m.room, score: m.score, winner: m.winner,
+      size: LOBBY_SIZE, captain1: m.captain1, captain2: m.captain2, host_id: m.creator_id || null,
+      bans: m.bans, remaining: this.maps.filter(x => !m.bans.some(b => b.map === x)),
+      veto_turn: m.status === "veto" ? this.vetoTurn(m) : null,
+      veto_left: m.status === "veto" && m.veto_deadline ? Math.max(0, m.veto_deadline - now()) : null,
+      team_avg: {},
+    };
     for (const t of [1, 2]) {
       const ps = m.players.filter(p => p.team === t);
-      if (ps.length) m.team_avg[t] = Math.round(ps.reduce((s, p) => s + (p.elo_before ?? p.elo), 0) / ps.length);
+      if (ps.length) out.team_avg[t] = Math.round(ps.reduce((s, p) => s + (p.elo_before ?? p.elo), 0) / ps.length);
     }
-    m.players = m.players.map(p => {
+    out.players = m.players.map(p => {
       const calibrated = p.games >= CALIBRATION_GAMES;
-      return { tg_id: p.tg_id, team: p.team, nick: p.nick, calibrated, calib_played: Math.min(p.games, CALIBRATION_GAMES),
+      return { tg_id: p.tg_id, team: p.team, nick: p.nick, game_id: p.game_id, calibrated, calib_played: Math.min(p.games, CALIBRATION_GAMES),
         level: calibrated ? level(p.elo) : null, elo: calibrated ? p.elo : null };
     });
-    m.size = MODES[m.mode];
-    return m;
+    const host = m.players.find(p => p.tg_id === m.creator_id);
+    out.host_nick = host?.nick ?? null;
+    out.host_game_id = host?.game_id ?? null;
+    return out;
   }
-  isCalibrated(p) { return p.wins + p.losses >= CALIBRATION_GAMES; }
 
   // ----- telegram -----
   async tg(method, params) {
@@ -170,7 +215,7 @@ export class Arena extends DurableObject {
       if (!r.ok) console.log("send failed", chatId, r.description);
     } catch (e) { console.log("send error", chatId, e.message); }
   }
-  notify(ids, text) { return Promise.all(ids.map(id => this.send(id, text))); }
+  notify(ids, text, markup) { return Promise.all(ids.map(id => this.send(id, text, markup))); }
   notifyGroup(text) {
     const chat = Number(this.env.NOTIFY_CHAT_ID || 0);
     if (!chat) return;
@@ -178,15 +223,82 @@ export class Arena extends DurableObject {
     return this.send(chat, text, u ? { inline_keyboard: [[{ text: "🎮 Открыть", url: `https://t.me/${u}?start=play` }]] } : null);
   }
   appButton(text = "🎮 Открыть приложение") {
-    return { inline_keyboard: [[{ text, web_app: { url: this.origin } }]] };
+    return this.origin ? { inline_keyboard: [[{ text, web_app: { url: this.origin } }]] } : null;
   }
   teamsText(m) {
     return [1, 2].map(t => {
       const ps = m.players.filter(p => p.team === t);
       const avg = ps.length ? Math.round(ps.reduce((s, p) => s + p.elo, 0) / ps.length) : 0;
-      return [`<b>Команда ${t}</b> (ср. ${avg} ELO)`, ...ps.map(p => `  • ${esc(p.nick)} — ${
+      const cap = t === 1 ? m.captain1 : m.captain2;
+      return [`<b>Команда ${t}</b> (ср. ${avg} ELO)`, ...ps.map(p => `  • ${esc(p.nick)}${p.tg_id === cap ? " (C)" : ""} — ${
         p.games >= CALIBRATION_GAMES ? `${level(p.elo)} lvl` : `калибровка ${p.games}/${CALIBRATION_GAMES}`}`)].join("\n");
     }).join("\n");
+  }
+  hostText(m) {
+    const h = m.players.find(p => p.tg_id === m.creator_id);
+    return h ? `🎮 Лобби в игре создаёт: <b>${esc(h.nick)}</b>${h.game_id ? ` (ID <code>${esc(h.game_id)}</code>)` : ""}` : "";
+  }
+
+  // ----- veto -----
+  async startVeto(mid) {
+    const m = this.match(mid);
+    const [cap1, cap2] = shuffle(m.players.map(p => p.tg_id)).slice(0, 2);
+    const host = pick(m.players).tg_id;
+    const teams = balanceWithCaptains(m.players, cap1, cap2);
+    for (const [id, team] of Object.entries(teams)) {
+      this.sql.exec(`UPDATE match_players SET team = ?, elo_before = (SELECT elo FROM players WHERE tg_id = ?),
+        calibrating = (SELECT wins + losses < ${CALIBRATION_GAMES} FROM players WHERE tg_id = ?)
+        WHERE match_id = ? AND tg_id = ?`, team, +id, +id, mid, +id);
+    }
+    this.sql.exec(`UPDATE matches SET status = 'veto', captain1 = ?, captain2 = ?, creator_id = ?, bans = '[]', veto_deadline = ?
+      WHERE id = ?`, cap1, cap2, host, now() + VETO_TURN_SEC, mid);
+    this.ensureLobbies();
+    await this.scheduleAlarm();
+    const m2 = this.match(mid);
+    await this.notify(m2.players.map(p => p.tg_id),
+      `🔔 <b>Лобби ${m2.lobby_no} собрано!</b> Матч #${mid}\n\nКапитаны: <b>${esc(this.nick(m2, cap1))}</b> vs <b>${esc(this.nick(m2, cap2))}</b>\n` +
+      `Капитаны по очереди банят карты (${this.maps.length - 1} банов), последняя карта играется.\n\n${this.teamsText(m2)}`, this.appButton("🗺 Открыть вето"));
+    await this.send(cap1, `🗺 Ты капитан! Твой ход — забань карту (${VETO_TURN_SEC} сек).`, this.appButton("Забанить карту"));
+    await this.notifyGroup(`🔔 Лобби ${m2.lobby_no} собрано (матч #${mid}). Капитаны: ${esc(this.nick(m2, cap1))} vs ${esc(this.nick(m2, cap2))}`);
+  }
+
+  async ban(mid, byId, map, auto = false) {
+    const m = this.match(mid);
+    const remaining = this.maps.filter(x => !m.bans.some(b => b.map === x));
+    if (!remaining.includes(map)) throw new ApiError("Эта карта уже забанена");
+    m.bans.push({ map, by: byId, auto });
+    const left = remaining.filter(x => x !== map);
+    if (left.length === 1) {
+      this.sql.exec(`UPDATE matches SET bans = ?, map = ?, status = 'live', started_at = ?, veto_deadline = NULL WHERE id = ?`,
+        JSON.stringify(m.bans), left[0], now(), mid);
+      const m2 = this.match(mid);
+      await this.notify(m2.players.map(p => p.tg_id),
+        `🔥 <b>Матч #${mid}: играем на ${esc(left[0])}!</b>\n${this.hostText(m2)}\n\n${this.teamsText(m2)}`);
+      await this.send(m2.creator_id, `👑 <b>Ты создаёшь лобби в игре.</b> Создай комнату на ${esc(left[0])} и впиши её код в приложении — все увидят.`,
+        this.appButton("🔑 Вписать код комнаты"));
+    } else {
+      this.sql.exec("UPDATE matches SET bans = ?, veto_deadline = ? WHERE id = ?", JSON.stringify(m.bans), now() + VETO_TURN_SEC, mid);
+      const next = this.vetoTurn(m);
+      await this.send(next, `🗺 Матч #${mid}: ${esc(this.nick(m, byId))} забанил ${esc(map)}${auto ? " (авто)" : ""}. Твой ход — бань (${VETO_TURN_SEC} сек).`,
+        this.appButton("Забанить карту"));
+    }
+    await this.scheduleAlarm();
+  }
+
+  async scheduleAlarm() {
+    const r = this.one("SELECT MIN(veto_deadline) AS t FROM matches WHERE status = 'veto' AND veto_deadline IS NOT NULL");
+    if (r?.t) await this.ctx.storage.setAlarm(r.t * 1000);
+    else await this.ctx.storage.deleteAlarm();
+  }
+
+  // капитан не успел — случайный бан за него
+  async alarm() {
+    for (const r of this.q("SELECT id FROM matches WHERE status = 'veto' AND veto_deadline <= ?", now())) {
+      const m = this.match(r.id);
+      const remaining = this.maps.filter(x => !m.bans.some(b => b.map === x));
+      try { await this.ban(m.id, this.vetoTurn(m), pick(remaining), true); } catch (e) { console.log("autoban", e.message); }
+    }
+    await this.scheduleAlarm();
   }
 
   // ----- http -----
@@ -222,10 +334,12 @@ export class Arena extends DurableObject {
     const isAdmin = this.admins.has(uid);
     const requirePlayer = () => { const p = this.player(uid); if (!p) throw new ApiError("Сначала зарегистрируйся"); return p; };
     const getMatch = id => { const m = this.match(id); if (!m) throw new ApiError("Матч не найден"); return m; };
-    const requireHost = m => { if (m.creator_id !== uid && !isAdmin) throw new ApiError("Это может сделать только хост лобби или админ"); };
+    const isCaptain = m => m.captain1 === uid || m.captain2 === uid;
     let mm;
 
-    if (method === "GET" && path === "/config") return { maps: this.maps, modes: MODES, levels: LEVELS, calibration_games: CALIBRATION_GAMES };
+    if (method === "GET" && path === "/config") {
+      return { maps: this.maps, levels: LEVELS, calibration_games: CALIBRATION_GAMES, lobby_size: LOBBY_SIZE, veto_turn_sec: VETO_TURN_SEC };
+    }
 
     if (method === "GET" && path === "/me") {
       const p = this.player(uid);
@@ -244,24 +358,13 @@ export class Arena extends DurableObject {
     }
 
     if (method === "GET" && path === "/lobbies") {
-      return this.q("SELECT id FROM matches WHERE status IN ('open','live') ORDER BY id DESC").map(r => this.publicMatch(this.match(r.id)));
+      this.ensureLobbies();
+      return this.q(`SELECT id FROM matches WHERE status IN ('open','veto','live')
+          ORDER BY CASE status WHEN 'open' THEN 1 ELSE 0 END, CASE status WHEN 'open' THEN lobby_no ELSE -id END`)
+        .map(r => this.publicMatch(this.match(r.id)));
     }
 
     if (method === "GET" && (mm = path.match(/^\/matches\/(\d+)$/))) return this.publicMatch(getMatch(+mm[1]));
-
-    if (method === "POST" && path === "/lobbies") {
-      const p = requirePlayer();
-      if (this.activeMatchOf(uid)) throw new ApiError("Ты уже в другом лобби");
-      if (!MODES[body.mode]) throw new ApiError("Неверный режим");
-      let map = body.map || "random";
-      if (map === "random") map = this.maps[Math.floor(Math.random() * this.maps.length)];
-      else if (!this.maps.includes(map)) throw new ApiError("Неверная карта");
-      const id = this.one("INSERT INTO matches (mode, map, status, creator_id, created_at) VALUES (?, ?, 'open', ?, ?) RETURNING id",
-        body.mode, map, uid, now()).id;
-      this.sql.exec("INSERT INTO match_players (match_id, tg_id, joined_at) VALUES (?, ?, ?)", id, uid, Date.now() / 1000);
-      await this.notifyGroup(`🆕 <b>${esc(p.nick)}</b> создал лобби #${id}: ${body.mode}, ${esc(map)}. Залетайте!`);
-      return { id };
-    }
 
     if (method === "GET" && path === "/leaderboard") {
       // вся база игроков: сначала откалиброванные по ELO, потом те, кто на калибровке
@@ -285,61 +388,47 @@ export class Arena extends DurableObject {
     if (method !== "POST" || !(mm = path.match(/^\/lobbies\/(\d+)\/(\w+)$/))) throw new ApiError("Неизвестный запрос");
     const mid = +mm[1], action = mm[2];
     const m = getMatch(mid);
+    const ids = m.players.map(p => p.tg_id);
 
     switch (action) {
       case "join": {
         requirePlayer();
         if (m.status !== "open") throw new ApiError("Лобби уже не открыто");
-        if (m.players.some(p => p.tg_id === uid)) return { ok: true };
-        if (this.activeMatchOf(uid)) throw new ApiError("Ты уже в другом лобби");
-        if (m.players.length >= MODES[m.mode]) throw new ApiError("Лобби заполнено");
+        if (ids.includes(uid)) return { ok: true };
+        if (this.activeMatchOf(uid)) throw new ApiError("Ты уже в другом лобби или матче");
+        if (ids.length >= LOBBY_SIZE) throw new ApiError("Лобби заполнено");
         this.sql.exec("INSERT OR IGNORE INTO match_players (match_id, tg_id, joined_at) VALUES (?, ?, ?)", mid, uid, Date.now() / 1000);
-        if (m.players.length + 1 === MODES[m.mode]) await this.send(m.creator_id, `✅ Лобби #${mid} собрано — можно стартовать!`);
+        if (ids.length + 1 === LOBBY_SIZE) await this.startVeto(mid);
         return { ok: true };
       }
       case "leave": {
         if (m.status !== "open") throw new ApiError("Из начатого матча выйти нельзя");
         this.sql.exec("DELETE FROM match_players WHERE match_id = ? AND tg_id = ?", mid, uid);
-        const rest = m.players.filter(p => p.tg_id !== uid);
-        if (!rest.length) this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE id = ?", mid);
-        else if (m.creator_id === uid) this.sql.exec("UPDATE matches SET creator_id = ? WHERE id = ?", rest[0].tg_id, mid);
         return { ok: true };
       }
       case "kick": {
-        requireHost(m);
+        if (!isAdmin) throw new ApiError("Кикать может только админ");
         if (m.status !== "open") throw new ApiError("Лобби уже не открыто");
-        const target = Number(body.tg_id);
-        if (target === m.creator_id) throw new ApiError("Нельзя кикнуть хоста");
-        this.sql.exec("DELETE FROM match_players WHERE match_id = ? AND tg_id = ?", mid, target);
+        this.sql.exec("DELETE FROM match_players WHERE match_id = ? AND tg_id = ?", mid, Number(body.tg_id));
+        return { ok: true };
+      }
+      case "ban": {
+        if (m.status !== "veto") throw new ApiError("Сейчас не идёт выбор карты");
+        const turn = this.vetoTurn(m);
+        if (turn !== uid && !isAdmin) throw new ApiError(isCaptain(m) ? "Сейчас ход другого капитана" : "Банят только капитаны");
+        await this.ban(mid, turn, String(body.map || ""));
         return { ok: true };
       }
       case "room": {
-        requireHost(m);
+        if (m.creator_id !== uid && !isCaptain(m) && !isAdmin) throw new ApiError("Код комнаты вписывает тот, кто создаёт лобби в игре");
+        if (!["veto", "live"].includes(m.status)) throw new ApiError("Матч ещё не собран");
         const room = String(body.room || "").trim().slice(0, 60);
         this.sql.exec("UPDATE matches SET room = ? WHERE id = ?", room, mid);
-        if (m.status === "live" && room) await this.notify(m.players.map(p => p.tg_id), `🔑 Матч #${mid}: комната <code>${esc(room)}</code>`);
-        return { ok: true };
-      }
-      case "start": {
-        requireHost(m);
-        if (m.status !== "open") throw new ApiError("Матч уже начат");
-        if (m.players.length !== MODES[m.mode]) throw new ApiError(`Нужно ${MODES[m.mode]} игроков`);
-        const teams = balance(m.players);
-        for (const [id, team] of Object.entries(teams)) {
-          this.sql.exec(`UPDATE match_players SET team = ?, elo_before = (SELECT elo FROM players WHERE tg_id = ?),
-            calibrating = (SELECT wins + losses < ${CALIBRATION_GAMES} FROM players WHERE tg_id = ?)
-            WHERE match_id = ? AND tg_id = ?`, team, +id, +id, mid, +id);
-        }
-        this.sql.exec("UPDATE matches SET status = 'live', started_at = ? WHERE id = ?", now(), mid);
-        const m2 = this.match(mid);
-        const room = m2.room ? `\n🔑 Комната: <code>${esc(m2.room)}</code>` : "";
-        const host = m2.players.find(p => p.tg_id === m2.creator_id);
-        await this.notify(m2.players.map(p => p.tg_id),
-          `🔥 <b>Матч #${mid} начался!</b> ${m2.mode} · ${esc(m2.map)}\nХост: ${esc(host?.nick)}${room}\n\n${this.teamsText(m2)}`);
+        if (room) await this.notify(ids, `🔑 Матч #${mid}${m.map ? ` (${esc(m.map)})` : ""}: комната <code>${esc(room)}</code>\nСоздал: ${esc(this.nick(m, m.creator_id))}`);
         return { ok: true };
       }
       case "result": {
-        requireHost(m);
+        if (!isCaptain(m) && !isAdmin) throw new ApiError("Результат вносит капитан или админ");
         if (m.status !== "live") throw new ApiError("Матч не идёт");
         const winner = Number(body.winner);
         if (winner !== 1 && winner !== 2) throw new ApiError("Выбери победителя");
@@ -373,10 +462,11 @@ export class Arena extends DurableObject {
         return { ok: true };
       }
       case "cancel": {
-        requireHost(m);
-        if (!["open", "live"].includes(m.status)) throw new ApiError("Матч уже завершён");
-        this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE id = ?", mid);
-        if (m.status === "live") await this.notify(m.players.map(p => p.tg_id), `❌ Матч #${mid} отменён, ELO не изменилось.`);
+        if (!isCaptain(m) && !isAdmin) throw new ApiError("Отменить может капитан или админ");
+        if (!["veto", "live"].includes(m.status)) throw new ApiError("Этот матч нельзя отменить");
+        this.sql.exec("UPDATE matches SET status = 'cancelled', veto_deadline = NULL WHERE id = ?", mid);
+        await this.scheduleAlarm();
+        await this.notify(ids, `❌ Матч #${mid} отменён (${esc(this.nick(m, uid))}), ELO не изменилось.`);
         return { ok: true };
       }
     }
@@ -403,9 +493,9 @@ export class Arena extends DurableObject {
       const hello = p ? `С возвращением, <b>${esc(p.nick)}</b>! ` + (this.isCalibrated(p)
           ? `${level(p.elo)} lvl · ${p.elo} ELO` : `Калибровка ${p.wins + p.losses}/${CALIBRATION_GAMES}`)
         : "Привет! Это наша площадка для матчей <b>Standoff 2</b> с ELO и рейтингом.";
-      return this.send(chatId, `${hello}\n\nВ приложении можно:\n• создать лобби 5x5 или 2x2 и собрать друзей\n` +
-        "• автоматически поделить команды по ELO\n• записать результат и получить ±ELO\n• смотреть рейтинг и свою историю\n\n" +
-        `Первые ${CALIBRATION_GAMES} матчей — калибровка, после неё получишь уровень.`, this.appButton());
+      return this.send(chatId, `${hello}\n\nКак это работает:\n• заходи в свободное лобби 5x5\n` +
+        "• когда соберётся 10 — выбираются 2 капитана, они банят карты\n• один из игроков создаёт комнату в игре\n" +
+        `• после матча капитан вносит результат, всем ±ELO\n\nПервые ${CALIBRATION_GAMES} матчей — калибровка, после неё получишь уровень.`, this.appButton());
     }
     if (cmd === "/top") {
       const rows = this.q(`SELECT nick, elo FROM players WHERE wins + losses >= ${CALIBRATION_GAMES} ORDER BY elo DESC, wins DESC LIMIT 10`);
