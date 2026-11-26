@@ -22,7 +22,8 @@ class TgError(Exception):
 
 def call(method: str, **params):
     params = {k: v for k, v in params.items() if v is not None}
-    r = requests.post(API + method, json=params, timeout=15)
+    # для long polling (getUpdates) ждём дольше, чем timeout запроса
+    r = requests.post(API + method, json=params, timeout=int(params.get("timeout", 0)) + 15)
     data = r.json()
     if not data.get("ok"):
         raise TgError(f"{method}: {data.get('description')}")
