@@ -65,6 +65,12 @@ def main() -> None:
         print(f"Создан поддомен {sub}.workers.dev")
 
     webhook_secret = secrets.token_hex(16)
+    # код для команды /admin в боте: хранится в .env, чтобы не менялся при каждом деплое
+    admin_secret = os.getenv("ADMIN_SECRET") or ""
+    if not admin_secret:
+        admin_secret = secrets.token_hex(4)
+        with open(HERE.parent / ".env", "a") as f:
+            f.write(f"\nADMIN_SECRET={admin_secret}\n")
     bindings = [
         {"type": "durable_object_namespace", "name": "ARENA", "class_name": "Arena"},
         {"type": "secret_text", "name": "BOT_TOKEN", "text": BOT_TOKEN},
@@ -72,6 +78,7 @@ def main() -> None:
         {"type": "plain_text", "name": "BOT_USERNAME", "text": bot["username"]},
         {"type": "plain_text", "name": "ADMIN_IDS", "text": os.getenv("ADMIN_IDS", "")},
         {"type": "plain_text", "name": "NOTIFY_CHAT_ID", "text": os.getenv("NOTIFY_CHAT_ID", "")},
+        {"type": "secret_text", "name": "ADMIN_SECRET", "text": admin_secret},
     ]
     if os.getenv("MAPS"):
         bindings.append({"type": "plain_text", "name": "MAPS", "text": os.environ["MAPS"]})
@@ -104,6 +111,7 @@ def main() -> None:
         {"command": "top", "description": "Топ-10 игроков"},
         {"command": "me", "description": "Моя статистика"},
         {"command": "id", "description": "Узнать ID"},
+        {"command": "admin", "description": "Стать админом (нужен код)"},
     ])
     tg("setChatMenuButton", menu_button={"type": "web_app", "text": "Играть", "web_app": {"url": url}})
     tg("setMyShortDescription", short_description="Матчи Standoff 2 с друзьями: лобби 5x5, бан карт, ELO и уровни 1–10.")
@@ -111,8 +119,9 @@ def main() -> None:
         "SO2 Arena — своя ELO-площадка для Standoff 2.\n\n"
         "🎮 Заходи в лобби 5x5\n🗺 Капитаны банят карты\n📈 ELO, калибровка и уровни 1–10\n🏆 Рейтинг друзей\n\n"
         "Жми «Старт» и открывай приложение."))
-    tg("setWebhook", url=f"{url}/webhook", secret_token=webhook_secret, allowed_updates=["message"])
+    tg("setWebhook", url=f"{url}/webhook", secret_token=webhook_secret, allowed_updates=["message", "callback_query"])
     print("Telegram настроен ✅")
+    print(f"Код админа: /admin {admin_secret}")
 
 
 if __name__ == "__main__":
