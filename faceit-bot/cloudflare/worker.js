@@ -245,6 +245,7 @@ export class Arena extends DurableObject {
       "ALTER TABLE players ADD COLUMN offenses INTEGER NOT NULL DEFAULT 0",
       "ALTER TABLE players ADD COLUMN last_offense INTEGER",
       "ALTER TABLE matches ADD COLUMN shot_key TEXT",
+      "ALTER TABLE matches ADD COLUMN veto_bot_at INTEGER",
     ]) { try { this.sql.exec(ddl); } catch {} }
     this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
 
@@ -586,7 +587,8 @@ export class Arena extends DurableObject {
         WHERE match_id = ? AND tg_id = ?`, team, +id, +id, mid, +id);
     }
     this.sql.exec(`UPDATE matches SET status = 'veto', captain1 = ?, captain2 = ?, creator_id = ?, bans = '[]', veto_deadline = ?, ready_deadline = NULL
-      WHERE id = ?`, cap1, cap2, host, now() + (cap1 < 0 ? BOT_THINK_SEC : VETO_TURN_SEC), mid);
+      WHERE id = ?`, cap1, cap2, host, now() + VETO_TURN_SEC, mid);
+    this.sql.exec("UPDATE matches SET veto_bot_at = ? WHERE id = ?", cap1 < 0 ? now() + this.botDelay() : null, mid);
     this.ensureLobbies();
     await this.scheduleAlarm();
     const m2 = this.match(mid);
@@ -611,13 +613,15 @@ export class Arena extends DurableObject {
       await this.send(m2.creator_id, `👑 <b>Ты создаёшь лобби в игре.</b> Создай комнату на ${esc(left[0])} и впиши её код в приложении — все увидят.`,
         this.appButton("🔑 Вписать код комнаты"));
     } else {
-      this.sql.exec("UPDATE matches SET bans = ?, veto_deadline = ? WHERE id = ?", JSON.stringify(m.bans), now() + (this.vetoTurn(m) < 0 ? BOT_THINK_SEC : VETO_TURN_SEC), mid);
+      this.sql.exec("UPDATE matches SET bans = ?, veto_deadline = ?, veto_bot_at = ? WHERE id = ?", JSON.stringify(m.bans), now() + VETO_TURN_SEC,
+        this.vetoTurn(m) < 0 ? now() + this.botDelay() : null, mid);
       await this.send(this.vetoTurn(m), `🗺 Матч #${mid}: ${esc(this.nick(m, byId))} забанил ${esc(map)}${auto ? " (авто)" : ""}. Твой ход — бань (${VETO_TURN_SEC} сек).`,
         this.appButton("Забанить карту"));
     }
     await this.scheduleAlarm();
   }
 
+  botDelay() { return 4 + Math.floor(Math.random() * 7); } // бот «думает» 4–10 сек из 20
   // если сейчас банит бот-капитан — банит сам, сразу
   async botVeto(mid) {
     for (let i = 0; i < 10; i++) {
@@ -631,6 +635,7 @@ export class Arena extends DurableObject {
   async scheduleAlarm() {
     const r = this.one(`SELECT MIN(t) AS t FROM (
       SELECT veto_deadline AS t FROM matches WHERE status = 'veto' AND veto_deadline IS NOT NULL
+      UNION ALL SELECT veto_bot_at AS t FROM matches WHERE status = 'veto' AND veto_bot_at IS NOT NULL
       UNION ALL SELECT ready_deadline AS t FROM matches WHERE status = 'ready' AND ready_deadline IS NOT NULL)`);
     if (r?.t) await this.ctx.storage.setAlarm(r.t * 1000);
     else await this.ctx.storage.deleteAlarm();
@@ -639,6 +644,12 @@ export class Arena extends DurableObject {
   async alarm() {
     for (const r of this.q("SELECT id FROM matches WHERE status = 'ready' AND ready_deadline <= ?", now())) {
       try { await this.readyTimeout(r.id); } catch (e) { console.log("ready timeout", e.message); }
+    }
+    for (const r of this.q("SELECT id FROM matches WHERE status = 'veto' AND veto_deadline > ? AND veto_bot_at <= ?", now(), now())) {
+      const m = this.match(r.id);
+      if (this.vetoTurn(m) >= 0) continue;
+      const left = this.maps.filter(x => !m.bans.some(b => b.map === x));
+      try { await this.ban(m.id, this.vetoTurn(m), pick(left), false); } catch (e) { console.log("botban", e.message); }
     }
     for (const r of this.q("SELECT id FROM matches WHERE status = 'veto' AND veto_deadline <= ?", now())) {
       const m = this.match(r.id);
@@ -1340,7 +1351,7 @@ export class Arena extends DurableObject {
       case "ban": {
         if (m.status !== "veto") throw new ApiError("Сейчас не идёт выбор карты");
         const turn = this.vetoTurn(m);
-        if (turn !== uid && !isAdmin) throw new ApiError(isCaptain(m) ? "Сейчас ход другого капитана" : "Банят только капитаны");
+        if (turn !== uid) throw new ApiError(isCaptain(m) ? "Сейчас ход другого капитана" : "Банят только капитаны");
         await this.ban(mid, turn, String(body.map || ""));
         return { ok: true };
       }
