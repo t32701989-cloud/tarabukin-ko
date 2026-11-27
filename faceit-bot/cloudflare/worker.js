@@ -198,6 +198,9 @@ export class Arena extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS rep (match_id INTEGER NOT NULL, from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (match_id, from_id, to_id))");
     this.sql.exec(`CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, match_id INTEGER NOT NULL, from_id INTEGER NOT NULL,
       text TEXT, voice BLOB, voice_key TEXT, mime TEXT, created INTEGER NOT NULL)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS promos (code TEXT PRIMARY KEY, tc INTEGER NOT NULL DEFAULT 0, prem_days INTEGER NOT NULL DEFAULT 0,
+      items TEXT NOT NULL DEFAULT '[]', max_uses INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0, expires INTEGER, active INTEGER NOT NULL DEFAULT 1, created INTEGER NOT NULL)`);
+    this.sql.exec("CREATE TABLE IF NOT EXISTS promo_uses (code TEXT NOT NULL, tg_id INTEGER NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (code, tg_id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS shots (match_id INTEGER PRIMARY KEY, data BLOB NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS payments (charge_id TEXT PRIMARY KEY, tg_id INTEGER NOT NULL, product TEXT NOT NULL, stars INTEGER NOT NULL, created INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS parties (id INTEGER PRIMARY KEY AUTOINCREMENT, leader INTEGER NOT NULL, created INTEGER NOT NULL)");
@@ -246,6 +249,8 @@ export class Arena extends DurableObject {
       "ALTER TABLE players ADD COLUMN last_offense INTEGER",
       "ALTER TABLE matches ADD COLUMN shot_key TEXT",
       "ALTER TABLE matches ADD COLUMN veto_bot_at INTEGER",
+      "ALTER TABLE players ADD COLUMN hide_online INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE players ADD COLUMN no_friend_req INTEGER NOT NULL DEFAULT 0",
     ]) { try { this.sql.exec(ddl); } catch {} }
     this.sql.exec("UPDATE matches SET status = 'cancelled' WHERE status = 'open' AND lobby_no IS NULL");
 
@@ -327,7 +332,7 @@ export class Arena extends DurableObject {
       ...rest, games, calibrated, calib_played: Math.min(games, CALIBRATION_GAMES), calib_total: CALIBRATION_GAMES,
       elo: calibrated ? p.elo : null, level: calibrated ? level(p.elo) : null, next_level_at: calibrated ? nextLevelAt(p.elo) : null,
       badges: JSON.parse(badges || "[]"), banned: (p.banned_until || 0) > now(),
-      online: now() - (p.last_seen || 0) < 120,
+      online: !p.hide_online && now() - (p.last_seen || 0) < 120, last_seen: p.hide_online ? null : p.last_seen,
       premium: (p.premium_until || 0) > now(),
       ...((p.premium_until || 0) > now() ? {} : { nick_color: null,
         frame: /_prem$/.test(p.frame || "") ? null : p.frame, chevron: /_prem$/.test(p.chevron || "") ? null : p.chevron, banner: /_prem$/.test(p.banner || "") ? null : p.banner }),
@@ -884,7 +889,7 @@ export class Arena extends DurableObject {
       const friendReq = this.one("SELECT COUNT(*) AS n FROM friends WHERE to_id = ? AND status = 'pending'", uid).n
         + this.one("SELECT COUNT(*) AS n FROM party_invites WHERE to_id = ?", uid).n;
       const ticketsNew = isAdmin ? this.one("SELECT COUNT(*) AS n FROM tickets WHERE status = 'open'").n : 0;
-      return { user, player: p ? this.publicPlayer(p) : null, rank: this.rankOf(uid), active_match: this.activeMatchOf(uid), is_admin: isAdmin, pending_count: pendingCount + ticketsNew, friend_requests: friendReq,
+      return { user, player: p ? { ...this.publicPlayer(p), hide_online: !!p.hide_online, no_friend_req: !!p.no_friend_req } : null, rank: this.rankOf(uid), active_match: this.activeMatchOf(uid), is_admin: isAdmin, pending_count: pendingCount + ticketsNew, friend_requests: friendReq,
         party: p ? this.partyView(uid) : null, inventory: p ? this.q("SELECT item FROM inventory WHERE tg_id = ?", uid).map(r => r.item) : [],
         daily_ready: p ? p.daily_at !== Math.floor(now() / 86400) : false,
         my_tickets_answered: p ? this.one("SELECT COUNT(*) AS n FROM tickets WHERE tg_id = ? AND status = 'answered'", uid).n : 0 };
@@ -967,6 +972,47 @@ export class Arena extends DurableObject {
         case "signal": { const to = Number(body.to); if (room[to]) (this.vbox[to] ||= []).push({ from: uid, data: body.data }); return { ok: true }; }
         case "poll": { room[uid] = t; const msgs = this.vbox[uid] || []; this.vbox[uid] = []; return { msgs, members: members() }; }
       }
+    }
+
+    // ----- настройки и промокоды -----
+    if (method === "POST" && path === "/settings") {
+      requirePlayer();
+      if ("hide_online" in body) this.sql.exec("UPDATE players SET hide_online = ? WHERE tg_id = ?", body.hide_online ? 1 : 0, uid);
+      if ("no_friend_req" in body) this.sql.exec("UPDATE players SET no_friend_req = ? WHERE tg_id = ?", body.no_friend_req ? 1 : 0, uid);
+      return { ok: true };
+    }
+    if (method === "POST" && path === "/promo") {
+      requirePlayer();
+      const code = String(body.code || "").trim().toUpperCase();
+      const pr = this.one("SELECT * FROM promos WHERE code = ?", code);
+      if (!pr || !pr.active) throw new ApiError("Такого промокода нет");
+      if (pr.expires && pr.expires < now()) throw new ApiError("Срок промокода истёк");
+      if (pr.used >= pr.max_uses) throw new ApiError("Промокод уже закончился");
+      if (this.one("SELECT 1 AS x FROM promo_uses WHERE code = ? AND tg_id = ?", code, uid)) throw new ApiError("Ты уже активировал этот промокод");
+      this.sql.exec("INSERT INTO promo_uses (code, tg_id, created) VALUES (?, ?, ?)", code, uid, now());
+      this.sql.exec("UPDATE promos SET used = used + 1 WHERE code = ?", code);
+      const got = [];
+      if (pr.tc) { this.addCoins(uid, pr.tc); got.push(`${pr.tc} TC`); }
+      if (pr.prem_days) { this.sql.exec("UPDATE players SET premium_until = MAX(COALESCE(premium_until, 0), ?) + ? WHERE tg_id = ?", now(), pr.prem_days * 86400, uid); got.push(`премиум на ${pr.prem_days} дн.`); }
+      for (const id of JSON.parse(pr.items)) { const it = SHOP.find(x => x.id === id); if (!it) continue; this.sql.exec("INSERT OR IGNORE INTO inventory (tg_id, item, created) VALUES (?, ?, ?)", uid, id, now()); got.push(it.title); }
+      return { ok: true, reward: got };
+    }
+    if (path.startsWith("/admin/promos")) {
+      requireAdmin();
+      if (method === "GET") return this.q("SELECT * FROM promos ORDER BY created DESC").map(r => ({ ...r, items: JSON.parse(r.items) }));
+      if (method === "POST" && path === "/admin/promos") {
+        const code = (String(body.code || "").trim().toUpperCase() || Math.random().toString(36).slice(2, 8).toUpperCase()).replace(/[^A-Z0-9_-]/g, "");
+        if (code.length < 3) throw new ApiError("Код от 3 символов: буквы, цифры");
+        if (this.one("SELECT 1 AS x FROM promos WHERE code = ?", code)) throw new ApiError("Такой код уже есть");
+        const tc = Math.max(0, Math.round(Number(body.tc) || 0)), days = Math.max(0, Math.round(Number(body.prem_days) || 0));
+        const items = (body.items || []).filter(id => SHOP.some(x => x.id === id));
+        if (!tc && !days && !items.length) throw new ApiError("Укажи награду");
+        const uses = Math.max(1, Math.round(Number(body.max_uses) || 1)), valid = Math.round(Number(body.valid_days) || 0);
+        this.sql.exec("INSERT INTO promos (code, tc, prem_days, items, max_uses, expires, created) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          code, tc, days, JSON.stringify(items), uses, valid > 0 ? now() + valid * 86400 : null, now());
+        return { ok: true, code };
+      }
+      if (method === "POST" && (mm = path.match(/^\/admin\/promos\/([A-Z0-9_-]+)\/toggle$/))) { this.sql.exec("UPDATE promos SET active = 1 - active WHERE code = ?", mm[1]); return { ok: true }; }
     }
 
     // ----- party -----
@@ -1197,6 +1243,7 @@ export class Arena extends DurableObject {
             return { ok: true, state: "friends" };
           }
           if (row) throw new ApiError("Заявка уже отправлена");
+          if (op.no_friend_req) throw new ApiError("Игрок не принимает заявки в друзья");
           this.sql.exec("INSERT INTO friends (from_id, to_id, status, created) VALUES (?, ?, 'pending', ?)", uid, other, now());
           await this.send(other, `👋 <b>${esc(me.nick)}</b> хочет добавить тебя в друзья.`, this.appButton("Открыть заявки"));
           return { ok: true, state: "outgoing" };

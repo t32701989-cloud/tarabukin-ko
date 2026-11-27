@@ -267,6 +267,15 @@ h2 small{font:500 15px "Fira Sans",sans-serif;color:var(--mute)}
 @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08)}100%{transform:none}}
 .fx .pop{animation:pop .5s ease-out both}
 .enter{animation:fxin .2s ease-out}
+.mt2{position:relative;overflow:hidden}
+.mt2 img{position:absolute;inset:3px;width:calc(100% - 6px);height:calc(100% - 6px);object-fit:contain}
+.mrow .nm img{width:22px;height:22px;object-fit:contain;vertical-align:-6px;margin-right:4px}
+.set{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line)}
+.set:first-child{border-top:0}
+.set b{display:block;font:700 16px "Fira Sans Condensed",sans-serif}
+.sw{width:48px;height:28px;border-radius:14px;background:var(--s3);position:relative;flex-shrink:0;transition:background .2s}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw.on{background:var(--go)}.sw.on::after{transform:translateX(20px)}
 /* вето v2 */
 .vhead{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);align-items:center;gap:8px;padding:12px;border-top:1px solid var(--line)}
 .vcap{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;background:var(--s2);opacity:.55;transition:opacity .2s}
@@ -702,7 +711,7 @@ S.stack = [];
 function pushView(html) { S.stack.push(html); S.view = html; render(); window.scrollTo(0, 0); }
 function goBack() { S.stack.pop(); S.view = S.stack[S.stack.length - 1] || null; render(); window.scrollTo(0, 0); }
 const backBtn = () => `<button class="back" onclick="goBack()">${I.back}Назад</button>`;
-const haptic = t => { try { t === 'ok' || t === 'err' ? tg?.HapticFeedback?.notificationOccurred(t === 'ok' ? 'success' : 'error') : tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
+const haptic = t => { if (window.PREF?.vibro === false) return; try { t === 'ok' || t === 'err' ? tg?.HapticFeedback?.notificationOccurred(t === 'ok' ? 'success' : 'error') : tg?.HapticFeedback?.impactOccurred('light'); } catch (e) {} };
 const fmtDate = ts => new Date(ts * 1000).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
 
@@ -732,8 +741,11 @@ async function act(path, body, okMsg) {
     return res;
   } catch (e) { toast(e.message); }
 }
+const PREF = window.PREF = (() => { try { return JSON.parse(localStorage.getItem('so2prefs') || '{}'); } catch (e) { return {}; } })();
+const savePref = () => { try { localStorage.setItem('so2prefs', JSON.stringify(PREF)); } catch (e) {} };
 let audioCtx;
 function beep(freqs = [880, 660, 880, 1175], dur = .13) {
+  if (PREF.sound === false) return;
   try {
     audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
     freqs.forEach((f, i) => {
@@ -1011,7 +1023,7 @@ function eloChart(d) {
 function matchRow(h) {
   const won = h.team === h.winner;
   const d = h.elo_delta == null ? '<span class="mute">калибровка</span>' : `<span class="${won ? 'p' : 'm'}">${h.elo_delta >= 0 ? '+' : ''}${h.elo_delta} ELO</span>`;
-  return `<button class="mrow2" onclick="openMatch(${h.id})"><div class="mt2" style="--m:${mapColor(h.map)};--r:${won ? 'var(--go)' : 'var(--bad)'}">${esc(h.map[0] || '?')}</div>
+  return `<button class="mrow2" onclick="openMatch(${h.id})"><div class="mt2" style="--m:${mapColor(h.map)};--r:${won ? 'var(--go)' : 'var(--bad)'}">${MAP_IMG[h.map] ? `<img src="${MAP_IMG[h.map]}" alt="">` : esc(h.map[0] || '?')}</div>
     <div class="grow" style="min-width:0"><b class="ell">${won ? 'Победа' : 'Поражение'} · ${esc(h.map)}${h.is_mvp ? ' <span class="mvpb">MVP</span>' : ''}</b>
       <div class="mute ell">${d}${h.kills != null ? ` · ${h.kills}/${h.assists ?? 0}/${h.deaths}` : ` · ${fmtDate(h.finished_at)}`}</div></div>
     <span class="sc">${esc(h.score) || '—'}</span>${I.chev}</button>`;
@@ -1031,7 +1043,7 @@ async function openProfile(tgId, isTab) {
         <div class="grow"><div class="nick ell">${nickH(p)}</div>${p.premium ? '<span class="ptag">PREMIUM</span>' : ''}
           ${p.game_id ? `<button class="idrow" onclick="copyText('${esc(p.game_id)}')">ID ${esc(p.game_id)} ${I.copy}</button>` : '<div class="idrow">ID не указан</div>'}
           <div class="mute">${p.online ? '<span class="p">в сети</span>' : `был в сети ${ago(p.last_seen)}`}${(() => { const r = d.reputation, n = r.up + r.down; return n ? ` · репутация <b class="${r.up / n >= .7 ? 'p' : r.up / n >= .4 ? '' : 'm'}">${Math.round(r.up * 100 / n)}%</b> (${n})` : ''; })()}</div></div></div>
-        ${mine ? `<button class="edit" aria-label="Изменить профиль" onclick="openEdit()">${I.pen}</button>` : ''}
+        ${mine ? `<button class="edit" aria-label="Изменить профиль" onclick="openEdit()">${I.pen}</button><button class="edit" style="right:60px" aria-label="Настройки" onclick="openSettings()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>` : ''}
         ${p.badges?.length ? `<div>${p.badges.map(b => `<span class="medal">${b.place} место · ${esc(seasonLabel(b.season))}</span>`).join('')}</div>` : ''}
         ${fbtn ? `<div style="margin-top:14px">${fbtn}</div>` : ''}</div>
       <div class="rowlink"><div class="ic" style="color:${p.banned ? 'var(--bad)' : 'var(--mute)'}">${I.shield}</div><div class="grow"><b>Наказания</b>
@@ -1043,7 +1055,7 @@ async function openProfile(tgId, isTab) {
       <div class="strip">${[...got, ...d.achievements.filter(a => !a.got)].map(a => `<div class="medal2 ${a.got ? 'on' : ''}" title="${esc(a.title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${ACH[a.id] || ''}</svg></div>`).join('')}</div>`;
     const maps = `<div class="hd"><h2>Карты <small>${d.maps.filter(m => m.games).length} из ${d.maps.length}</small></h2></div><div class="panel">${d.maps.map(m => {
       const c = m.wr == null ? 'var(--s3)' : m.wr >= 55 ? 'var(--go)' : m.wr >= 45 ? 'var(--gold)' : 'var(--bad)';
-      return `<div class="mrow"><div class="nm" style="--m:${mapColor(m.map)}">${esc(m.map)}</div><div class="b"><i style="width:${m.wr ?? 0}%;background:${c}"></i></div>
+      return `<div class="mrow"><div class="nm" style="--m:${mapColor(m.map)}">${MAP_IMG[m.map] ? `<img src="${MAP_IMG[m.map]}" alt="">` : ''}${esc(m.map)}</div><div class="b"><i style="width:${m.wr ?? 0}%;background:${c}"></i></div>
         <div class="v">${m.games ? `${m.wr}% · ${m.games} ${plural(m.games, 'игра', 'игры', 'игр')}` : 'не играл'}</div></div>`;
     }).join('')}</div>`;
     const need = mine ? d.history.filter(h => h.can_stats) : [];
@@ -1099,7 +1111,7 @@ async function openMatch(id) {
     };
     pushView(`${backBtn()}<div class="panel" style="overflow:hidden;margin-bottom:12px"><div class="banner2" style="padding:16px;background:${mapColor(m.map)}">
         <div class="mute" style="color:#fffc">Матч #${m.id}${m.finished_at ? ' · ' + fmtDate(m.finished_at) : ''}</div>
-        <div class="row" style="align-items:flex-end"><div class="grow c" style="font-size:34px;font-weight:800;line-height:1">${esc(m.map)}</div>
+        <div class="row" style="align-items:flex-end">${MAP_IMG[m.map] ? `<div style="width:72px;height:72px;flex-shrink:0"><img src="${MAP_IMG[m.map]}" alt="" style="width:100%;height:100%;object-fit:contain"></div>` : ''}<div class="grow c" style="font-size:34px;font-weight:800;line-height:1">${esc(m.map)}</div>
           ${m.score ? `<div class="c num" style="font-size:34px;font-weight:800">${esc(s1)}:${esc(s2)}</div>` : ''}</div></div></div>
       ${team(1)}${team(2)}`);
   } catch (e) { toast(e.message); }
@@ -1474,6 +1486,48 @@ async function fxResult(id) {
   if (delta != null) { const el = d.querySelector('#fx-elo'), t0 = performance.now(); const step = t => { const k = Math.min(1, (t - t0) / 900); el.textContent = (delta >= 0 ? '+' : '') + Math.round(delta * k); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
   haptic(won ? 'ok' : 'err');
 }
+// ---------- настройки ----------
+function openSettings() {
+  const sw = (on, fn) => `<button class="sw ${on ? 'on' : ''}" onclick="${fn}" aria-label="Переключить"></button>`, me = S.me.player;
+  pushView(`${backBtn()}<div class="hd" style="margin-top:4px"><h2 style="font-size:28px">Настройки</h2></div>
+    <h2>Промокод</h2><div class="panel pad"><div class="row"><input id="promo" maxlength="20" placeholder="Например, SO2START" style="text-transform:uppercase"><button class="btn sm" onclick="redeem()">Активировать</button></div></div>
+    <h2>Приложение</h2><div class="panel">
+      <div class="set"><div class="grow"><b>Звук</b><span class="mute">Сигнал «Матч найден», кейсы</span></div>${sw(PREF.sound !== false, "setPref('sound')")}</div>
+      <div class="set"><div class="grow"><b>Вибрация</b><span class="mute">Отклик на нажатия и события</span></div>${sw(PREF.vibro !== false, "setPref('vibro')")}</div></div>
+    <h2>Приватность</h2><div class="panel">
+      <div class="set"><div class="grow"><b>Показывать, что я в сети</b><span class="mute">Друзья видят «в сети» и «был в сети»</span></div>${sw(!me.hide_online, `setSrv('hide_online', ${!me.hide_online})`)}</div>
+      <div class="set"><div class="grow"><b>Принимать заявки в друзья</b><span class="mute">Если выключить, тебя нельзя добавить</span></div>${sw(!me.no_friend_req, `setSrv('no_friend_req', ${!me.no_friend_req})`)}</div></div>
+    <h2>Помощь</h2><div class="panel"><button class="rowlink" style="border-top:0" onclick="openSupport()"><div class="grow"><b>Поддержка</b><span class="mute">Тикеты и ответы админа</span></div>${I.chev}</button></div>`);
+}
+function setPref(k) { PREF[k] = PREF[k] === false; savePref(); S.stack.pop(); openSettings(); }
+async function setSrv(k, v) { try { await api('/settings', { [k]: v }); await loadMe(); S.stack.pop(); openSettings(); } catch (e) { toast(e.message); } }
+async function redeem() {
+  try { const r = await api('/promo', { code: $('#promo').value }); toast('Получено: ' + r.reward.join(', '), true); $('#promo').value = ''; await loadMe(); } catch (e) { toast(e.message); }
+}
+// ---------- промокоды (админ) ----------
+async function promoAdmin() {
+  const list = await api('/admin/promos'), items = S.cfg.shop.filter(i => ['frame', 'chevron', 'banner'].includes(i.kind) && !i.premium);
+  pushView(`${backBtn()}<div class="hd" style="margin-top:4px"><h2 style="font-size:28px">Промокоды</h2></div>
+    <div class="panel pad"><b class="c" style="font-size:20px">Новый промокод</b>
+      <label class="f" for="pc-code">Код (пусто — сгенерирую)</label><input id="pc-code" maxlength="20" placeholder="SO2START" style="text-transform:uppercase">
+      <div class="row"><div class="grow"><label class="f" for="pc-tc">TC</label><input id="pc-tc" type="number" inputmode="numeric" placeholder="500"></div>
+        <div class="grow"><label class="f" for="pc-prem">Премиум, дней</label><input id="pc-prem" type="number" inputmode="numeric" placeholder="0"></div></div>
+      <label class="f" for="pc-item">Предмет (необязательно)</label><select id="pc-item" style="width:100%;padding:12px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;font:16px 'Fira Sans',sans-serif"><option value="">— без предмета —</option>${items.map(i => `<option value="${i.id}">${esc(i.title)} (${{ frame: 'рамка', chevron: i.flag ? 'флаг' : 'шеврон', banner: 'баннер' }[i.kind]})</option>`).join('')}</select>
+      <div class="row"><div class="grow"><label class="f" for="pc-uses">Активаций</label><input id="pc-uses" type="number" inputmode="numeric" value="10"></div>
+        <div class="grow"><label class="f" for="pc-days">Дней (0 — всегда)</label><input id="pc-days" type="number" inputmode="numeric" value="0"></div></div>
+      <div class="btns"><button class="btn" onclick="createPromo()">Создать</button></div></div>
+    <h2>Все коды <small>${list.length}</small></h2><div class="panel">${list.length ? list.map(pc => `<div class="set"><div class="grow" style="min-width:0">
+        <b style="${pc.active ? '' : 'text-decoration:line-through;color:var(--mute)'}">${esc(pc.code)} <button class="chip" onclick="copyText('${esc(pc.code)}')">${I.copy}</button></b>
+        <span class="mute">${[pc.tc ? pc.tc + ' TC' : '', pc.prem_days ? 'премиум ' + pc.prem_days + ' дн.' : '', ...pc.items.map(id => S.cfg.shop.find(x => x.id === id)?.title)].filter(Boolean).join(' + ')} · ${pc.used}/${pc.max_uses}${pc.expires ? ' · до ' + new Date(pc.expires * 1000).toLocaleDateString('ru') : ''}</span></div>
+        <button class="btn ${pc.active ? 'red' : 'ghost'} sm" onclick="togglePromo('${esc(pc.code)}')">${pc.active ? 'Выкл' : 'Вкл'}</button></div>`).join('') : '<div class="empty">Пока нет промокодов</div>'}</div>`);
+}
+async function createPromo() {
+  try {
+    const r = await api('/admin/promos', { code: $('#pc-code').value, tc: +$('#pc-tc').value || 0, prem_days: +$('#pc-prem').value || 0, items: $('#pc-item').value ? [$('#pc-item').value] : [], max_uses: +$('#pc-uses').value || 1, valid_days: +$('#pc-days').value || 0 });
+    toast(`Промокод ${r.code} создан`, true); S.stack.pop(); promoAdmin();
+  } catch (e) { toast(e.message); }
+}
+async function togglePromo(code) { try { await api(`/admin/promos/${code}/toggle`, {}); S.stack.pop(); promoAdmin(); } catch (e) { toast(e.message); } }
 async function addBots(mid, count) { try { const r = await api(`/lobbies/${mid}/addbot`, { count }); toast(`Добавлено ботов: ${r.added}`, true); await refresh(); } catch (e) { toast(e.message); } }
 async function grantAll() { try { await api(`/admin/players/${S.me.user.id}/grant_all`, {}); toast('Готово: всё выдано', true); await loadMe(); adminTab(); } catch (e) { toast(e.message); } }
 async function adminTab() {
@@ -1482,6 +1536,7 @@ async function adminTab() {
     const [ov, players] = await Promise.all([api('/admin/overview'), api('/leaderboard')]);
     S.adm = { ov, players };
     $('#app').innerHTML = topbar() + `<div class="wrap">
+      <button class="btn ghost" style="margin-top:10px" onclick="promoAdmin()">Промокоды</button>
       <button class="btn" style="margin-top:10px;background:var(--gold)" onclick="grantAll()">Выдать себе всё: 1 000 000 TC, премиум, все предметы</button>
       <p class="mute" style="margin:6px 0 0">Боты для теста: кнопки «+1 бот» и «Заполнить ботами» в карточке лобби. Видны только тебе как админу.</p>
       <h2>Тикеты <small>${ov.tickets.length}</small></h2><div class="panel">${ov.tickets.length ? ov.tickets.map(t => `<button class="tk" onclick="openTicket(${t.id})"><div class="grow">
@@ -1628,7 +1683,7 @@ const cancelMatch = id => confirmDo('Отменить матч? ELO не изм�
 const kick = (id, tgId) => act(`/lobbies/${id}/kick`, { tg_id: tgId });
 
 // функции, которые вызываются из разметки
-Object.assign(window, { sendChat, joinVoice, muteVoice, leaveVoice, addBots, grantAll, openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
+Object.assign(window, { openSettings, setPref, setSrv, redeem, promoAdmin, createPromo, togglePromo, sendChat, joinVoice, muteVoice, leaveVoice, addBots, grantAll, openCase, payStars, rate, tryOn, setColor, claimDaily, shopTab, findGame, goTab, partyAct, buy, equip, openSupport, newTicket, openTicket, replyTicket, attachReply, closeTicket, goBack, openMatch, openHistory, openAchs, friendAct, friendSearch, friendsTab, act, render, openProfile, openStats, openResult, openRoom, openEdit, openAdminPlayer, adminList, playersList,
   banMap, copyText, copyRoom, cancelMatch, kick, closeSheet, removeAvatar });
 
 // ---------- запуск ----------
